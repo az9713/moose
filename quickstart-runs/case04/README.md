@@ -490,6 +490,74 @@ with different mesh sizes and plot L2_error vs h on a log-log scale.
 
 ---
 
+## Understanding the Plots
+
+Running `python visualize_all.py` from the `quickstart-runs/` directory produces the
+following three plots saved into this directory.
+
+### `case04_numerical.png`
+
+**What the plot shows.** A 2D filled-contour of the MOOSE numerical solution `u_h(x,y)`
+on the unit square. The color axis and contour levels are shared with the exact-solution
+plot below so that both plots can be compared directly.
+
+**Physical quantities.** The color encodes the value of the solution field at each
+point. For this manufactured solution `u = sin(pi*x) * sin(pi*y)`, the peak value
+(approximately 1.0) appears at the domain center (0.5, 0.5) and the field decays to
+exactly 0 on all four boundaries.
+
+**How to judge correctness.** The contours should form a smooth, concentric dome
+pattern — roughly circular near the center, becoming squarish near the corners. The
+peak should be at the exact center. The colormap range should be 0 to 1.
+
+**What would indicate a problem.**
+- Flat contours or a uniform color: the source term f was not applied or was computed
+  incorrectly.
+- Peak shifted away from center: asymmetric BCs or incorrect function expression.
+- Negative values: the manufactured solution formula was computed incorrectly.
+
+### `case04_exact.png`
+
+**What the plot shows.** A 2D filled-contour of the exact manufactured solution
+`u_exact = sin(pi*x) * sin(pi*y)`, evaluated at the same node positions as the
+numerical solution and plotted with the same color scale.
+
+**Physical quantities.** Same as the numerical plot. The exact solution is computed
+analytically in Python using `np.sin(np.pi * x) * np.sin(np.pi * y)`.
+
+**How to judge correctness.** This plot should look visually identical to
+`case04_numerical.png` at the scale of the plot. Both share the same color axis,
+so any visible color difference between them directly reveals numerical error.
+
+**What would indicate a problem.** If this plot looks noticeably different from the
+numerical plot, there is a large numerical error — which would also show up in
+the error plot below.
+
+### `case04_error.png`
+
+**What the plot shows.** A 2D filled-contour of the pointwise absolute error
+`|u_h - u_exact|`, plotted with the magma colormap (dark=small, bright=large).
+
+**Physical quantities.** The color encodes how far the MOOSE solution deviates from
+the exact manufactured solution at each mesh node. This is the primary correctness
+metric for MMS.
+
+**How to judge correctness.** For a 20x20 mesh with first-order Lagrange elements,
+the error should be small — on the order of `O(h^2)` where `h = 1/20 = 0.05`. This
+gives expected errors of roughly `h^2 = 0.0025`, so the colormap maximum should be
+in the range 1e-3 to 1e-2. The error is typically largest near the domain boundaries
+(where the solution gradient is large) and smallest at the center (where it is smooth).
+
+**What would indicate a problem.**
+- Errors close to 1 (same order as the solution itself): the solver failed or the
+  source term is wrong.
+- Errors below 1e-14: this is machine precision — if you see this, you have
+  accidentally tested a problem that is exactly representable by first-order elements
+  (which should not happen for a sinusoidal manufactured solution).
+- Error concentrated in one corner: a BC is missing or incorrect on one edge.
+
+---
+
 ## Interpreting the Results
 
 ### The Solution Field

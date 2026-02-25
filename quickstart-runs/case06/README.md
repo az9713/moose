@@ -606,6 +606,65 @@ Compare these to the analytical predictions to verify correctness.
 
 ---
 
+## Understanding the Plots
+
+Running `python visualize_all.py` from the `quickstart-runs/` directory produces the
+following two plots saved into this directory.
+
+### `case06_contour_2d.png`
+
+**What the plot shows.** A 2D filled-contour of the solution `u(x,y)` on the unit
+square with a material interface at x=0.5. The viridis colormap is used. A white
+dashed vertical line marks the interface at x=0.5.
+
+**Physical quantities.** The color encodes temperature in a two-material wall: left
+half has k=1, right half has k=5. The white dashed line marks the material interface.
+
+**How to judge correctness.** The contour bands should be vertical (no y-variation)
+but with a clear difference in band spacing on either side of the interface. The left
+half (k=1, poor conductor) needs a steeper gradient to carry the same flux and
+therefore has closely spaced bands. The right half (k=5, good conductor) has a
+shallower gradient and widely spaced bands. The transition between band spacings
+should be sharp at x=0.5.
+
+**What would indicate a problem.**
+- Uniformly spaced bands across the entire domain: the block-restricted materials are
+  not working — both halves are using the same conductivity.
+- The kink in band spacing appears at a location other than x=0.5: the subdomain
+  boundaries in the mesh are incorrectly set.
+- Curved bands: incorrect top/bottom boundary conditions.
+
+### `case06_line_interface.png`
+
+**What the plot shows.** A line plot of u along the midline y ≈ 0.5, with x on the
+horizontal axis (0 to 1) and u on the vertical axis (0 to 1). Blue circles are MOOSE
+data; a vertical dashed red line marks the material interface at x=0.5.
+
+**Physical quantities.** The curve shows the temperature profile through the two-
+material wall. Two distinct linear segments are visible, joined at the interface.
+
+**How to judge correctness.** The curve should consist of two straight-line segments
+that meet at a kink at x=0.5. The left segment (k=1) should be steeper, and the
+right segment (k=5) should be shallower. The exact interface temperature is
+approximately u(0.5) ≈ 0.833 (the majority of the temperature drop happens in the
+less conductive left material). The endpoints must be exactly u=0 at x=0 and u=1
+at x=1.
+
+A useful rule: the temperature drop in each layer is inversely proportional to its
+conductivity. With k1=1 and k2=5, the left layer carries 5/6 of the total temperature
+drop and the right carries 1/6. So u at the interface is 1 - 5/6 = 1/6 from the
+hot side, which gives u(0.5) = 5/6 ≈ 0.833.
+
+**What would indicate a problem.**
+- A single straight line from 0 to 1 (no kink): both materials have the same k, the
+  block-restricted materials are not working.
+- The kink at the wrong location: the interface is not at x=0.5 in the mesh.
+- The interface temperature above 0.9 or below 0.7: the conductivity ratio is wrong.
+- Non-linear segments (curved instead of straight on each side): the solver did not
+  converge, or a nonlinear material property was accidentally used.
+
+---
+
 ## Interpreting the Results
 
 ### The Solution Field

@@ -1,7 +1,8 @@
 """
 MOOSE Quick-Start: Visualization Script for All 13 Cases
 =========================================================
-Generates 2-3 plots per case and saves them as PNGs in a `plots/` subdirectory.
+Generates 2-3 plots per case and saves each PNG into that case's own directory.
+For example, Case 01's plot is written to case01/case01_diffusion_1d.png.
 
 Requirements: matplotlib, numpy, netCDF4
 Usage:
@@ -33,7 +34,6 @@ except ImportError:
 # Paths
 # ---------------------------------------------------------------------------
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-PLOTS_DIR = os.path.join(SCRIPT_DIR, "plots")
 
 # ---------------------------------------------------------------------------
 # Visual style constants
@@ -73,18 +73,13 @@ def case_path(casenum: str, filename: str) -> str:
     return os.path.join(SCRIPT_DIR, f"case{casenum}", filename)
 
 
-def plots_path(filename: str) -> str:
-    """Return absolute path inside the plots/ output directory."""
-    return os.path.join(PLOTS_DIR, filename)
-
-
-def save_fig(fig: plt.Figure, name: str) -> None:
-    """Save figure, record it, and close it."""
-    path = plots_path(name)
+def save_fig(fig: plt.Figure, casenum: str, name: str) -> None:
+    """Save figure into its case directory, record it, and close it."""
+    path = case_path(casenum, name)
     fig.savefig(path, dpi=DPI, bbox_inches="tight")
     plt.close(fig)
     generated_plots.append(path)
-    print(f"    saved: plots/{name}")
+    print(f"    saved: case{casenum}/{name}")
 
 
 def file_exists(*paths: str) -> bool:
@@ -205,7 +200,7 @@ def plot_case01():
     ax.legend()
     ax.grid(True, alpha=0.4)
     fig.tight_layout()
-    save_fig(fig, "case01_diffusion_1d.png")
+    save_fig(fig, "01", "case01_diffusion_1d.png")
 
 
 def plot_case02():
@@ -227,7 +222,7 @@ def plot_case02():
     add_2d_contour(ax, x, y, u, cmap=CMAP_SCALAR, label="u")
     ax.set_title("Case 02: 2D Steady Diffusion — u(x,y)")
     fig.tight_layout()
-    save_fig(fig, "case02_contour_2d.png")
+    save_fig(fig, "02", "case02_contour_2d.png")
 
     # Plot 2: 3D surface
     fig = plt.figure(figsize=FIGSIZE_SQUARE)
@@ -238,7 +233,7 @@ def plot_case02():
     ax3.set_zlabel("u")
     ax3.set_title("Case 02: 3D Surface — u(x,y) = x")
     fig.tight_layout()
-    save_fig(fig, "case02_surface_3d.png")
+    save_fig(fig, "02", "case02_surface_3d.png")
 
 
 def plot_case03():
@@ -267,7 +262,7 @@ def plot_case03():
     ax.legend()
     ax.grid(True, alpha=0.4)
     fig.tight_layout()
-    save_fig(fig, "case03_temperature_history.png")
+    save_fig(fig, "03", "case03_temperature_history.png")
 
     ds = open_exodus(efile)
     x, y = get_coords_2d(ds)
@@ -279,7 +274,7 @@ def plot_case03():
     add_2d_contour(ax, x, y, T_final, cmap=CMAP_TEMP, label="T")
     ax.set_title("Case 03: Temperature at t=0.5s")
     fig.tight_layout()
-    save_fig(fig, "case03_temperature_final.png")
+    save_fig(fig, "03", "case03_temperature_final.png")
 
     # Plot 3: three timestep snapshots
     n_steps = len(times)
@@ -304,7 +299,7 @@ def plot_case03():
         axes[col].set_aspect("equal")
     ds.close()
     fig.tight_layout()
-    save_fig(fig, "case03_temperature_snapshots.png")
+    save_fig(fig, "03", "case03_temperature_snapshots.png")
 
 
 def plot_case04():
@@ -337,7 +332,7 @@ def plot_case04():
     ax.set_ylabel("y")
     ax.set_aspect("equal")
     fig.tight_layout()
-    save_fig(fig, "case04_numerical.png")
+    save_fig(fig, "04", "case04_numerical.png")
 
     # Plot 2: exact solution
     fig, ax = plt.subplots(figsize=FIGSIZE_SQUARE)
@@ -349,7 +344,7 @@ def plot_case04():
     ax.set_ylabel("y")
     ax.set_aspect("equal")
     fig.tight_layout()
-    save_fig(fig, "case04_exact.png")
+    save_fig(fig, "04", "case04_exact.png")
 
     # Plot 3: pointwise error
     fig, ax = plt.subplots(figsize=FIGSIZE_SQUARE)
@@ -360,7 +355,7 @@ def plot_case04():
     ax.set_ylabel("y")
     ax.set_aspect("equal")
     fig.tight_layout()
-    save_fig(fig, "case04_error.png")
+    save_fig(fig, "04", "case04_error.png")
 
 
 def plot_case05():
@@ -382,7 +377,7 @@ def plot_case05():
     add_2d_contour(ax, x, y, u, cmap=CMAP_SCALAR, label="u")
     ax.set_title("Case 05: Solution with k(x) = 1+x")
     fig.tight_layout()
-    save_fig(fig, "case05_contour_2d.png")
+    save_fig(fig, "05", "case05_contour_2d.png")
 
     # Plot 2: line plot along y = 0.5 vs exact
     idx_line = nodes_near_y(y, 0.5, tol=0.02)
@@ -409,7 +404,7 @@ def plot_case05():
     ax.legend()
     ax.grid(True, alpha=0.4)
     fig.tight_layout()
-    save_fig(fig, "case05_line_exact.png")
+    save_fig(fig, "05", "case05_line_exact.png")
 
 
 def plot_case06():
@@ -433,7 +428,7 @@ def plot_case06():
     ax.set_title("Case 06: Two-Material Domain (k=1 left, k=5 right)")
     ax.legend(loc="upper left")
     fig.tight_layout()
-    save_fig(fig, "case06_contour_2d.png")
+    save_fig(fig, "06", "case06_contour_2d.png")
 
     # Plot 2: line along y = 0.5 showing kink
     idx_line = nodes_near_y(y, 0.5, tol=0.02)
@@ -455,7 +450,7 @@ def plot_case06():
     ax.legend()
     ax.grid(True, alpha=0.4)
     fig.tight_layout()
-    save_fig(fig, "case06_line_interface.png")
+    save_fig(fig, "06", "case06_line_interface.png")
 
 
 def plot_case07():
@@ -477,7 +472,7 @@ def plot_case07():
     add_2d_contour(ax, x, y, T, cmap=CMAP_TEMP, label="T")
     ax.set_title("Case 07: Nonlinear Diffusion k(T) = 1+T")
     fig.tight_layout()
-    save_fig(fig, "case07_contour_2d.png")
+    save_fig(fig, "07", "case07_contour_2d.png")
 
     # Plot 2: 3D surface
     fig = plt.figure(figsize=FIGSIZE_SQUARE)
@@ -488,7 +483,7 @@ def plot_case07():
     ax3.set_zlabel("T")
     ax3.set_title("Case 07: 3D Temperature Surface")
     fig.tight_layout()
-    save_fig(fig, "case07_surface_3d.png")
+    save_fig(fig, "07", "case07_surface_3d.png")
 
 
 def plot_case08():
@@ -522,7 +517,7 @@ def plot_case08():
         axes[row, col].set_aspect("equal")
     ds.close()
     fig.tight_layout()
-    save_fig(fig, "case08_blob_snapshots.png")
+    save_fig(fig, "08", "case08_blob_snapshots.png")
 
     # Plot 2: total concentration vs time (conservation check)
     data = read_csv(cfile)
@@ -536,7 +531,7 @@ def plot_case08():
     ax.set_title("Case 08: Total Concentration vs Time")
     ax.grid(True, alpha=0.4)
     fig.tight_layout()
-    save_fig(fig, "case08_total_concentration.png")
+    save_fig(fig, "08", "case08_total_concentration.png")
 
 
 def plot_case09():
@@ -564,7 +559,7 @@ def plot_case09():
     ax.legend()
     ax.grid(True, alpha=0.4)
     fig.tight_layout()
-    save_fig(fig, "case09_coupled_averages.png")
+    save_fig(fig, "09", "case09_coupled_averages.png")
 
     ds = open_exodus(efile)
     x, y = get_coords_2d(ds)
@@ -577,14 +572,14 @@ def plot_case09():
     add_2d_contour(ax, x, y, u_final, cmap=CMAP_SCALAR, label="u")
     ax.set_title("Case 09: Field u at t=2.0")
     fig.tight_layout()
-    save_fig(fig, "case09_u_final.png")
+    save_fig(fig, "09", "case09_u_final.png")
 
     # Plot 3: field v at final time
     fig, ax = plt.subplots(figsize=FIGSIZE_SQUARE)
     add_2d_contour(ax, x, y, v_final, cmap=CMAP_SCALAR, label="v")
     ax.set_title("Case 09: Field v at t=2.0")
     fig.tight_layout()
-    save_fig(fig, "case09_v_final.png")
+    save_fig(fig, "09", "case09_v_final.png")
 
 
 def plot_case10():
@@ -611,7 +606,7 @@ def plot_case10():
     add_2d_contour(ax, x, y, u, cmap=CMAP_SCALAR, label="u")
     ax.set_title("Case 10: AMR Solution")
     fig.tight_layout()
-    save_fig(fig, "case10_amr_solution.png")
+    save_fig(fig, "10", "case10_amr_solution.png")
 
     # Plot 2: scatter of node positions colored by u — reveals refinement zones
     fig, ax = plt.subplots(figsize=FIGSIZE_SQUARE)
@@ -622,7 +617,7 @@ def plot_case10():
     ax.set_aspect("equal")
     ax.set_title("Case 10: Node Distribution After AMR")
     fig.tight_layout()
-    save_fig(fig, "case10_node_distribution.png")
+    save_fig(fig, "10", "case10_node_distribution.png")
 
 
 def plot_case11():
@@ -651,7 +646,7 @@ def plot_case11():
     ax.legend()
     ax.grid(True, alpha=0.4)
     fig.tight_layout()
-    save_fig(fig, "case11_temperature_history.png")
+    save_fig(fig, "11", "case11_temperature_history.png")
 
     # Plot 2: dt vs time (log scale)
     fig, ax = plt.subplots(figsize=FIGSIZE_SINGLE)
@@ -663,7 +658,7 @@ def plot_case11():
     ax.set_title("Case 11: Adaptive Timestep Size")
     ax.grid(True, which="both", alpha=0.4)
     fig.tight_layout()
-    save_fig(fig, "case11_timestep_size.png")
+    save_fig(fig, "11", "case11_timestep_size.png")
 
     # Plot 3: 2D contour at final time
     ds = open_exodus(efile)
@@ -675,7 +670,7 @@ def plot_case11():
     add_2d_contour(ax, x, y, T_final, cmap=CMAP_TEMP, label="T")
     ax.set_title("Case 11: Temperature at Steady State")
     fig.tight_layout()
-    save_fig(fig, "case11_temperature_final.png")
+    save_fig(fig, "11", "case11_temperature_final.png")
 
 
 def plot_case12():
@@ -698,7 +693,7 @@ def plot_case12():
     add_2d_contour(ax, x_p, y_p, T_parent, cmap=CMAP_TEMP, label="T")
     ax.set_title("Case 12: Parent Temperature T")
     fig.tight_layout()
-    save_fig(fig, "case12_parent_temperature.png")
+    save_fig(fig, "12", "case12_parent_temperature.png")
 
     # Plot 2: sub-app phi field (vals_nod_var2 in the sub file)
     if not file_exists(efile_sub):
@@ -717,7 +712,7 @@ def plot_case12():
     add_2d_contour(ax, x_s, y_s, phi, cmap=CMAP_SCALAR, label="\u03c6")
     ax.set_title("Case 12: Sub-App Field \u03c6 (driven by T)")
     fig.tight_layout()
-    save_fig(fig, "case12_sub_phi.png")
+    save_fig(fig, "12", "case12_sub_phi.png")
 
 
 def plot_case13():
@@ -783,7 +778,7 @@ def plot_case13():
     axes[1, 1].grid(True, which="both", alpha=0.4)
 
     fig.tight_layout()
-    save_fig(fig, "case13_postprocessors.png")
+    save_fig(fig, "13", "case13_postprocessors.png")
 
     # Bonus: 2D temperature field at final time (if Exodus present)
     if file_exists(efile):
@@ -796,7 +791,7 @@ def plot_case13():
         add_2d_contour(ax, x, y, T_final, cmap=CMAP_TEMP, label="T")
         ax.set_title("Case 13: Temperature at Final Time")
         fig.tight_layout()
-        save_fig(fig, "case13_temperature_final.png")
+        save_fig(fig, "13", "case13_temperature_final.png")
 
 
 # ---------------------------------------------------------------------------
@@ -824,10 +819,8 @@ if __name__ == "__main__":
     print("=" * 60)
     print("MOOSE Quick-Start Visualization — All 13 Cases")
     print("=" * 60)
-
-    # Create output directory
-    os.makedirs(PLOTS_DIR, exist_ok=True)
-    print(f"Output directory: {PLOTS_DIR}\n")
+    print(f"Script directory: {SCRIPT_DIR}")
+    print("Plots will be saved into each case subdirectory.\n")
 
     # Run each case
     for case_id, func in CASE_FUNCTIONS:

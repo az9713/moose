@@ -623,6 +623,64 @@ conductivity at higher T spreads the heat more effectively).
 
 ---
 
+## Understanding the Plots
+
+Running `python visualize_all.py` from the `quickstart-runs/` directory produces the
+following two plots saved into this directory.
+
+### `case07_contour_2d.png`
+
+**What the plot shows.** A 2D filled-contour of the steady-state temperature field
+T(x,y) on the unit square, using the coolwarm colormap (blue=cold, red=hot). The
+nonlinear conductivity is `k(T) = 1 + T`.
+
+**Physical quantities.** The color encodes temperature in a material whose
+conductivity increases with temperature. As the temperature rises, the material
+conducts more easily, which redistributes the temperature relative to the constant-k
+case.
+
+**How to judge correctness.** The field should show a smooth dome or bell shape
+peaked near the domain center with zero temperature on all four walls. The peak
+temperature should be noticeably lower than the Case 03 (constant k=1) result at
+the same source strength, because the nonlinear conductivity increases with T and
+therefore drains heat more efficiently from hot regions. There should be no
+oscillations or negative values — the solution should be smooth and non-negative
+everywhere.
+
+**What would indicate a problem.**
+- Negative temperatures anywhere: the nonlinear solver failed to converge properly.
+- Oscillations in the contours (alternating warm/cold bands): Newton diverged and
+  the solution is meaningless.
+- A peak value identical to the Case 03 constant-k result: the nonlinear material
+  was not applied — k is effectively constant at 1.
+
+### `case07_surface_3d.png`
+
+**What the plot shows.** A 3D surface plot of T(x,y) using `plot_trisurf`, with x
+and y as horizontal axes and T as the vertical axis. The coolwarm colormap is applied
+to the surface height.
+
+**Physical quantities.** The 3D surface height at each (x,y) position represents the
+temperature at that point. The dome-shaped surface directly visualizes the spatial
+distribution of heat.
+
+**How to judge correctness.** The surface should be a smooth, rounded dome with a
+single peak near the domain center. The rim of the dome along all four edges should
+touch zero (the Dirichlet wall conditions). The peak height should be approximately
+0.57 or less — compare to Case 03's peak of about 0.074 scaled by the source strength,
+noting that for nonlinear k the exact peak depends on the iteration history.
+
+More practically: the surface should look smooth with no faceting artifacts or spiky
+features, which would indicate triangulation issues in the visualization.
+
+**What would indicate a problem.**
+- A flat surface at T=0: the source term was removed or the BCs hold everything to zero.
+- Spiky features at individual nodes: the solver produced non-physical node values.
+- The peak significantly higher than the Case 03 result: the k(T) nonlinearity is
+  increasing temperature instead of decreasing it — wrong sign in the material formula.
+
+---
+
 ## Interpreting the Results
 
 ### The Solution Field

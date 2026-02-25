@@ -519,6 +519,60 @@ solution. For a constant k, the solution would be linear and the average would b
 
 ---
 
+## Understanding the Plots
+
+Running `python visualize_all.py` from the `quickstart-runs/` directory produces the
+following two plots saved into this directory.
+
+### `case05_contour_2d.png`
+
+**What the plot shows.** A 2D filled-contour of the solution `u(x,y)` on the unit
+square with conductivity `k(x) = 1 + x`. The viridis colormap is used with contour
+bands filled by u value.
+
+**Physical quantities.** The color encodes the scalar field u, which represents
+temperature in a material whose conductivity increases from left (k=1) to right (k=2).
+
+**How to judge correctness.** The contour bands should still be roughly vertical
+(since BCs are applied at the left and right walls and there is no y-variation in
+the problem), but they should be more closely spaced on the left (low-k region needs
+a steeper gradient to carry the same flux) and more widely spaced on the right
+(high-k region carries the flux easily with a shallow gradient). This gives the
+characteristic "crowded on the left" appearance compared to Case 02's uniform spacing.
+
+**What would indicate a problem.**
+- Uniformly spaced vertical bands (as in Case 02): the varying conductivity k(x) was
+  not applied — the material is using constant k=1 instead.
+- Curved or tilted bands: the top/bottom boundary conditions are incorrect.
+- Bands more closely spaced on the right (opposite of expected): the conductivity
+  function has the wrong sign or direction.
+
+### `case05_line_exact.png`
+
+**What the plot shows.** A line plot comparing two curves along the horizontal
+midline y ≈ 0.5: blue circles connected by lines for the MOOSE solution extracted at
+nodes near y=0.5, and a dashed red line for the exact analytical solution
+`u = ln(1 + x) / ln(2)`.
+
+**Physical quantities.** The horizontal axis is x (0 to 1). The vertical axis is u
+(0 to 1). The exact solution is a logarithmic function that is concave-up: it rises
+steeply near x=0 (low k, steep gradient) and flattens near x=1 (high k, shallow
+gradient), in contrast to the straight-line solution of Case 02.
+
+**How to judge correctness.** The MOOSE blue dots should closely follow the red dashed
+curve. The curve should be visibly concave-up (bowing below the straight line y=x).
+The endpoints should be exactly 0 at x=0 and 1 at x=1. For a 20-element mesh the
+MOOSE dots may deviate slightly from the exact curve, but the shape should match.
+
+**What would indicate a problem.**
+- Blue dots lying on the straight line y=x instead of the logarithmic curve: constant
+  conductivity was used instead of k(x) = 1+x.
+- Blue dots with a concave-down shape: conductivity is decreasing instead of increasing.
+- Large gaps between blue dots and the red curve beyond what mesh discretization
+  would explain: the exact solution formula or material property is incorrect.
+
+---
+
 ## Interpreting the Results
 
 ### The Solution Profile

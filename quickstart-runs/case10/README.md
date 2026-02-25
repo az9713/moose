@@ -425,6 +425,63 @@ To see just the mesh without the solution:
 
 ---
 
+## Understanding the Plots
+
+Running `python visualize_all.py` from the `quickstart-runs/` directory produces the
+following two plots saved into this directory.
+
+### `case10_amr_solution.png`
+
+**What the plot shows.** A 2D filled-contour of the solution field u(x,y) on the
+final AMR-refined mesh, using the viridis colormap. The triangulation for the contour
+is derived from the refined mesh nodes, which are more densely distributed in regions
+of high error.
+
+**Physical quantities.** The color encodes the solution u, which satisfies the Poisson
+equation with zero BCs on the bottom and right edges and u=1 BCs on the top and left
+edges (or equivalent setup producing a steep gradient near the (1,0) corner).
+
+**How to judge correctness.** The solution should show a smooth transition from the
+high-value BC edges to the zero-value BC edges. The gradient (rate of color change)
+should be steepest near the corner(s) where two differently-valued BCs meet. The
+contours should be smooth even near the high-gradient region — this smoothness is
+evidence that AMR has added sufficient resolution there.
+
+**What would indicate a problem.**
+- Uniform color throughout: BCs may be equal on all edges, or the solve failed.
+- Jagged or pixelated contours near the steep gradient corner: not enough refinement
+  levels were applied.
+- The steep gradient region at the wrong corner: BC assignment is incorrect.
+
+### `case10_node_distribution.png`
+
+**What the plot shows.** A scatter plot where each point represents one mesh node,
+plotted at its (x,y) position and colored by its solution value u. The point size
+is fixed (s=10) so that regions with more nodes appear denser.
+
+**Physical quantities.** This is primarily a visualization of the adapted mesh
+structure rather than the solution field. Regions with a high density of scatter
+points are regions where AMR added refinement. The color of each point encodes u.
+
+**How to judge correctness.** The scatter should show a clearly non-uniform density
+of points. The region near the corner where the gradient is steepest should have the
+highest density of nodes — many closely spaced points. Regions where the solution is
+smooth should have coarser (fewer, more spread-out) points.
+
+If AMR is working correctly, you will see a distinct concentration of dots in the
+high-gradient area compared to the rest of the domain. This is the visual proof that
+the adaptive algorithm correctly identified and refined the regions that needed it.
+
+**What would indicate a problem.**
+- Uniformly distributed points across the entire domain: AMR is not running — the
+  mesh is uniformly refined. Check the `Adaptivity` block in the input file.
+- Dense refinement in the wrong corner: the error estimator is flagging the wrong
+  region, possibly due to incorrect BCs.
+- Only one point visible (extreme coarsening): the mesh was over-coarsened rather
+  than refined.
+
+---
+
 ## Interpreting the Results
 
 The solution u ranges from 0 to 1 across the domain. Far from the corner, the solution

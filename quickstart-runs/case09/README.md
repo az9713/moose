@@ -746,6 +746,76 @@ To see a line profile through the domain:
 
 ---
 
+## Understanding the Plots
+
+Running `python visualize_all.py` from the `quickstart-runs/` directory produces the
+following three plots saved into this directory.
+
+### `case09_coupled_averages.png`
+
+**What the plot shows.** A line plot with simulation time on the horizontal axis and
+average field values on the vertical axis. Two curves are drawn: blue circles for
+`avg_u` (spatial average of variable u) and red squares for `avg_v` (spatial average
+of variable v).
+
+**Physical quantities.** The coupled system has two fields, u and v. Variable u solves
+a transient diffusion problem driven by a source, while v is driven by negative
+gradients of u (or by negative u values), making v negative wherever u is positive.
+
+**How to judge correctness.** `avg_u` should rise from zero and asymptote to a
+positive steady-state value as the source drives u. `avg_v` should start at zero and
+evolve toward a negative steady-state value because v is coupled to u in a way that
+makes it respond oppositely. The two curves should move in opposite directions. Both
+should be monotone and eventually flatten.
+
+**What would indicate a problem.**
+- Both curves staying at zero: neither kernel is driving any evolution — check that
+  the kernels and coupling terms are correctly set up.
+- `avg_v` positive when it should be negative: the coupling sign is wrong.
+- Non-monotone curves (reversals in direction): solver instability or incorrect
+  time stepping.
+
+### `case09_u_final.png`
+
+**What the plot shows.** A 2D filled-contour of the u field at the final timestep
+(t=2.0), using the viridis colormap.
+
+**Physical quantities.** The color encodes the value of the primary variable u over
+the unit square domain.
+
+**How to judge correctness.** The u field should show a smooth spatial gradient
+driven by the source term and boundary conditions. The exact shape depends on the
+specific coupling and BCs, but it should be a smooth, positive-valued field with the
+highest values in the interior (away from zero-Dirichlet walls) and the lowest on the
+boundary. There should be no oscillations.
+
+**What would indicate a problem.**
+- u = 0 everywhere: the source term is absent or the BCs are pinning everything to zero.
+- Oscillatory (checkerboard) pattern: mesh-related instability; the mesh may be too
+  coarse for the coupling.
+
+### `case09_v_final.png`
+
+**What the plot shows.** A 2D filled-contour of the v field at the final timestep
+(t=2.0), using the viridis colormap.
+
+**Physical quantities.** The color encodes the value of the secondary variable v,
+which is driven by coupling to u.
+
+**How to judge correctness.** The v field should have negative values throughout the
+domain because v is coupled to u in such a way that wherever u is positive, v is
+driven negative. The spatial distribution of v should mirror the shape of u — the
+most negative values of v occur where u is largest (near the center), and v approaches
+zero near the boundaries (where u also approaches zero due to Dirichlet BCs).
+
+**What would indicate a problem.**
+- v = 0 everywhere: the coupling from u to v is missing.
+- v positive (same sign as u): the coupling sign is inverted.
+- The shape of v bearing no resemblance to u: the coupling is acting on the wrong
+  variable or at the wrong location.
+
+---
+
 ## Interpreting the Results
 
 ### The Coupled Steady State

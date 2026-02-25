@@ -716,6 +716,67 @@ time,total_c
 
 ---
 
+## Understanding the Plots
+
+Running `python visualize_all.py` from the `quickstart-runs/` directory produces the
+following two plots saved into this directory.
+
+### `case08_blob_snapshots.png`
+
+**What the plot shows.** A 2x2 grid of 2D filled-contour panels, each showing the
+concentration field c(x,y) at a different simulation time: approximately t=0, 0.5,
+1.0, and 2.0. The viridis colormap is used with a per-panel colorbar.
+
+**Physical quantities.** The color encodes the concentration of a scalar species (a
+Gaussian blob) being simultaneously advected by a uniform velocity field (vx=0.5,
+vy=0) and diffused by a small diffusion coefficient. Higher concentration is brighter.
+
+**How to judge correctness.**
+- t ≈ 0 panel: the blob should be a compact, roughly circular or Gaussian-shaped
+  bright patch centered near x=0.3, y=0.5 (the initial position).
+- t ≈ 0.5 panel: the blob should have moved to the right to approximately x=0.55
+  (having traveled 0.5 * 0.5 = 0.25 in x) and should be slightly wider due to
+  diffusion.
+- t ≈ 1.0 panel: center should be near x=0.8, blob is wider still.
+- t ≈ 2.0 panel: the blob has largely exited through the right boundary; concentration
+  is low everywhere, spread across the domain.
+
+The blob should always remain positive (concentration cannot be negative) and should
+shift purely to the right with no upward or downward drift (advection is only in x).
+
+**What would indicate a problem.**
+- No movement between panels: advection is not applied (the `Advection` kernel or
+  velocity field is missing or zero).
+- Negative concentration: numerical oscillations due to insufficient diffusion (the
+  Peclet number is too large without stabilization).
+- Blob moving upward or downward: velocity vector has a wrong component.
+- Blob growing instead of shrinking: the source/sink terms are inverted.
+
+### `case08_total_concentration.png`
+
+**What the plot shows.** A line plot with simulation time on the horizontal axis and
+`total_c` (the domain-integrated total concentration) on the vertical axis.
+
+**Physical quantities.** `total_c` is the integral of c over the entire domain. In a
+conservation context, it measures how much of the scalar species remains in the domain.
+
+**How to judge correctness.** The curve should be roughly constant at early times
+(when the blob is fully inside the domain and little has exited) and then decrease
+as the blob reaches and exits through the right boundary. Once the blob has fully
+exited, the total concentration should approach zero. The decrease should be smooth
+and monotone — not oscillatory.
+
+**What would indicate a problem.**
+- `total_c` increasing over time: a source term is adding concentration instead of
+  the blob being advected out; check the kernel setup.
+- `total_c` dropping immediately to zero: the blob exits too fast — advection velocity
+  is too high or the initial blob is placed at the wrong location.
+- `total_c` oscillating up and down: numerical instability in the advection scheme.
+- `total_c` remaining constant and never decreasing: the outflow boundary condition
+  is not allowing material to leave the domain.
+
+---
+
 ## Interpreting the Results
 
 ### Physical Behavior

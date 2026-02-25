@@ -607,6 +607,72 @@ value should be close to but slightly below the multi-term analytical solution.
 
 ---
 
+## Understanding the Plots
+
+Running `python visualize_all.py` from the `quickstart-runs/` directory produces the
+following two plots saved into this directory.
+
+### `case13_postprocessors.png`
+
+**What the plot shows.** A 2x2 grid of four sub-plots, each showing a different
+postprocessor quantity versus simulation time. The four panels are:
+- Top-left: `max_temp` (red circles) and `avg_temp` (blue squares) with a dashed
+  gray horizontal line showing the theoretical steady-state average temperature.
+- Top-right: `total_energy` (the domain-integrated temperature) versus time.
+- Bottom-left: `T_L2_norm` (the L2 norm of the temperature field) versus time.
+- Bottom-right: `dt_size` (adaptive timestep size) on a logarithmic y-axis.
+
+**Physical quantities.**
+- `max_temp` and `avg_temp`: peak and average temperature, tracking the thermal
+  evolution of the heated plate.
+- `total_energy`: the integral of T over the domain, a measure of total stored
+  thermal energy.
+- `T_L2_norm`: the mathematical L2 norm `sqrt(integral(T^2 dV))`, a single-number
+  measure of the "size" of the temperature field.
+- `dt_size`: the actual time step used at each output, showing how adaptive stepping
+  grows.
+
+**How to judge correctness.**
+- Top-left: `max_temp` and `avg_temp` should both rise from zero and flatten. The
+  gray dashed line marks the analytical steady-state average. At late times, `avg_temp`
+  should be approaching the dashed line. `max_temp` is always above `avg_temp`.
+- Top-right: `total_energy` should follow the same shape as `avg_temp` (proportional
+  for a unit-area domain).
+- Bottom-left: `T_L2_norm` should also rise monotonically and flatten, tracking the
+  same physics as avg_temp but with a different norm.
+- Bottom-right: `dt_size` should start small and grow over time as the dynamics slow
+  down. The log scale should show multiple orders of magnitude of growth.
+
+**What would indicate a problem.**
+- Any curve staying at zero: that postprocessor is not being computed or the physics
+  that drives it is absent.
+- `avg_temp` at steady state far above or below the dashed theoretical line: the
+  source strength Q or conductivity k differs from expected values.
+- `dt_size` constant: adaptive time stepping is not active.
+- Oscillatory behavior in any curve: solver instability.
+
+### `case13_temperature_final.png`
+
+**What the plot shows.** A 2D filled-contour of the final temperature field T(x,y)
+on the unit square, using the coolwarm colormap.
+
+**Physical quantities.** The color encodes the near-steady-state temperature distribution.
+This is the spatial counterpart to the postprocessor time histories in the first plot.
+
+**How to judge correctness.** The plot should show a smooth dome peaked at the center
+(0.5, 0.5) with zero on all four walls — the same qualitative shape as Case 03 and
+Case 11. The peak value should be consistent with the postprocessor values seen in the
+first plot. There should be 4-fold symmetry and no asymmetry or hot spots near the walls.
+
+**What would indicate a problem.**
+- Dome peak at an off-center location: the source term or BCs are not symmetric.
+- Negative temperatures: solver instability.
+- The peak value far outside the range suggested by the `max_temp` postprocessor:
+  the Exodus field and the postprocessor are inconsistent — this would indicate a
+  bug in the output configuration.
+
+---
+
 ## Interpreting the Results
 
 ### Temperature Evolution

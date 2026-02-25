@@ -882,6 +882,91 @@ their steady-state limits.
 
 ---
 
+## Understanding the Plots
+
+Running `python visualize_all.py` from the `quickstart-runs/` directory produces the
+following three plots saved into this directory.
+
+### `case03_temperature_history.png`
+
+**What the plot shows.** A line plot with simulation time (0 to 0.5 s) on the
+horizontal axis and temperature on the vertical axis. Two curves are drawn: a blue
+line for `avg_temperature` (spatial average of T over the domain) and a red line for
+`max_temperature` (peak temperature anywhere in the domain).
+
+**Physical quantities.** Both quantities come from the postprocessor CSV file. They
+represent scalar summaries of the full 2D temperature field collapsed to single numbers
+at each timestep. `avg_temperature` measures how much total thermal energy has
+accumulated in the plate; `max_temperature` tracks the hottest point, always near the
+domain center (0.5, 0.5).
+
+**How to judge correctness.** Both curves must:
+- Start at exactly 0 at t=0 (cold-start initial condition).
+- Rise monotonically — temperature can only increase because the source Q=1 always
+  adds energy and the walls are held at 0.
+- Flatten asymptotically at late times as the system approaches steady state.
+- Satisfy `max_temperature > avg_temperature` at every timestep (the peak is always
+  higher than the average by definition).
+
+The approximate asymptotic values are `avg_T ≈ 0.0127` and `max_T ≈ 0.0737` for Q=1
+on the unit square with zero-Dirichlet walls.
+
+**What would indicate a problem.**
+- Any decrease in either curve at any timestep indicates an energy conservation
+  violation or a solver instability.
+- Both curves staying at zero indicates the `BodyForce` source kernel was not applied.
+- The curves continuing to rise without flattening means the simulation time is too
+  short; extend `end_time`.
+
+### `case03_temperature_final.png`
+
+**What the plot shows.** A 2D filled-contour map of the temperature field T(x,y)
+at the final timestep t=0.5 s, using the coolwarm colormap (blue=cold, red=hot).
+
+**Physical quantities.** The color encodes absolute temperature at each point on the
+unit-square plate. Blue near all four walls (T ≈ 0) and red/orange at the center
+(T ≈ 0.07).
+
+**How to judge correctness.** The plot should show a smooth, roughly circular bell
+shape centered at (0.5, 0.5) with 4-fold symmetry (symmetric about x=0.5 and y=0.5).
+The color should be coldest at the four walls and warmest at the center with no
+hot spots, cold spots, or asymmetry.
+
+**What would indicate a problem.**
+- A hot corner instead of a hot center: source term or BCs are applied incorrectly.
+- Asymmetric coloring (e.g., hotter on the left than right): a BC is missing or has
+  the wrong value.
+- Concentric ellipses strongly stretched in one direction: anisotropy was accidentally
+  introduced, or the mesh is strongly non-uniform.
+
+### `case03_temperature_snapshots.png`
+
+**What the plot shows.** A row of three 2D contour panels showing the temperature
+field at an early, a middle, and the final timestep. Panel titles give the simulation
+time for each snapshot.
+
+**Physical quantities.** Same as the final-time plot but at three different moments,
+allowing visual comparison of how the temperature distribution evolves.
+
+**How to judge correctness.**
+- Early snapshot: small, faint warm region concentrated at the center. The temperature
+  is barely above zero everywhere.
+- Middle snapshot: dome has grown and spread, but the peak is still well below the
+  final value. The shape is already roughly circular.
+- Late snapshot: nearly indistinguishable from the final-time plot — the solution has
+  nearly reached steady state.
+
+The three panels should show the dome growing and the color scale maximum increasing
+from panel to panel.
+
+**What would indicate a problem.**
+- All three panels identical: the time integration is not advancing (wrong executioner
+  type or dt=0).
+- Non-monotone color scale maximum (late panel colder than middle panel): solver
+  instability or incorrect time stepping.
+
+---
+
 ## Interpreting the Results
 
 ### What the Solution Looks Like

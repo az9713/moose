@@ -487,6 +487,82 @@ run, dt should grow by roughly 2 orders of magnitude from start to finish.
 
 ---
 
+## Understanding the Plots
+
+Running `python visualize_all.py` from the `quickstart-runs/` directory produces the
+following three plots saved into this directory.
+
+### `case11_temperature_history.png`
+
+**What the plot shows.** A line plot with simulation time on the horizontal axis and
+temperature on the vertical axis. Two curves: red circles for `max_T` (peak temperature)
+and blue squares for `avg_T` (spatial average temperature).
+
+**Physical quantities.** Both quantities come from the postprocessor CSV. They track
+how the temperature field builds up over time as the volumetric source heats the domain.
+Higher source strength Q=100 (compared to Q=1 in Case 03) means the temperature values
+are approximately 100x larger.
+
+**How to judge correctness.** Both curves should rise rapidly from zero at early times
+and then flatten as the system approaches steady state. The two curves should never
+cross — `max_T` is always above `avg_T` by definition. Both should be monotonically
+non-decreasing. The final steady-state values for Q=100 are approximately:
+`avg_T ≈ 1.27` and `max_T ≈ 7.37`.
+
+**What would indicate a problem.**
+- Both curves stay at zero: the source term is absent.
+- Curves decrease at any timestep: energy is being removed unexpectedly — a solver
+  stability issue or wrong sign on the source.
+- The curves look identical to the Case 03 curves (small values around 0.01): Q=1
+  was used instead of Q=100.
+
+### `case11_timestep_size.png`
+
+**What the plot shows.** A semi-log line plot (log scale on the y-axis) with simulation
+time on the horizontal axis and the adaptive timestep size `dt` on the vertical axis.
+The y-axis uses logarithmic scaling via `semilogy`.
+
+**Physical quantities.** The `dt` postprocessor records the actual timestep size used
+at each output point. With `IterationAdaptiveDT`, the solver increases dt when Newton
+converges quickly and decreases it when Newton requires many iterations.
+
+**How to judge correctness.** At early times, `dt` should be near the initial value
+(e.g., 0.001). As the transient dynamics slow down and Newton converges more easily
+at each step, `dt` should grow — potentially by orders of magnitude. The plot should
+show a roughly monotone increase from the initial small dt to a much larger final dt,
+potentially spanning two to three orders of magnitude. The log scale makes this growth
+visible; on a linear scale it would appear as a nearly vertical jump.
+
+**What would indicate a problem.**
+- `dt` constant throughout: adaptive time stepping is not active — `ConstantDT` was
+  used instead of `IterationAdaptiveDT`.
+- `dt` decreasing over time: Newton is requiring more iterations as time progresses,
+  suggesting a stability or convergence issue.
+- `dt` jumping to extremely large values and then failing: the growth factor is too
+  aggressive for this problem.
+
+### `case11_temperature_final.png`
+
+**What the plot shows.** A 2D filled-contour of the temperature field T(x,y) at the
+final timestep, using the coolwarm colormap.
+
+**Physical quantities.** The color encodes absolute temperature. With Q=100 the values
+are much higher than in Case 03. This is a spatial snapshot of the near-steady-state
+temperature distribution.
+
+**How to judge correctness.** The plot should show the same concentric dome shape as
+Case 03 (centered at (0.5, 0.5) with zero on all four walls) but with roughly 100x
+higher temperature values. The colormap should show deep red at the center and deep
+blue near all walls, indicating the large temperature contrast driven by the strong
+source.
+
+**What would indicate a problem.**
+- Values similar to Case 03 (near 0.07 max): Q=100 was not set — the source is Q=1.
+- Asymmetric dome: one of the wall BCs is incorrect.
+- Negative temperatures: solver instability or sign error in the time derivative.
+
+---
+
 ## Interpreting the Results
 
 ### Physical Description

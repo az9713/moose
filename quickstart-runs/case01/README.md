@@ -665,6 +665,37 @@ The file grows more useful in Case 03 where postprocessors are added.
 
 ---
 
+## Understanding the Plots
+
+Running `python visualize_all.py` from the `quickstart-runs/` directory produces the
+following plot saved into this directory.
+
+### `case01_diffusion_1d.png`
+
+**What the plot shows.** A line plot with x on the horizontal axis (0 to 1) and u on
+the vertical axis (0 to 1). Two curves are drawn: blue circles connected by lines
+representing the MOOSE numerical solution at each mesh node, and a dashed red line
+representing the exact solution `u = x`.
+
+**Physical quantities.** The horizontal axis is the spatial coordinate along the 1D
+rod. The vertical axis is the solution field `u`, which could represent temperature,
+concentration, or electrostatic potential depending on context.
+
+**How to judge correctness.** The MOOSE dots should lie exactly on the red dashed
+line — not approximately, but exactly. Because first-order Lagrange elements represent
+linear functions without any approximation error, the maximum pointwise difference
+between the two curves should be below 1e-14 (floating-point machine precision).
+
+**What would indicate a problem.**
+- Any visible gap between the blue dots and the red line signals a solver failure or
+  a wrong boundary condition setup.
+- A curved or non-monotone blue line means the solver did not converge or the mesh is
+  degenerate.
+- A flat horizontal line at u=0 means the right Dirichlet BC was not applied.
+- A flat line at u=1 means the left BC was not applied.
+
+---
+
 ## Interpreting the Results
 
 ### What the Solution Looks Like

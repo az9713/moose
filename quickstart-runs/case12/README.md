@@ -528,6 +528,62 @@ To compare parent and sub solutions side by side:
 
 ---
 
+## Understanding the Plots
+
+Running `python visualize_all.py` from the `quickstart-runs/` directory produces the
+following two plots saved into this directory.
+
+### `case12_parent_temperature.png`
+
+**What the plot shows.** A 2D filled-contour of the parent application's temperature
+field T(x,y) at the final timestep, using the coolwarm colormap.
+
+**Physical quantities.** The color encodes the temperature T in the parent simulation.
+The parent solves a Poisson equation with a volumetric heat source and zero-Dirichlet
+walls. The parent T field is also transferred to the sub-application as boundary data.
+
+**How to judge correctness.** The plot should show a smooth dome peaked at the domain
+center (0.5, 0.5) with zero temperature on all four walls. This is the same shape
+as Case 03/11. The peak value depends on the source strength used in the parent input
+file.
+
+**What would indicate a problem.**
+- Flat field (T=0 everywhere): the parent solve did not run, or the output file was
+  not written.
+- Non-symmetric dome: the boundary conditions in the parent are incorrect on one side.
+
+### `case12_sub_phi.png`
+
+**What the plot shows.** A 2D filled-contour of the sub-application's field phi(x,y)
+at the final timestep, using the viridis colormap.
+
+**Physical quantities.** The sub-application receives the parent temperature T as
+input (via a MultiAppInterpolationTransfer) and uses it to drive its own field phi.
+The physics of the sub-app determines how phi responds to T — typically phi is
+proportional to T, for example phi = 0.1 * T or a similarly scaled version.
+
+**How to judge correctness.** The phi field should have the same shape as the parent
+T field — a dome peaked at the center, zero on the walls. The magnitude should be
+scaled relative to T by whatever relationship the sub-app physics implements. If the
+sub-app sets phi proportional to T with a coefficient of 0.1, the peak of phi should
+be 0.1 times the peak of T.
+
+Crucially: if the MultiApp transfer is working correctly, the spatial pattern of phi
+should clearly mirror the pattern of T. A phi field that is completely flat or uniform
+(all the same value) means the transfer failed and the sub-app is not receiving T
+from the parent.
+
+**What would indicate a problem.**
+- phi is uniformly zero or uniformly constant: the transfer from parent to sub-app
+  is not working. Check that the sub-app output file was created (`case12_parent_out_thermal_sub0.e`)
+  and that the `MultiAppInterpolationTransfer` block is correctly configured.
+- phi has the wrong shape relative to T: the transfer is delivering values to the
+  wrong variable, or the sub-app is computing phi from something other than T.
+- phi file is missing entirely: the sub-app did not run or its output is in a
+  different file than expected.
+
+---
+
 ## Interpreting the Results
 
 ### Parent Solution (T field)

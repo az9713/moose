@@ -543,6 +543,63 @@ import numpy as np
 
 ---
 
+## Understanding the Plots
+
+Running `python visualize_all.py` from the `quickstart-runs/` directory produces the
+following two plots saved into this directory.
+
+### `case02_contour_2d.png`
+
+**What the plot shows.** A 2D filled-contour (color map) of the solution `u(x,y)`
+on the unit square. The color axis runs from 0 (left edge, cold blue) to 1 (right
+edge, warm yellow/green via the viridis colormap). Contour bands are filled polygons
+colored by u value.
+
+**Physical quantities.** The x and y axes are spatial coordinates on the plate. The
+color encodes the value of the solution field u — proportional to temperature,
+concentration, or potential depending on context.
+
+**How to judge correctness.** The color bands should be perfectly vertical stripes
+running from bottom to top of the plot. Because the exact solution `u = x` has no
+y-dependence, every horizontal slice of the plot at any height y should show the same
+color gradient from left (blue) to right (yellow). Any tilt or curvature of the bands
+indicates a wrong boundary condition or mesh problem.
+
+**What would indicate a problem.**
+- Horizontal stripes instead of vertical stripes: the x and y boundary conditions
+  have been swapped.
+- Curved bands that bulge or dip: the top/bottom boundaries were incorrectly given
+  non-zero Dirichlet values instead of the natural zero-flux condition.
+- Uniform color across the entire square: both BCs were set to the same value, or
+  one BC was accidentally applied to both boundaries.
+
+### `case02_surface_3d.png`
+
+**What the plot shows.** A 3D surface plot of `u(x,y)` where x and y are the two
+horizontal axes and u is the vertical (z) axis. The surface is rendered using
+`plot_trisurf` on the triangulated mesh. The viridis colormap is applied to the
+surface height (same colormap as the 2D contour).
+
+**Physical quantities.** The z-axis height at any (x, y) position represents the
+value of u at that point. The 3D surface is a geometric representation of the scalar
+field over the domain.
+
+**How to judge correctness.** The surface should be a perfectly flat inclined plane
+tilted from u=0 at the left edge to u=1 at the right edge, with no variation in the
+y-direction. When viewed from the front (y-axis direction), the surface should appear
+as a straight diagonal line. When viewed from the side (x-axis direction), it should
+appear as a flat horizontal rectangle.
+
+**What would indicate a problem.**
+- Warping or bumping of the surface in the y-direction signals incorrect BCs on the
+  top/bottom edges.
+- A surface that curves instead of being flat (when viewed from any angle) indicates
+  the PDE or material properties were modified away from the simple Laplace equation.
+- A completely flat horizontal surface (z=0 or z=0.5) means a boundary condition was
+  not applied or both BCs were set to equal values.
+
+---
+
 ## Interpreting the Results
 
 ### What the Solution Looks Like

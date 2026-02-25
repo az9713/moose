@@ -1,6 +1,19 @@
 # MOOSE — Multiphysics Object-Oriented Simulation Environment
 
-[![Build status](https://civet.inl.gov/idaholab/moose/master/branch_status.svg)](https://civet.inl.gov/repo/idaholab/moose/)
+> **This repository is based on the original [MOOSE framework by Idaho National Laboratory](https://github.com/idaholab/moose).**
+>
+> This repo **does not include the MOOSE source codes**. Instead, it supplements the original
+> repository with **comprehensive documentation and worked examples** designed to help new users
+> learn the framework from scratch. The 13 progressive quickstart cases are fully explained — from
+> the physics and governing equations, through the input file structure, to interpreting the
+> simulation results — so that users can learn how to set up their own simulations and understand
+> the output without any external help.
+>
+> **Original repository:** https://github.com/idaholab/moose
+> **Official documentation:** https://mooseframework.inl.gov
+
+---
+
 [![License: LGPL 2.1](https://img.shields.io/badge/License-LGPL%202.1-blue.svg)](LICENSE)
 
 MOOSE is an open-source, parallel finite-element multiphysics framework developed and maintained
@@ -57,6 +70,19 @@ immediately available to every application that enables that module.
 
 ---
 
+## What This Repository Provides
+
+This repository focuses on **learning materials** for the MOOSE framework:
+
+- **Comprehensive documentation** covering architecture, developer workflows, input-file syntax, and all 29 physics modules
+- **13 progressive quickstart examples** (`quickstart-runs/`) — each with a complete input file, detailed README explaining the physics, and matplotlib visualization of the results
+- **An 8-week study plan** for self-learners going from zero to productive MOOSE developer
+- **Docker instructions** for running MOOSE on Windows without compiling from source
+
+To actually build and run MOOSE simulations, you need the framework itself from the [original repository](https://github.com/idaholab/moose) or the official [Docker image](https://hub.docker.com/r/idaholab/moose) (`idaholab/moose:latest`).
+
+---
+
 ## Documentation
 
 | File | Description |
@@ -67,8 +93,37 @@ immediately available to every application that enables that module.
 | [docs/quick-start.md](docs/quick-start.md) | 13 worked examples progressing from simple diffusion through transient multiphysics |
 | [docs/zero-to-hero.md](docs/zero-to-hero.md) | 8-week structured study plan for new MOOSE developers |
 | [docs/modules-reference.md](docs/modules-reference.md) | Physics module reference with API summaries and example input files |
+| [docs/docker-guide.md](docs/docker-guide.md) | Running MOOSE on Windows with Docker — installation, volume mounts, MPI |
 
 The official online documentation lives at **https://mooseframework.inl.gov**.
+
+---
+
+## Quickstart Examples
+
+The `quickstart-runs/` directory contains 13 fully worked examples, each in its own subdirectory with:
+
+- **Input file** (`.i`) — ready to run with `moose_test-opt` or `combined-opt`
+- **Detailed README** — explains the physics, walks through every input-file block, describes the output files, and shows how to interpret the results
+- **Visualization plots** (`.png`) — matplotlib-generated 2D/3D plots of the simulation output
+
+| Case | Topic |
+|---|---|
+| 01 | 1D steady-state diffusion |
+| 02 | 2D Poisson equation |
+| 03 | Transient diffusion |
+| 04 | Custom source term (BodyForce) |
+| 05 | Neumann boundary conditions |
+| 06 | Two-material domain (different conductivities) |
+| 07 | Nonlinear diffusion with AD |
+| 08 | Convection-diffusion |
+| 09 | Coupled two-variable reaction-diffusion |
+| 10 | Adaptive mesh refinement |
+| 11 | 3D steady-state diffusion |
+| 12 | MultiApp parent-child coupling |
+| 13 | Custom kernel (C++ + Python verification) |
+
+See [quickstart-runs/README.md](quickstart-runs/README.md) for a comprehensive overview.
 
 ---
 
