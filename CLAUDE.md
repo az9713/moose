@@ -206,6 +206,7 @@ Comprehensive documentation is available in `docs/`:
 | [Quick Start](docs/quick-start.md) | 13 progressive worked examples — from 1D diffusion to MultiApp coupling, with complete input files | Everyone |
 | [Zero to Hero](docs/zero-to-hero.md) | 8-phase study plan (~8 weeks) — prerequisites through production skills, using this repo | Self-learners |
 | [Modules Reference](docs/modules-reference.md) | All 29 physics modules — capabilities, key classes, dependencies, coupling patterns | All users |
+| [Docker Guide](docs/docker-guide.md) | Running MOOSE on Windows with Docker — installation, volume mounts, MPI, troubleshooting | Windows users |
 
 ## Code Style
 

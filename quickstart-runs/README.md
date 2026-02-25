@@ -1,0 +1,2108 @@
+# MOOSE Quickstart Tutorial Cases: Complete Reference
+
+This directory contains 13 self-contained simulation cases for learning MOOSE from zero.
+Each case has its own subdirectory with an input file (`.i`) and pre-run output files.
+You do not need to build or install anything to study the input files, understand the physics,
+and read the results. If you want to run the simulations yourself, see Section 5.
+
+This document is designed so that someone who has never used MOOSE, never written a finite
+element simulation, and is not familiar with scientific computing file formats can read it
+from top to bottom and understand everything in these 13 cases.
+
+Read every section. Do not skip ahead. The later cases build directly on concepts introduced
+in the earlier ones.
+
+---
+
+## Table of Contents
+
+1. [What is MOOSE?](#1-what-is-moose)
+2. [Understanding the HIT Input File Format](#2-understanding-the-hit-input-file-format)
+3. [Understanding Output Files](#3-understanding-output-files)
+4. [How MOOSE Solves Problems](#4-how-moose-solves-problems-conceptual)
+5. [Running Simulations](#5-running-simulations)
+6. [The 13 Cases at a Glance](#6-the-13-cases-at-a-glance)
+7. [Creating Your Own Simulations](#7-creating-your-own-simulations)
+8. [Glossary](#8-glossary)
+
+---
+
+## 1. What is MOOSE?
+
+MOOSE stands for **Multiphysics Object-Oriented Simulation Environment**. It is an open-source
+software framework developed by Idaho National Laboratory for writing physics simulation programs.
+
+### What does "simulation" mean here?
+
+A simulation answers the question: "How does a physical quantity vary across space and time?"
+
+Examples of physical questions a simulation can answer:
+- How hot does the center of a nuclear fuel rod get, given a certain power level?
+- How does a chemical concentration spread through a porous rock over 1000 years?
+- How does stress distribute through a metal beam when a load is applied?
+- Where does fluid pile up when flow enters a pipe with a bend?
+
+In each case, the answer is a **field** — a number (temperature, concentration, stress,
+pressure) at every point in a physical domain (the rod, the rock, the beam, the pipe).
+
+### What is a PDE, and why do we need to solve one?
+
+Physical laws governing how quantities spread through space and change over time are written
+as **partial differential equations** (PDEs). You have probably seen the heat equation written
+in a physics or engineering class:
+
+```
+dT/dt = alpha * (d²T/dx² + d²T/dy² + d²T/dz²)
+```
+
+This says: the rate of change of temperature in time equals the thermal diffusivity times
+the spatial "curvature" of the temperature field (roughly: how much a point differs from its
+neighbors). Where temperature is locally higher than its surroundings, it decreases. Where it
+is lower, it increases. The system naturally smooths itself out over time.
+
+For a real three-dimensional object with complex geometry and non-constant material
+properties, you cannot solve this equation by hand. You need a computer.
+
+### What does MOOSE do?
+
+MOOSE breaks the process into manageable steps:
+
+1. **You describe the physics**: You write an input file stating which PDE to solve, what
+   the material properties are, what the boundary conditions are (temperatures, fluxes, etc.
+   at the edges of the domain), and what the initial conditions are.
+
+2. **MOOSE discretizes the domain**: The continuous region of space (your fuel rod, rock layer,
+   beam) is divided into a large number of small, simple shapes called **elements** — typically
+   triangles or quadrilaterals in 2D, tetrahedra or hexahedra in 3D. This grid of shapes is
+   called the **mesh**.
+
+3. **MOOSE sets up the equations**: Inside each element, the unknown field (temperature,
+   concentration, etc.) is approximated using simple polynomial functions called **shape
+   functions**. Substituting these approximations into the PDE and requiring that the equation
+   is satisfied in an averaged sense (the **weak form**) turns the PDE into a large system of
+   algebraic equations — one equation per unknown at each mesh node.
+
+4. **MOOSE solves the equations**: The algebraic system (often millions of equations) is solved
+   using numerical linear algebra libraries, primarily **PETSc** (Portable, Extensible Toolkit
+   for Scientific Computation) and **libMesh** (the finite element library underneath MOOSE).
+
+5. **MOOSE writes results**: The solution (the field values at every node in the mesh, at
+   every time step) is written to output files that can be visualized with tools like
+   **ParaView** or **VisIt**.
+
+### Why is MOOSE useful?
+
+Writing a finite element code from scratch is a research-level software engineering project.
+MOOSE provides a framework so that a scientist or engineer who understands their physics
+can focus on writing the PDE terms ("kernels") and material models, without reimplementing
+mesh handling, linear algebra, parallel computing, and I/O from scratch.
+
+MOOSE also handles:
+- **Parallel computing**: automatically distributes work across multiple CPU cores
+- **Adaptivity**: automatically refines the mesh where the solution changes rapidly
+- **Multiphysics coupling**: allows multiple physics problems to communicate through
+  shared variables and data transfers
+- **Nonlinear problems**: handles problems where material properties depend on the solution
+  itself (like a material that gets stiffer as it heats up)
+
+### What are the 13 cases in this directory?
+
+These cases form a progressive tutorial starting from the simplest possible problem
+(1D steady-state diffusion with an exact solution of u = x) and building up to
+multi-application coupled solves with adaptive time stepping. By the end you will have
+seen every major MOOSE feature used in everyday simulation work.
+
+---
+
+## 2. Understanding the HIT Input File Format
+
+Every MOOSE simulation is controlled by a plain-text **input file** with a `.i` extension.
+These files use a format called **HIT** (Hierarchical Input Text). You need to be able to
+read and write these files fluently to use MOOSE.
+
+### Basic Syntax Rules
+
+**Blocks**: HIT organizes settings into named blocks. A block opens with `[BlockName]` and
+closes with `[]`. Blocks can be nested.
+
+```text
+[Mesh]              # opens the Mesh block
+  type = GeneratedMesh
+  dim  = 2
+[]                  # closes the Mesh block
+```
+
+**Sub-blocks**: Blocks can contain named sub-blocks. The sub-block name is user-defined
+(you choose it). The `type` parameter inside tells MOOSE which C++ class to instantiate.
+
+```text
+[Kernels]
+  [my_diffusion_term]   # user-chosen name for this kernel
+    type     = Diffusion
+    variable = u
+  []
+[]
+```
+
+**Key-value pairs**: Inside a block, settings are written as `parameter = value`. No quotes
+needed for single-word values. Use single quotes for values with spaces:
+
+```text
+boundary = 'left right top bottom'
+```
+
+**Comments**: Anything after `#` on a line is a comment. MOOSE ignores it.
+
+```text
+nx = 20    # 20 elements in the x direction — this is a comment
+```
+
+**Top-level variables**: You can define scalar variables at the top of the file (before any
+block) and reference them using `${varname}` syntax. This is useful for avoiding
+repetition:
+
+```text
+k_value = 1.5   # define once at the top
+
+[Materials]
+  [mat]
+    type        = GenericConstantMaterial
+    prop_names  = 'k'
+    prop_values = '${k_value}'   # reference the top-level variable
+  []
+[]
+```
+
+### A Complete Annotated Mini-Example
+
+```text
+# -------------------------------------------------------
+# Mini-example: 1D steady diffusion
+# This comment block explains the whole file.
+# -------------------------------------------------------
+
+# Top-level variable: define the domain length once
+L = 1.0
+
+[Mesh]
+  # GeneratedMesh creates a structured grid without needing an external file.
+  type = GeneratedMesh
+  dim  = 1          # one-dimensional problem (a line segment)
+  nx   = 10         # number of elements along x
+  xmin = 0          # left endpoint of the line
+  xmax = ${L}       # right endpoint, uses the top-level variable L = 1.0
+[]
+
+[Variables]
+  # Declare the unknown field to solve for.
+  # 'u' is just a name — you can call it anything.
+  [u]
+    # No extra settings needed for simple cases.
+    # Defaults to first-order Lagrange shape functions.
+  []
+[]
+
+[Kernels]
+  # Each kernel implements one term of the PDE.
+  [diffusion]
+    type     = Diffusion   # implements -div(grad(u))
+    variable = u           # which unknown does this kernel act on?
+  []
+[]
+
+[BCs]
+  # Boundary conditions fix the solution at the domain edges.
+  [left_end]
+    type     = DirichletBC   # fix the value (not the flux)
+    variable = u
+    boundary = left          # named boundary on the generated mesh
+    value    = 0             # u = 0 at x = 0
+  []
+  [right_end]
+    type     = DirichletBC
+    variable = u
+    boundary = right         # x = xmax
+    value    = 1             # u = 1 at x = 1
+  []
+[]
+
+[Executioner]
+  # How to march toward the solution.
+  type = Steady   # no time stepping: just find F(u) = 0
+
+  # The nonlinear solver strategy.
+  solve_type = 'PJFNK'
+
+  # Preconditioner options passed to PETSc.
+  petsc_options_iname = '-pc_type -pc_hypre_type'
+  petsc_options_value = 'hypre    boomeramg'
+[]
+
+[Outputs]
+  exodus = true   # write case_out.e for ParaView
+  csv    = true   # write case_out.csv for postprocessors
+[]
+```
+
+### All Standard Block Types Explained
+
+The following sections explain every block type you will encounter in the 13 cases.
+Each explanation defines what the block does, what parameters mean, and gives a
+realistic example.
+
+---
+
+#### `[Mesh]` — The Computational Grid
+
+The mesh block defines the geometry of the physical domain and how it is divided into
+elements. Think of the mesh as a grid of tiny cells that tiles your physical region.
+The solution is computed at the corners (nodes) and interior quadrature points of these cells.
+
+MOOSE supports two main approaches: building a mesh automatically from parameters
+(`GeneratedMesh`, `GeneratedMeshGenerator`) or reading a mesh from an external file
+created by a meshing tool like Cubit or Gmsh.
+
+**For `GeneratedMesh`** (simple rectangular/box domains):
+
+```text
+[Mesh]
+  type = GeneratedMesh
+  dim  = 2        # dimensionality: 1, 2, or 3
+  nx   = 20       # elements in x direction
+  ny   = 20       # elements in y direction
+  xmin = 0.0      # x coordinate of the left face
+  xmax = 1.0      # x coordinate of the right face
+  ymin = 0.0      # y coordinate of the bottom face
+  ymax = 1.0      # y coordinate of the top face
+[]
+```
+
+The `GeneratedMesh` automatically names its boundaries:
+- In 1D: `left` (x = xmin) and `right` (x = xmax)
+- In 2D: `left`, `right`, `bottom` (y = ymin), `top` (y = ymax)
+- In 3D: `left`, `right`, `bottom`, `top`, `back` (z = zmin), `front` (z = zmax)
+
+**For mesh generators** (more complex geometry, multiple subdomains):
+
+```text
+[Mesh]
+  [gen]
+    type = GeneratedMeshGenerator   # same as above, but generator syntax
+    dim  = 2
+    nx   = 40
+    ny   = 20
+  []
+  [split_right]
+    type        = SubdomainBoundingBoxGenerator
+    input       = gen        # which mesh generator to start from
+    bottom_left = '0.5 0 0'  # lower-left corner of the bounding box
+    top_right   = '1.0 1 0'  # upper-right corner
+    block_id    = 2          # elements inside the box get this subdomain ID
+  []
+[]
+```
+
+The mesh generator system processes generators in dependency order. Later generators
+can reference earlier ones by name (the `input` parameter). This lets you build complex
+meshes by chaining simple operations.
+
+**Key parameters summary:**
+
+| Parameter    | Meaning                                          |
+|--------------|--------------------------------------------------|
+| `type`       | Which mesh generator or mesh type to use         |
+| `dim`        | Spatial dimension: 1, 2, or 3                    |
+| `nx/ny/nz`   | Number of elements in each direction             |
+| `xmin/xmax`  | Domain extents in x (similarly ymin/ymax, zmin/zmax) |
+| `block_id`   | Integer ID for a mesh subdomain (used in [Materials]) |
+
+---
+
+#### `[Variables]` — The Unknowns Being Solved
+
+The `[Variables]` block declares the primary unknown fields — the quantities the solver
+is computing at each mesh node. Examples: temperature `T`, concentration `c`, displacement
+components `ux`, `uy`, `uz`.
+
+Each sub-block declares one variable. The sub-block name is the variable name:
+
+```text
+[Variables]
+  [T]
+    # MOOSE defaults: first-order Lagrange, initial value 0
+  []
+  [c]
+    order  = SECOND    # use quadratic (higher-accuracy) shape functions
+    family = LAGRANGE  # the mathematical family of the shape functions
+    initial_condition = 0.5   # start with c = 0.5 everywhere
+  []
+[]
+```
+
+**Understanding order and family:**
+- `order = FIRST` (default): piecewise linear approximation. Values are stored at mesh
+  nodes (element corners). Simple, fast, sufficient for most problems.
+- `order = SECOND`: piecewise quadratic. Adds midside nodes. More accurate for the same
+  mesh but more memory and work.
+- `family = LAGRANGE` (default): nodal shape functions. The solution is continuous
+  (no jumps across element boundaries). Appropriate for temperature, concentration, etc.
+
+For the 13 tutorial cases, you will always see `[Variables]` with simple empty sub-blocks
+(using all defaults) because first-order Lagrange is standard.
+
+---
+
+#### `[Kernels]` — The PDE Terms
+
+Kernels are the heart of MOOSE. Each kernel object implements one term of the governing
+partial differential equation. If your PDE has four terms, you put four kernels in this block.
+
+To understand what a kernel does, you need to understand the **weak form** briefly:
+
+**The weak form in plain English**: Instead of requiring the PDE to hold exactly at every
+single point in space (which is hard to enforce with simple polynomials), the finite element
+method requires the PDE to hold in an *averaged* sense. You multiply the PDE by a test
+function (one for each mesh node), integrate over the whole domain, and require the
+integral (called the **residual**) to be zero. Integration by parts converts second-order
+terms into first-order terms, which polynomials can represent accurately.
+
+The result is that each term in the PDE maps to an integral that a kernel computes.
+
+**Common kernels:**
+
+`Diffusion` — implements the operator -div(grad u) with no coefficient:
+```text
+[diffusion]
+  type     = Diffusion
+  variable = u
+[]
+```
+This contributes the integral: `integral( grad(phi_i) * grad(u) dV )`
+where `phi_i` is the test function for node `i`.
+
+`MatDiffusion` — same as Diffusion but multiplied by a material property (conductivity):
+```text
+[heat_conduction]
+  type        = MatDiffusion
+  variable    = T
+  diffusivity = k    # name of a material property declared in [Materials]
+[]
+```
+This contributes: `integral( k * grad(phi_i) * grad(T) dV )`
+
+`TimeDerivative` — implements the time rate of change dT/dt:
+```text
+[time_deriv]
+  type     = TimeDerivative
+  variable = T
+[]
+```
+This contributes: `integral( phi_i * dT/dt dV )`
+Required for any transient (time-evolving) problem.
+
+`BodyForce` — implements a volumetric source term Q:
+```text
+[heat_source]
+  type     = BodyForce
+  variable = T
+  value    = 1.0        # constant source term (can also use 'function =')
+[]
+```
+This contributes: `integral( phi_i * Q dV )` (adds Q to the right-hand side)
+
+`CoupledForce` — adds a term proportional to another variable (coupling between equations):
+```text
+[coupling_v_into_u]
+  type     = CoupledForce
+  variable = u
+  v        = v      # the variable that drives the source
+  coef     = 0.1    # coefficient; default 1.0, can be negative
+[]
+```
+This contributes: `integral( phi_i * coef * v dV )` to the equation for `u`.
+
+`ConservativeAdvection` — implements advection (transport by a velocity field):
+```text
+[advection]
+  type              = ConservativeAdvection
+  variable          = c
+  velocity_material = velocity_vec   # vector material property
+[]
+```
+
+`ADMatDiffusion` — the Automatic Differentiation version of `MatDiffusion`. Used when
+the material property itself depends on the solution (nonlinear problem). The `AD` prefix
+means MOOSE automatically computes the exact derivative (Jacobian) using dual-number
+arithmetic rather than finite differences.
+
+---
+
+#### `[BCs]` — Boundary Conditions
+
+The `[BCs]` block specifies what happens at the boundaries of the domain. Without boundary
+conditions, the PDE has infinitely many solutions (think of a ramp u = x + C for any C).
+Boundary conditions make the solution unique.
+
+**Dirichlet boundary conditions** fix the value of the unknown at a boundary:
+
+```text
+[BCs]
+  [pin_left]
+    type     = DirichletBC
+    variable = T
+    boundary = left      # boundary name (from mesh)
+    value    = 100.0     # T = 100 at the left boundary
+  []
+  [pin_right]
+    type     = DirichletBC
+    variable = T
+    boundary = right
+    value    = 0.0       # T = 0 at the right boundary
+  []
+[]
+```
+
+**Neumann boundary conditions** fix the flux (rate of flow) at a boundary. A zero-flux
+Neumann condition (meaning nothing flows through the boundary) is the **natural** or
+**default** boundary condition in MOOSE. You get it automatically for any boundary you
+do not list in `[BCs]`. You never need to write it explicitly.
+
+A non-zero flux Neumann BC is written with `NeumannBC`:
+```text
+[heat_flux_in]
+  type     = NeumannBC
+  variable = T
+  boundary = left
+  value    = 500.0   # 500 W/m^2 flowing into the domain
+[]
+```
+
+**FunctionDirichletBC** applies a Dirichlet condition from a mathematical expression
+(from the `[Functions]` block), useful when the boundary value varies in space or time:
+```text
+[time_varying_left]
+  type     = FunctionDirichletBC
+  variable = T
+  boundary = left
+  function = my_function_name   # evaluated at each node's coordinates and time
+[]
+```
+
+**When NO boundary condition is listed for a boundary**: MOOSE applies zero-flux
+(homogeneous Neumann). This means: no heat flows across that boundary, no concentration
+diffuses through it. This is physically appropriate for an insulated wall, a symmetry plane,
+or an outflow boundary.
+
+---
+
+#### `[ICs]` — Initial Conditions
+
+Initial conditions are required for transient (time-evolving) problems. They set the
+value of the unknown fields at time `t = 0`.
+
+```text
+[ICs]
+  [T_start]
+    type     = ConstantIC
+    variable = T
+    value    = 20.0    # uniform initial temperature of 20 degrees
+  []
+
+  [concentration_blob]
+    type     = FunctionIC
+    variable = c
+    function = blob_fn    # initial condition from a [Functions] entry
+  []
+[]
+```
+
+For `FunctionIC`, the function is evaluated at each mesh node's coordinates at t=0.
+A common use is to start with a Gaussian distribution:
+```text
+[Functions]
+  [blob_fn]
+    type       = ParsedFunction
+    expression = 'exp(-((x-0.5)^2 + (y-0.5)^2) / 0.01)'
+  []
+[]
+```
+
+If you do not specify an IC for a variable, MOOSE assumes `ConstantIC` with `value = 0`.
+For the heat equation starting from a uniform cold state, this default is often what you want.
+
+---
+
+#### `[Materials]` — Material Properties
+
+The `[Materials]` block defines the physical properties of the material(s) in the domain.
+These are numbers like thermal conductivity, density, specific heat, diffusivity, and
+viscosity. Kernels and BCs look up these values at each quadrature point during assembly.
+
+Material properties can be:
+- Constant numbers
+- Spatially varying functions
+- Temperature-dependent (or dependent on any solution variable)
+
+**GenericConstantMaterial** — declare one or more scalar properties with fixed values:
+```text
+[thermal_props]
+  type        = GenericConstantMaterial
+  prop_names  = 'k    rho  cp'
+  prop_values = '50.0 7800 500'   # k=50 W/(mK), rho=7800 kg/m^3, cp=500 J/(kgK)
+[]
+```
+The `prop_names` and `prop_values` lists must have the same number of entries.
+
+**GenericFunctionMaterial** — material property from a `[Functions]` entry:
+```text
+[conductivity]
+  type        = GenericFunctionMaterial
+  prop_names  = 'k'
+  prop_values = 'k_function'   # name of a Function in [Functions]
+[]
+```
+
+**Block restriction**: When you have different materials in different mesh regions (subdomains),
+add a `block` parameter:
+```text
+[mat_left]
+  type        = GenericConstantMaterial
+  block       = 0       # only applies to elements in subdomain 0
+  prop_names  = 'k'
+  prop_values = '1.0'
+[]
+[mat_right]
+  type        = GenericConstantMaterial
+  block       = 2       # only applies to elements in subdomain 2
+  prop_names  = 'k'
+  prop_values = '5.0'
+[]
+```
+
+**ADPiecewiseLinearInterpolationMaterial** — material property that depends on a
+solution variable (nonlinear), using automatic differentiation for the Jacobian:
+```text
+[conductivity]
+  type     = ADPiecewiseLinearInterpolationMaterial
+  property = k
+  variable = T          # k depends on temperature T
+  xy_data  = '0  1.0
+              200 1.5
+              400 2.0'  # piecewise linear: k(0)=1, k(200)=1.5, k(400)=2
+[]
+```
+
+---
+
+#### `[Functions]` — Mathematical Expressions
+
+Functions define mathematical expressions that can be evaluated at any point in space
+and time. They are referenced by name from `[BCs]`, `[ICs]`, `[Kernels]`, `[Materials]`,
+and `[Postprocessors]`.
+
+**ParsedFunction** — the most common type, evaluates a mathematical string:
+```text
+[my_func]
+  type       = ParsedFunction
+  expression = 'sin(pi*x) * cos(2*pi*t) + 1.0'
+[]
+```
+
+Built-in variables in the expression: `x`, `y`, `z`, `t`
+Built-in constants: `pi` (3.14159...), `e` (2.71828...)
+Supported operators: `+`, `-`, `*`, `/`, `^` (power), unary `-`
+Supported functions: `sin`, `cos`, `tan`, `exp`, `log`, `sqrt`, `abs`, `if(cond,a,b)`,
+and many more (the expression is parsed by the `fparser` library).
+
+**PiecewiseLinear** — define a function by a table of (x, y) data points:
+```text
+[ramp_up]
+  type = PiecewiseLinear
+  x = '0.0  0.5  1.0'   # time or x-coordinate values
+  y = '0.0  500  500'   # corresponding function values
+[]
+```
+
+For the 13 tutorial cases, `ParsedFunction` is used to define exact solutions for
+verification (Method of Manufactured Solutions), initial concentration distributions,
+and spatially varying material properties.
+
+---
+
+#### `[AuxVariables]` — Additional Fields (Not Solved For)
+
+Auxiliary variables hold field data that is not part of the primary solve. They can be:
+- Computed from the primary solution (strain from displacement, flux from temperature)
+- Received from another MOOSE application in a MultiApp simulation
+- Used to visualize intermediate quantities
+
+```text
+[AuxVariables]
+  [heat_flux_x]
+    order  = CONSTANT
+    family = MONOMIAL    # piecewise constant, one value per element
+  []
+  [T_from_parent]
+    order  = FIRST
+    family = LAGRANGE    # nodal, same as a primary variable
+  []
+[]
+```
+
+Auxiliary variables do not have their own equations (no kernels act on them). They are
+updated by `[AuxKernels]` objects or populated by `[Transfers]` in MultiApp setups.
+
+---
+
+#### `[Postprocessors]` — Scalar Diagnostic Quantities
+
+Postprocessors compute a single number from the solution field at each output step
+(each time step for transient problems, once for steady). They are written to the CSV
+output file and printed to the console.
+
+Common postprocessors:
+
+**ElementAverageValue** — spatial average of a variable over the domain (or a block):
+```text
+[avg_temp]
+  type     = ElementAverageValue
+  variable = T
+  # block = 0   # optional: restrict to one subdomain
+[]
+```
+
+**ElementExtremeValue** — maximum or minimum of a variable:
+```text
+[max_temp]
+  type       = ElementExtremeValue
+  variable   = T
+  value_type = max   # or 'min'
+[]
+```
+
+**ElementIntegralVariablePostprocessor** — integral of a variable over the domain:
+```text
+[total_energy]
+  type     = ElementIntegralVariablePostprocessor
+  variable = T
+[]
+```
+Computes `integral( T dV )`. For a unit square domain, this equals the average value.
+
+**ElementL2Error** — L2 norm of the difference between solution and an exact function:
+```text
+[L2_error]
+  type     = ElementL2Error
+  variable = u
+  function = exact_fn   # reference to a [Functions] entry
+[]
+```
+Computes `sqrt( integral( (u - u_exact)^2 dV ) )`. Used for verification.
+
+**ElementL2Norm** — L2 norm of the solution itself:
+```text
+[T_norm]
+  type     = ElementL2Norm
+  variable = T
+[]
+```
+Computes `sqrt( integral( T^2 dV ) )`.
+
+**TimestepSize** — reports the current time step size:
+```text
+[dt_pp]
+  type = TimestepSize
+[]
+```
+Useful for monitoring adaptive time stepping.
+
+---
+
+#### `[Executioner]` — The Solver Strategy
+
+The executioner controls how MOOSE marches toward the solution: steady-state vs.
+time-stepping, nonlinear solver settings, and convergence tolerances.
+
+**Steady executioner** — find the solution where F(u) = 0 (no time dependence):
+```text
+[Executioner]
+  type = Steady
+
+  solve_type = 'PJFNK'
+
+  # PETSc preconditioner options:
+  petsc_options_iname = '-pc_type -pc_hypre_type'
+  petsc_options_value = 'hypre    boomeramg'
+[]
+```
+
+**Transient executioner** — march forward in time from initial conditions:
+```text
+[Executioner]
+  type = Transient
+
+  solve_type = 'PJFNK'
+  petsc_options_iname = '-pc_type -pc_hypre_type'
+  petsc_options_value = 'hypre    boomeramg'
+
+  start_time = 0.0
+  end_time   = 10.0
+
+  nl_rel_tol = 1e-8   # nonlinear relative convergence tolerance
+  nl_abs_tol = 1e-10  # nonlinear absolute convergence tolerance
+  nl_max_its = 20     # maximum Newton iterations per step
+
+  [TimeStepper]
+    type = ConstantDT
+    dt   = 0.1
+  []
+[]
+```
+
+**`solve_type` options:**
+- `PJFNK` (Preconditioned Jacobian-Free Newton-Krylov): the default. Approximates the
+  Jacobian using finite differences of the residual. Works for most problems.
+- `NEWTON`: uses the exact (or AD-computed) Jacobian. Faster convergence per iteration
+  but requires explicitly coded or AD-generated Jacobians. Used in Case 7.
+- `JFNK`: like PJFNK but without a preconditioner. Slower, rarely used.
+- `LINEAR`: for problems that are truly linear (no nonlinear terms). Skips Newton iteration.
+
+**Convergence tolerances:**
+- `nl_rel_tol`: converged when the nonlinear residual drops to this fraction of the initial
+  residual. Default 1e-8.
+- `nl_abs_tol`: converged when the nonlinear residual is below this absolute value.
+  Default 1e-50 (effectively disabled; relative tolerance dominates).
+- `l_tol`: tolerance for the inner linear solver at each Newton step. Default 1e-5.
+
+---
+
+#### `[TimeStepper]` — Controlling the Time Step Size
+
+The `[TimeStepper]` sub-block (inside `[Executioner]`) controls how the time step size
+changes over the course of a simulation.
+
+**ConstantDT** — fixed step size:
+```text
+[TimeStepper]
+  type = ConstantDT
+  dt   = 0.01
+[]
+```
+
+**IterationAdaptiveDT** — adjusts the step size based on how hard the previous step was
+(measured by the number of Newton iterations needed):
+```text
+[TimeStepper]
+  type               = IterationAdaptiveDT
+  dt                 = 0.001         # initial step size
+  optimal_iterations = 5             # target Newton iteration count
+  growth_factor      = 2.0           # multiply dt by this if iterations < optimal
+  cutback_factor     = 0.5           # multiply dt by this if iterations > optimal
+  iteration_window   = 2             # acceptable range around optimal
+[]
+```
+
+Logic: if the previous step took fewer than `optimal_iterations` Newton iterations, the
+problem is "easy" so MOOSE multiplies dt by `growth_factor`. If it took many iterations,
+the problem is "hard" so dt is multiplied by `cutback_factor`. This automatically uses
+large steps during slow transients and small steps during fast transients. Case 11 is
+entirely dedicated to demonstrating this feature.
+
+---
+
+#### `[Outputs]` — What Files to Write
+
+```text
+[Outputs]
+  exodus = true    # write the full solution field to an Exodus II file (.e)
+  csv    = true    # write postprocessor values to a CSV file
+[]
+```
+
+**Exodus output** creates a file named `<input_file_base>_out.e`. This binary file contains
+the mesh geometry and the solution fields at every time step. Open it with ParaView.
+
+**CSV output** creates a file named `<input_file_base>_out.csv`. This is a plain-text table
+with one row per time step and one column per postprocessor, plus a `time` column.
+
+Optional output control:
+```text
+[Outputs]
+  [my_exodus]
+    type     = Exodus
+    interval = 5    # write only every 5th time step (reduces file size)
+  []
+  [my_csv]
+    type = CSV
+  []
+[]
+```
+
+---
+
+#### `[Adaptivity]` — Automatic Mesh Refinement
+
+For problems where the solution varies greatly from smooth regions to sharp features,
+automatic mesh refinement (AMR) places small elements where they are needed and
+large elements where the solution is smooth. This uses computational resources
+efficiently instead of applying a uniformly fine mesh everywhere.
+
+```text
+[Adaptivity]
+  marker         = err_marker   # which Marker decides what to refine
+  initial_steps  = 4            # refinement cycles before the first solve
+  initial_marker = err_marker
+  steps          = 1            # additional refinement steps after the solve
+  max_h_level    = 5            # maximum number of refinements relative to base mesh
+
+  [Indicators]
+    # Indicators estimate the local error on each element.
+    [jump_indicator]
+      type     = GradientJumpIndicator
+      variable = u
+    []
+  []
+
+  [Markers]
+    # Markers use indicator values to decide which elements to refine/coarsen.
+    [err_marker]
+      type      = ErrorFractionMarker
+      indicator = jump_indicator
+      refine    = 0.5    # refine the worst 50% of elements by error
+      coarsen   = 0.05   # coarsen the best 5% of elements
+    []
+  []
+[]
+```
+
+**Indicators** estimate how large the error is on each element. The
+`GradientJumpIndicator` measures how sharply the gradient of the solution jumps
+at element faces — large jumps indicate that the element is too coarse to resolve
+the solution accurately.
+
+**Markers** use indicator values to classify each element as "refine", "coarsen",
+or "do nothing". The `ErrorFractionMarker` sorts elements by their estimated error
+and refines the worst-performing fraction.
+
+---
+
+#### `[MultiApps]` — Running Multiple Coupled Simulations
+
+The MultiApp system allows one MOOSE simulation (the parent) to launch and control
+one or more sub-simulations (sub-apps). This is used for:
+- Operator splitting (solve one physics first, then another)
+- Scale-bridging (microscale model feeding a macroscale model)
+- Domain decomposition across non-overlapping meshes
+
+```text
+[MultiApps]
+  [my_sub_app]
+    type        = FullSolveMultiApp   # run sub-app to convergence each time
+    input_files = sub_app.i          # path to the sub-app's input file
+    execute_on  = timestep_end       # when to run: 'initial', 'timestep_end', etc.
+    positions   = '0 0 0'           # where in the parent's coordinate system the sub-app sits
+  []
+[]
+```
+
+`FullSolveMultiApp` runs the sub-application to complete convergence at the specified
+execution point. The sub-application is a completely independent MOOSE solve with its
+own mesh, variables, kernels, and BCs. It just receives and sends data via `[Transfers]`.
+
+---
+
+#### `[Transfers]` — Moving Data Between Applications
+
+Transfers move data between the parent and sub-applications. Without transfers, the
+two solves are completely decoupled.
+
+```text
+[Transfers]
+  [send_temperature]
+    type            = MultiAppCopyTransfer
+    to_multi_app    = my_sub_app       # direction: parent -> sub
+    source_variable = T                # variable in the parent
+    variable        = T_received       # AuxVariable in the sub-app
+  []
+[]
+```
+
+`MultiAppCopyTransfer` copies nodal values from one application to another.
+It requires the meshes to have the same topology (same nodes at the same positions).
+For more complex cases where meshes differ, `MultiAppInterpolationTransfer` interpolates
+between meshes.
+
+The data transferred can go either direction:
+- `to_multi_app = name` — parent sends to sub-app
+- `from_multi_app = name` — sub-app sends to parent (bidirectional coupling)
+
+---
+
+## 3. Understanding Output Files
+
+### Exodus II Files (.e)
+
+**What is Exodus II?** Exodus II is a binary file format created by Sandia National
+Laboratories for storing finite element analysis results. It is the standard output format
+for MOOSE and most other FEA codes. The binary format is compact and efficient for large
+meshes with many time steps.
+
+**What's stored in an Exodus file?**
+- The complete mesh: node coordinates (x, y, z for every mesh node), element connectivity
+  (which nodes form each element), boundary names and their associated nodes/faces
+- Subdomain (block) assignments for elements
+- Solution fields: for every variable (`T`, `u`, `c`, etc.), the value at every mesh node
+  at every stored time step
+- Auxiliary variable fields
+- Time step values
+
+**How to view Exodus files: ParaView**
+
+ParaView is a free, open-source visualization application. It runs on Windows, macOS, and
+Linux. It is the standard tool for viewing MOOSE results.
+
+Download: https://www.paraview.org/download/
+
+Step-by-step for viewing a MOOSE result:
+
+1. Start ParaView
+2. Go to File > Open
+3. Navigate to the `.e` file (e.g., `case01_diffusion_1d_out.e`)
+4. Click OK
+5. In the Pipeline Browser on the left, the file will appear. Click the "Apply" button
+   in the Properties panel below the pipeline browser.
+6. The mesh will appear in the 3D viewport, probably showing as a solid gray color.
+7. To color it by the solution field: in the toolbar near the top of the 3D viewport,
+   find a dropdown that says "Solid Color" or "vtkBlockColors". Click it and change it
+   to the variable name (`u`, `T`, or whatever your variable is called).
+8. The mesh will now show a color-coded representation of the field. A color bar appears
+   on the side showing the mapping from color to value.
+9. Click the "Rescale to Data Range" button (looks like a rescale symbol) to make the
+   color bar span the actual min and max values of your solution.
+
+**Navigating time steps (for transient results):**
+
+Below the toolbar is a time control bar with a time slider and play/pause buttons.
+Click "Play" to animate the time series and watch the solution evolve. You can also
+type a specific time value in the box to jump to that step.
+
+**Using "Plot Over Line" to extract 1D data:**
+
+For 1D problems or 1D cuts through 2D/3D results:
+1. Select the data in the Pipeline Browser
+2. Go to Filters > Data Analysis > Plot Over Line
+3. Set the start point and end point of the line
+4. Click Apply
+5. A 2D plot appears showing the field value along the line
+
+**Using "Plot Data Over Time" (formerly "Plot Selection Over Time"):**
+
+To see how a value at a specific point changes over time:
+1. Select the data
+2. Filters > Data Analysis > Plot Data Over Time
+3. Use the Selection Inspector to pick a point
+4. Click Apply for a time series plot
+
+**Alternative: VisIt**
+
+VisIt is another free visualization tool from Lawrence Livermore National Laboratory.
+Download: https://visit-dav.github.io/visit-website/
+It supports Exodus II and most other FEA formats.
+
+**Programmatic access with Python:**
+
+You can read Exodus files in Python using the `netCDF4` or `exodus` library (Exodus II
+is built on top of netCDF4):
+
+```python
+import netCDF4 as nc
+
+ds = nc.Dataset('case03_heat_transient_out.e')
+
+# Print all available variables
+print(list(ds.variables.keys()))
+
+# Read x-coordinates of all nodes
+x_coords = ds.variables['coordx'][:]
+
+# Read the time values stored in the file
+times = ds.variables['time_whole'][:]
+
+# Read the solution field 'T' (named 'vals_nod_var1' if T is the first variable)
+# The naming convention varies; inspect the variable names first.
+T_field = ds.variables['vals_nod_var1'][:]  # shape: (n_timesteps, n_nodes)
+```
+
+The `mooseutils` Python library (in `python/mooseutils/`) provides higher-level access
+to MOOSE output files if you have the MOOSE Python environment available.
+
+---
+
+### CSV Files (.csv)
+
+CSV (Comma-Separated Values) is a plain text format. Every modern spreadsheet and data
+analysis tool can read it.
+
+**Format**: The first line is a header with column names. Subsequent lines contain
+numerical values, separated by commas. The `time` column always comes first.
+
+Example CSV from Case 3 (transient heat):
+```
+time,avg_temperature,max_temperature
+0.01,0.000247,0.000393
+0.02,0.000464,0.000742
+0.05,0.001134,0.001813
+0.10,0.002198,0.003515
+0.20,0.004052,0.006481
+0.50,0.073300,0.117130
+```
+
+**Opening in a spreadsheet**: Open the file directly in Microsoft Excel, LibreOffice Calc,
+or Google Sheets. Select the columns you want and create a chart.
+
+**Reading with Python:**
+
+```python
+import csv
+
+# Simple approach using the built-in csv module
+with open('case03_heat_transient_out.csv', newline='') as f:
+    reader = csv.DictReader(f)
+    rows = list(reader)
+
+time        = [float(r['time'])            for r in rows]
+avg_temp    = [float(r['avg_temperature']) for r in rows]
+max_temp    = [float(r['max_temperature']) for r in rows]
+
+print(f"Final average temperature: {avg_temp[-1]:.5f}")
+print(f"Final maximum temperature: {max_temp[-1]:.5f}")
+```
+
+Or using `pandas` (a more powerful data library):
+```python
+import pandas as pd
+
+df = pd.read_csv('case03_heat_transient_out.csv')
+print(df.describe())   # summary statistics
+print(df.tail())       # last few rows
+
+# Plot with matplotlib
+import matplotlib.pyplot as plt
+plt.plot(df['time'], df['avg_temperature'], label='Average T')
+plt.plot(df['time'], df['max_temperature'], label='Maximum T')
+plt.xlabel('Time (s)')
+plt.ylabel('Temperature')
+plt.legend()
+plt.savefig('temperature_history.png')
+```
+
+---
+
+## 4. How MOOSE Solves Problems (Conceptual)
+
+This section explains the computational process in plain language. You do not need to
+follow every mathematical detail to use MOOSE, but understanding the big picture helps
+you interpret console output and diagnose problems.
+
+### The Mesh and Degrees of Freedom
+
+The continuous physical domain (a line, square, cube, or complex geometry) is divided
+into a mesh of small elements. In 2D, these are typically quadrilaterals (four-sided)
+or triangles. In 3D, they are hexahedra (bricks) or tetrahedra.
+
+At each mesh **node** (a corner of an element), MOOSE allocates one or more unknowns
+called **degrees of freedom** (DOFs). For a temperature problem with 100 nodes and one
+variable `T`, there are 100 DOFs. The entire solution is described by specifying all 100
+temperature values simultaneously.
+
+Within each element, the temperature is approximated using **shape functions** — smooth
+polynomial functions that are 1 at one node and 0 at all other nodes. The temperature
+at any point inside an element is a weighted sum of the nodal temperatures. For first-order
+(bilinear) elements, this makes the temperature field piecewise linear — a flat plane
+on each element, connected smoothly across elements.
+
+### The Residual
+
+The **residual** is the measure of how poorly the current solution satisfies the governing
+PDE. If the solution were perfect, the residual would be exactly zero at every point.
+
+For a steady-state problem `F(u) = 0`:
+- The residual is the vector `R = F(u_current)` evaluated at the current guess for `u`.
+- If `R = 0`, the solution has converged.
+- If `R` is large, the current guess is far from the true solution.
+
+MOOSE assembles the residual by looping over all mesh elements, calling each kernel to
+compute its contribution to the element residual, and assembling these contributions into
+a global vector of length equal to the number of DOFs.
+
+### Newton's Method
+
+Newton's method finds the solution to `F(u) = 0` by iteratively improving a guess:
+
+1. Start with an initial guess `u_0` (usually all zeros, or the previous time step's solution)
+2. Compute the residual `R = F(u_current)`
+3. Check if `||R||` is small enough (convergence check). If yes, stop.
+4. Compute the **Jacobian** matrix `J = dF/du` (how the residual changes as u changes)
+5. Solve the linear system: `J * delta_u = -R`
+6. Update: `u_new = u_current + delta_u`
+7. Go to step 2 with `u_new`
+
+For a linear problem (like pure diffusion with constant conductivity), Newton converges
+in exactly **one iteration** because the Jacobian is the same as the stiffness matrix
+and the correction `delta_u` is exact.
+
+For a nonlinear problem (like diffusion with temperature-dependent conductivity), multiple
+iterations are needed. The residual should decrease rapidly — ideally **quadratically** (each
+iteration squares the error), which is the hallmark of Newton's method working correctly.
+
+### The Linear Solve
+
+Each Newton step requires solving the linear system `J * delta_u = -R`. For a mesh with
+100,000 DOFs, this is a 100,000 x 100,000 system of equations.
+
+Direct solution methods (Gaussian elimination) are impractical for systems this large.
+MOOSE uses iterative solvers from **PETSc**:
+
+- **GMRES** (Generalized Minimum Residual method): an iterative Krylov subspace method
+  that finds increasingly good approximations to the solution. Requires a preconditioner.
+
+- **Preconditioner**: a transformation applied to the system to make GMRES converge faster.
+  The `boomeramg` preconditioner (algebraic multigrid) works by solving a sequence of
+  coarser and coarser versions of the problem, using the coarse solutions to accelerate
+  convergence on the fine mesh. It is very effective for elliptic problems (diffusion,
+  elasticity, Poisson).
+
+The linear solve is considered converged when the linear residual `||J * x - (-R)||`
+falls below a tolerance (typically `l_tol = 1e-5`).
+
+### The Transient Loop
+
+For time-dependent problems, MOOSE adds an outer time-marching loop around the Newton
+solve:
+
+```
+for each time step:
+    guess: u_new = u_old (extrapolate from previous step)
+    Newton solve to find u_new satisfying F(u_new, u_old, dt) = 0
+    if converged:
+        u_old = u_new
+        advance time by dt
+        (possibly adjust dt based on iteration count)
+    if not converged:
+        reduce dt and retry
+```
+
+MOOSE uses implicit time integration by default (**Backward Euler**, a first-order method).
+This is numerically stable even for large time steps, unlike explicit methods. The tradeoff
+is that each step requires solving a nonlinear system, but stability is not restricted by
+any time step size limit.
+
+### Interpreting Console Output
+
+When you run a MOOSE simulation, the console prints a progress log. Here is a
+line-by-line interpretation:
+
+```
+Framework Information:
+  MOOSE Version:          git commit abc1234
+```
+The MOOSE framework version being used.
+
+```
+Mesh Information:
+  Spatial dimension:      2
+  Mesh:                   400 elements, 441 nodes
+```
+Basic mesh statistics. 441 nodes for a 20x20 quad mesh = 21x21 nodes.
+
+```
+Nonlinear System:
+  Num DOFs:               441
+```
+Total number of unknowns to solve for (one temperature at each node).
+
+```
+ 0 Nonlinear |R| = 1.000000e+00
+```
+Before the first Newton iteration, the residual norm is 1.0 (normalized to 1 by convention
+for the initial step).
+
+```
+      0 Linear |R| = 1.000000e+00
+      1 Linear |R| = 4.234567e-06
+      ...
+      9 Linear |R| = 2.345678e-13
+```
+The inner linear solver (GMRES) iterations, showing convergence of the linear solve at
+this Newton step. `Linear |R|` is the norm of the residual of the linear system
+`J * delta_u = -R`.
+
+```
+ 1 Nonlinear |R| = 2.345678e-13
+```
+After one Newton step, the nonlinear residual dropped to machine precision. For a linear
+problem, this is expected: one step is exact.
+
+```
+Converged in 1 its.
+```
+The nonlinear solve converged. "its." means "iterations."
+
+For a nonlinear problem, you would see multiple nonlinear iterations, each with its own
+set of linear iterations. The nonlinear residual should decrease rapidly (quadratically
+if the Jacobian is exact, linearly or super-linearly for PJFNK with approximate Jacobian).
+
+**Signs of trouble:**
+- Nonlinear residual not decreasing: the Jacobian is wrong or the problem is ill-conditioned
+- Linear solve not converging: bad preconditioner choice for this problem type
+- "Nonlinear solve did not converge": need smaller time step, better initial guess,
+  or looser tolerances
+
+---
+
+## 5. Running Simulations
+
+### Prerequisites
+
+To run the simulations, you need a compiled MOOSE test executable. These cases all use
+the `moose_test-opt` executable from the MOOSE test application.
+
+**Building from source (on a Linux/macOS system with MOOSE installed):**
+
+```bash
+cd /path/to/moose/test
+make -j8
+# Creates: test/moose_test-opt
+```
+
+**Using Docker (no local build required):**
+
+Docker lets you run the MOOSE executable inside a pre-built container without compiling
+anything yourself. Docker Desktop can be downloaded from https://www.docker.com/
+
+```bash
+# Pull the official MOOSE Docker image
+docker pull idaholab/moose:latest
+
+# Run case01 using Docker
+docker run --rm \
+  -v /full/path/to/quickstart-runs/case01:/work \
+  -w /work \
+  idaholab/moose:latest \
+  /opt/moose/bin/moose_test-opt -i case01_diffusion_1d.i
+```
+
+Replace `/full/path/to/quickstart-runs/case01` with the actual absolute path to the
+case directory on your machine.
+
+### Running a Case
+
+The basic command pattern is:
+```bash
+/path/to/moose_test-opt -i input_file.i
+```
+
+Run from the directory containing the input file so that output files are created there:
+
+```bash
+cd quickstart-runs/case01
+/path/to/moose_test-opt -i case01_diffusion_1d.i
+```
+
+For Case 12 (MultiApp), run only the parent:
+```bash
+cd quickstart-runs/case12
+/path/to/moose_test-opt -i case12_parent.i
+```
+Both `case12_parent.i` and `case12_sub.i` must be in the same directory.
+
+### Useful Command-Line Options
+
+| Option                    | Meaning                                               |
+|---------------------------|-------------------------------------------------------|
+| `-i input.i`              | Specify input file (required)                         |
+| `--mesh-only`             | Generate and output the mesh, then exit (no solve)    |
+| `-o output_prefix`        | Override the output file base name                    |
+| `--n-threads=4`           | Use 4 CPU threads (shared memory parallelism)         |
+| `--distributed-mesh`      | Distribute the mesh across MPI processes              |
+| `--show-input`            | Print the parsed input file and exit                  |
+| `--dump`                  | Dump all available object types and their parameters  |
+| `-h` / `--help`           | Show all command-line options                         |
+| `--no-color`              | Disable colored console output                        |
+
+For MPI (distributed memory parallel runs):
+```bash
+mpirun -n 4 /path/to/moose_test-opt -i input.i
+```
+This distributes the mesh and computation across 4 MPI processes.
+
+### Output File Naming
+
+By default, output files are named `<input_file_base>_out.<extension>`.
+For `case01_diffusion_1d.i`:
+- Exodus: `case01_diffusion_1d_out.e`
+- CSV: `case01_diffusion_1d_out.csv`
+
+To override: add `file_base = my_custom_name` to the `[Outputs]` block.
+
+---
+
+## 6. The 13 Cases at a Glance
+
+The cases are ordered from simplest to most complex. Each new case introduces one or two
+new concepts while reusing everything from the previous cases. Study them in order.
+
+| Case | Subdirectory | Title | Physics | Key Concepts Introduced | Difficulty |
+|------|--------------|-------|---------|-------------------------|------------|
+| 01 | `case01/` | Steady-State 1D Diffusion | Laplace equation in 1D: -d²u/dx² = 0, exact solution u=x | Mesh, Variables, Kernels (Diffusion), BCs (DirichletBC), Executioner (Steady), Outputs | Beginner |
+| 02 | `case02/` | Steady-State 2D Diffusion | Laplace equation on unit square, same exact solution u=x (no y variation) | GeneratedMesh in 2D, boundary names (left/right/top/bottom), natural (zero-flux) Neumann BCs | Beginner |
+| 03 | `case03/` | Transient Heat Equation | Heat equation with source: rho*cp*dT/dt = div(k*grad T) + Q | TimeDerivative, MatDiffusion, BodyForce, Materials, Postprocessors, Transient executioner, ConstantDT | Beginner |
+| 04 | `case04/` | Poisson with Manufactured Solution | Poisson equation with known exact solution for code verification | Functions (ParsedFunction), FunctionDirichletBC, ElementL2Error, Method of Manufactured Solutions | Beginner |
+| 05 | `case05/` | Spatially Varying Conductivity | -div((1+x)*grad u) = 0, conductivity varies with x | GenericFunctionMaterial, spatially varying material properties, non-trivial exact solution | Beginner |
+| 06 | `case06/` | Two-Material Domain | Composite domain: left half k=1, right half k=5 | SubdomainBoundingBoxGenerator, block-restricted materials, flux continuity at interfaces | Intermediate |
+| 07 | `case07/` | Nonlinear Diffusion | k(T) = 1 + T, solution-dependent conductivity | ADMatDiffusion, ADPiecewiseLinearInterpolationMaterial, NEWTON solver, quadratic convergence, AD | Intermediate |
+| 08 | `case08/` | Advection-Diffusion | dc/dt + v*grad(c) - D*div(grad c) = 0, moving Gaussian blob | ConservativeAdvection, ICs (FunctionIC), GenericConstantVectorMaterial, top-level HIT variables | Intermediate |
+| 09 | `case09/` | Coupled Two-Variable System | Coupled PDEs: du/dt = Du*Lap(u)+v, dv/dt = Dv*Lap(v)-u | Multiple variables, CoupledForce, IterationAdaptiveDT, off-diagonal coupling | Intermediate |
+| 10 | `case10/` | Adaptive Mesh Refinement | Laplace with boundary step discontinuity, locally refined mesh | Adaptivity block, GradientJumpIndicator, ErrorFractionMarker, non-uniform meshes | Intermediate |
+| 11 | `case11/` | Adaptive Time Stepping | Transient heat with step-change source, dt adapts to difficulty | IterationAdaptiveDT (standalone case study), TimestepSize postprocessor | Intermediate |
+| 12 | `case12/` | MultiApp Coupling | Parent thermal solve + sub-app that uses parent temperature | MultiApps, FullSolveMultiApp, Transfers, MultiAppCopyTransfer, AuxVariables | Advanced |
+| 13 | `case13/` | Full Postprocessor Analysis | Transient heat with five postprocessors, Python plotting | Multiple postprocessors (ElementAverageValue, ElementExtremeValue, ElementIntegral, ElementL2Norm, TimestepSize), CSV analysis, Python CSV reader, matplotlib | Advanced |
+
+### What each case produces
+
+| Case | Output Files |
+|------|-------------|
+| 01 | `case01_diffusion_1d_out.e`, `case01_diffusion_1d_out.csv` |
+| 02 | `case02_diffusion_2d_out.e` |
+| 03 | `case03_heat_transient_out.e`, `case03_heat_transient_out.csv` |
+| 04 | `case04_manufactured_out.e`, `case04_manufactured_out.csv` |
+| 05 | `case05_varying_k_out.e`, `case05_varying_k_out.csv` |
+| 06 | `case06_two_materials_out.e`, `case06_two_materials_out.csv` |
+| 07 | `case07_nonlinear_diffusion_out.e`, `case07_nonlinear_diffusion_out.csv` |
+| 08 | `case08_advection_diffusion_out.e`, `case08_advection_diffusion_out.csv` |
+| 09 | `case09_coupled_system_out.e`, `case09_coupled_system_out.csv` |
+| 10 | `case10_adaptive_refinement_out.e` |
+| 11 | `case11_adaptive_dt_out.e`, `case11_adaptive_dt_out.csv` |
+| 12 | `case12_parent_out.e`, `case12_parent_out_thermal_sub0.e` |
+| 13 | `case13_postprocessors_out.e`, `case13_postprocessors_out.csv` |
+
+All pre-run output files for cases 01-13 are included in this directory so you can
+examine them without running anything.
+
+---
+
+## 7. Creating Your Own Simulations
+
+Once you understand the 13 cases, you will want to adapt them or build new simulations
+from scratch. This section walks through the process systematically.
+
+### Step 1: Define Your Physics
+
+Ask: what PDE governs my problem?
+
+Common choices:
+- **Steady-state diffusion**: `-div(k * grad u) = f`. Use `MatDiffusion` or `Diffusion`.
+- **Transient diffusion/heat equation**: `rho*cp * du/dt = div(k * grad u) + Q`. Add `TimeDerivative`.
+- **Convection-diffusion**: `du/dt + div(v*u) - div(D*grad u) = 0`. Add `ConservativeAdvection`.
+- **Poisson equation**: `-div(grad u) = f`. Use `Diffusion` + `BodyForce`.
+- **Coupled system**: write one equation per variable, use `CoupledForce` for coupling terms.
+
+If you do not immediately know the PDE, consult a textbook on the physical process
+you are modeling. MOOSE ships with modules covering heat conduction
+(`modules/heat_transfer`), solid mechanics (`modules/solid_mechanics`), and fluid flow
+(`modules/navier_stokes`) that provide pre-built kernels for these equations.
+
+### Step 2: Choose the Domain and Mesh
+
+Simple domains (rectangles, boxes): use `GeneratedMesh` or `GeneratedMeshGenerator`.
+Complex geometries: create a mesh with Cubit, Gmsh, or Salome and read it with `FileMesh`.
+
+Decide on dimensionality (1D, 2D, or 3D) and a mesh resolution. Start coarse and refine
+to check that results do not change significantly (mesh independence study).
+
+For problems with localized features (thin layers, sharp corners), use `[Adaptivity]` to
+let MOOSE refine the mesh automatically.
+
+### Step 3: Identify Boundary Conditions
+
+For every boundary of your domain (every external face in 3D, every edge in 2D):
+- **Known value** (temperature, concentration): use `DirichletBC` or `FunctionDirichletBC`
+- **Known flux** (heat flux, mass flux): use `NeumannBC`
+- **Insulated / no-flow / symmetry**: leave unspecified (zero-flux is the default)
+- **Convection to ambient**: use `ConvectiveHeatFluxBC` (from the heat_transfer module)
+
+Write down all boundary conditions before writing the input file. A missing or wrong
+boundary condition is the most common source of physically wrong results.
+
+### Step 4: Select Appropriate MOOSE Objects
+
+Match each term of your PDE to a kernel:
+- `du/dt` term: `TimeDerivative`
+- `-div(grad u)` or `-div(k * grad u)`: `Diffusion` or `MatDiffusion` (or AD versions)
+- Source/sink `f(x,t)`: `BodyForce` with a constant value or a `function = my_fn`
+- Coupling to another variable `v`: `CoupledForce`
+- Advection `div(v * u)`: `ConservativeAdvection`
+
+For nonlinear problems (material properties that depend on the solution), use the `AD`
+(Automatic Differentiation) versions: `ADMatDiffusion`, `ADParsedMaterial`, etc.
+These give you the exact Jacobian for free and enable `solve_type = NEWTON` for
+quadratic convergence.
+
+### Step 5: Set Solver Parameters
+
+For most problems, the default PJFNK + BoomerAMG preconditioner works well:
+```text
+[Executioner]
+  type       = Steady       # or Transient
+  solve_type = 'PJFNK'
+  petsc_options_iname = '-pc_type -pc_hypre_type'
+  petsc_options_value = 'hypre    boomeramg'
+  nl_rel_tol = 1e-8
+  nl_abs_tol = 1e-10
+[]
+```
+
+For transient problems, start with `ConstantDT` with a small time step, then switch to
+`IterationAdaptiveDT` once your problem runs successfully to completion.
+
+If the solve does not converge:
+- Try tighter convergence tolerances (`nl_rel_tol = 1e-10`)
+- Try smaller initial time step
+- Try a different preconditioner (`-pc_type lu` for a small direct solve, useful for debugging)
+- Check that all material properties are positive and physical
+- Check that boundary conditions make physical sense
+
+### Step 6: Add Postprocessors
+
+Postprocessors let you monitor the simulation without loading the full Exodus file.
+Good defaults for most problems:
+
+```text
+[Postprocessors]
+  [max_value]
+    type       = ElementExtremeValue
+    variable   = T
+    value_type = max
+  []
+  [avg_value]
+    type     = ElementAverageValue
+    variable = T
+  []
+[]
+```
+
+For verification purposes, add `ElementL2Error` if you have an exact solution.
+For transient problems, add `TimestepSize` to monitor the time step.
+
+### Step 7: Template Input File
+
+Copy this template and fill in the blanks:
+
+```text
+# ============================================================
+# [Your problem name here]
+# [Brief description of the PDE]
+# ============================================================
+
+# Top-level constants (optional, but good practice)
+k_value = 1.0
+Q_value = 0.0
+
+[Mesh]
+  type = GeneratedMesh
+  dim  = 2      # change to 1 or 3 as needed
+  nx   = 20
+  ny   = 20
+  xmin = 0
+  xmax = 1
+  ymin = 0
+  ymax = 1
+[]
+
+[Variables]
+  [u]           # rename to T, c, phi, etc.
+  []
+[]
+
+# Uncomment for transient problems:
+# [ICs]
+#   [u_init]
+#     type     = ConstantIC
+#     variable = u
+#     value    = 0.0
+#   []
+# []
+
+[Kernels]
+  # Add your PDE terms here.
+  [diffusion]
+    type     = Diffusion
+    variable = u
+  []
+  # [time_deriv]     # uncomment for transient
+  #   type     = TimeDerivative
+  #   variable = u
+  # []
+  # [source]
+  #   type     = BodyForce
+  #   variable = u
+  #   value    = ${Q_value}
+  # []
+[]
+
+[BCs]
+  # Add boundary conditions for each boundary.
+  [left]
+    type     = DirichletBC
+    variable = u
+    boundary = left
+    value    = 0.0
+  []
+  [right]
+    type     = DirichletBC
+    variable = u
+    boundary = right
+    value    = 1.0
+  []
+[]
+
+# [Materials]    # uncomment if using MatDiffusion or material properties
+#   [props]
+#     type        = GenericConstantMaterial
+#     prop_names  = 'k'
+#     prop_values = '${k_value}'
+#   []
+# []
+
+[Postprocessors]
+  [avg_u]
+    type     = ElementAverageValue
+    variable = u
+  []
+  [max_u]
+    type       = ElementExtremeValue
+    variable   = u
+    value_type = max
+  []
+[]
+
+[Executioner]
+  type = Steady        # change to Transient for time-stepping
+
+  solve_type = 'PJFNK'
+  petsc_options_iname = '-pc_type -pc_hypre_type'
+  petsc_options_value = 'hypre    boomeramg'
+
+  nl_rel_tol = 1e-8
+  nl_abs_tol = 1e-10
+
+  # Uncomment for transient:
+  # [TimeStepper]
+  #   type = ConstantDT
+  #   dt   = 0.01
+  # []
+  # start_time = 0.0
+  # end_time   = 1.0
+[]
+
+[Outputs]
+  exodus = true
+  csv    = true
+[]
+```
+
+---
+
+## 8. Glossary
+
+This glossary defines every technical term that appears in the 13 tutorial cases.
+If you encounter an unfamiliar word while reading an input file or console output,
+look it up here.
+
+---
+
+**Advection (also: convection)**
+Transport of a quantity (temperature, concentration) by a flowing fluid or moving medium.
+The advective flux of a scalar `c` carried by velocity `v` is `v * c`. Advection moves
+the quantity without changing its value — like a leaf carried by a river current. In a PDE
+it appears as `div(v * c)` (the divergence of the advective flux). Advection is distinct
+from diffusion: advection transports by bulk flow, diffusion transports from high to low
+concentration regardless of any mean flow.
+
+---
+
+**AMG (Algebraic Multigrid)**
+A class of iterative linear solver preconditioners that work at multiple scales. AMG
+builds a hierarchy of progressively coarser approximations to the matrix, uses the
+coarse-grid solutions to accelerate convergence on the fine grid, and reverses the process.
+It is very effective for elliptic PDEs (diffusion, elasticity, Poisson). In MOOSE,
+`boomeramg` from the HYPRE library is the most commonly used AMG preconditioner.
+
+---
+
+**Assembly**
+The process of building the global stiffness matrix `K` and right-hand side vector `f`
+from element-level contributions. MOOSE loops over all elements, calls each kernel to
+compute its contribution to the element stiffness matrix and load vector, and adds these
+to the global sparse matrix. Boundary condition contributions are added similarly.
+The assembled system `K*u = f` is then passed to the linear solver.
+
+---
+
+**Automatic Differentiation (AD)**
+A computational technique for computing exact derivatives of a function automatically,
+without hand-coding the Jacobian. MOOSE uses dual-number arithmetic: every floating-point
+variable carries not just its value but also its derivative with respect to the degrees
+of freedom. When you use `AD` variants of kernels and materials (e.g., `ADMatDiffusion`,
+`ADParsedMaterial`), MOOSE computes the exact Jacobian automatically. This enables
+`solve_type = NEWTON` and achieves quadratic convergence even for nonlinear problems.
+
+---
+
+**Backward Euler**
+A first-order implicit time integration method. For the ODE `du/dt = f(u)`, Backward Euler
+approximates: `(u_new - u_old) / dt = f(u_new)`. Note that `f` is evaluated at the
+**new** time level — this makes the method **implicit** (u_new appears on both sides)
+and requires solving a nonlinear system at each time step. The advantage is
+unconditional stability: no matter how large the time step, the method does not blow up
+(though accuracy degrades for large steps). MOOSE uses Backward Euler by default.
+
+---
+
+**Block (mesh subdomain)**
+A named region of the mesh containing a subset of elements. Used to apply different
+materials to different regions of the domain. In `GeneratedMesh`, all elements are in
+block 0 by default. Additional blocks are created with `SubdomainBoundingBoxGenerator`
+or similar mesh generators. The `block` parameter in `[Materials]` restricts a material
+to specific blocks.
+
+---
+
+**Body force**
+A volumetric source term in the PDE, distributed throughout the interior of the domain.
+In heat transfer, a body force corresponds to a volumetric heat source `Q` (W/m³) such
+as nuclear fission heating or Joule heating. In MOOSE, the `BodyForce` kernel adds
+the term `integral( phi_i * Q ) dV` to the right-hand side.
+
+---
+
+**Boundary condition (BC)**
+A constraint applied at the boundary (edge or face) of the computational domain.
+Required to make the PDE well-posed (to have a unique solution). The two main types are:
+- Dirichlet: specifies the value of the unknown directly
+- Neumann: specifies the flux (derivative) of the unknown normal to the boundary
+See also: Dirichlet BC, Neumann BC.
+
+---
+
+**Convergence (nonlinear)**
+The nonlinear solve is said to have converged when the residual `||R||` has been reduced
+to below a specified tolerance. MOOSE checks both relative convergence (`||R|| / ||R_0|| <
+nl_rel_tol`) and absolute convergence (`||R|| < nl_abs_tol`). If Newton's method fails
+to converge within `nl_max_its` iterations, the solve fails.
+
+---
+
+**Convergence (order of accuracy)**
+For a numerical method, convergence order refers to how fast the numerical error decreases
+as the mesh is refined. For standard bilinear finite elements (the MOOSE default), the L2
+error in the solution decreases as `O(h^2)`: halving the mesh spacing reduces the error
+by a factor of 4. This is called second-order spatial convergence. Higher-order elements
+or post-processing techniques can achieve higher orders.
+
+---
+
+**Degrees of Freedom (DOFs)**
+The unknowns in the discrete system. For a scalar field like temperature with first-order
+Lagrange elements, there is one DOF at each mesh node. For a mesh with `N` nodes and one
+variable, there are `N` DOFs. For multiple variables or higher-order elements, the DOF
+count is higher. The total DOF count determines the size of the linear system that must
+be solved.
+
+---
+
+**Diffusion**
+The process by which a quantity spreads from regions of high concentration to regions of
+low concentration due to random molecular motion (Fick's law for mass, Fourier's law for
+heat). Mathematically described by the term `-div(k * grad u)` where `k` is the
+diffusivity or conductivity. In steady state, diffusion drives the solution toward the
+average of its neighboring values.
+
+---
+
+**Dirichlet boundary condition**
+A type of boundary condition that specifies the value of the unknown directly at the
+boundary. Named after the mathematician Peter Gustav Lejeune Dirichlet. Example:
+fixing the temperature at a wall to 100°C is a Dirichlet BC. In MOOSE: `DirichletBC`
+with a constant value, `FunctionDirichletBC` with a spatially or temporally varying value.
+
+---
+
+**DOF**
+Abbreviation for Degree of Freedom. See: Degrees of Freedom.
+
+---
+
+**Element**
+One small cell in the computational mesh. In 2D, elements are typically quadrilaterals
+(quads) or triangles. In 3D, they are hexahedra (bricks), tetrahedra, prisms, or
+pyramids. MOOSE uses linear (first-order) elements by default, meaning the solution
+is approximated by a piecewise bilinear (2D) or trilinear (3D) polynomial within
+each element.
+
+---
+
+**Exodus II**
+A binary file format for storing finite element mesh and solution data. Developed by
+Sandia National Laboratories. Used by MOOSE as the primary output format. Files have
+the extension `.e`. Viewable with ParaView, VisIt, and Cubit. Built on top of the netCDF
+data format.
+
+---
+
+**FEM (Finite Element Method)**
+A numerical technique for solving PDEs. The domain is divided into elements, the solution
+is approximated by polynomials within each element, and the PDE is required to hold in a
+weighted-average (weak) sense. The result is a large sparse linear or nonlinear algebraic
+system. The name "finite element" refers to the finite-size elements that partition the domain.
+
+---
+
+**Finite Element**
+A small region (element) in the mesh together with its associated shape functions. The
+"finite element" in the name of the method refers to the fact that the domain is divided
+into a finite number of small regions, contrasting with the infinitely many points in the
+continuous domain.
+
+---
+
+**GMRES (Generalized Minimum Residual method)**
+An iterative linear algebra solver for non-symmetric sparse systems. At each iteration,
+it finds the best solution in an expanding Krylov subspace (span of `{b, Ab, A²b, ...}`
+where `A` is the system matrix and `b` is the right-hand side). Requires a preconditioner
+for fast convergence on ill-conditioned systems. The default Krylov solver in MOOSE/PETSc.
+
+---
+
+**Implicit method**
+A time integration method where the right-hand side is evaluated at the new time level
+(`t + dt`), requiring the solution of a nonlinear system at each step. Implicit methods
+are unconditionally stable (no time step size limit for stability) but require more work
+per step. MOOSE's default Backward Euler method is implicit. Contrasted with explicit
+methods (like Forward Euler) which evaluate at the old time level and are conditionally
+stable.
+
+---
+
+**Initial condition (IC)**
+The value of the unknown field(s) at time `t = 0`. Required for transient problems.
+Set via the `[ICs]` block. Without an explicit IC, MOOSE defaults to zero.
+
+---
+
+**Jacobian**
+The matrix of partial derivatives of the residual vector with respect to the unknowns:
+`J_ij = dR_i / du_j`. In Newton's method, the Jacobian describes how the residual
+changes when the solution changes, and the linear system `J * delta_u = -R` determines
+the Newton correction. For nonlinear problems, the Jacobian changes at every Newton
+iteration (it depends on the current solution). MOOSE can compute the Jacobian by finite
+differences (PJFNK), from hand-coded formulas, or automatically via AD.
+
+---
+
+**Kernel**
+In MOOSE, a kernel is a C++ object that implements one term of the governing PDE. Each
+kernel computes a contribution to the residual vector (and optionally the Jacobian matrix)
+by integrating over all mesh elements. The name comes from the mathematical concept of
+an integral kernel. The `[Kernels]` block in the input file instantiates and configures
+these objects.
+
+---
+
+**Krylov method**
+A class of iterative linear solvers (including GMRES and CG) that work by building a
+subspace spanned by matrix-vector products `{b, Ab, A^2b, ...}` (the Krylov subspace)
+and finding the best approximate solution in that subspace. Krylov methods are the standard
+approach for large sparse systems because they only require matrix-vector products (not
+matrix inversions or factorizations). They require a preconditioner to converge in a
+reasonable number of iterations.
+
+---
+
+**L2 norm / L2 error**
+The L2 norm of a function `f` over a domain is `sqrt( integral( f^2 ) dV )`. It measures
+the "size" of a function in a global, averaged sense (unlike the maximum norm which just
+looks at the largest value). The L2 error between a numerical solution `u_h` and an exact
+solution `u_exact` is `sqrt( integral( (u_h - u_exact)^2 ) dV )`. For second-order
+finite elements, the L2 error scales as `O(h^2)` where `h` is the element size.
+
+---
+
+**libMesh**
+The finite element library that MOOSE is built on. libMesh provides: mesh data structures
+(storage and manipulation of nodes, elements, and connectivity), shape function
+computation, quadrature rules, degree-of-freedom management, and parallel mesh partitioning
+using ParMETIS. MOOSE adds the physics layer on top of libMesh.
+
+---
+
+**Material property**
+A physical quantity associated with the material in the domain (conductivity, density,
+Young's modulus, etc.) that is needed by kernels and BCs. In MOOSE, material properties
+are declared in the `[Materials]` block and looked up by name at quadrature points during
+assembly. Material properties can be scalars, vectors, or tensors, and can depend on
+position, time, or the current solution values.
+
+---
+
+**Mesh**
+The subdivision of the computational domain into a collection of small, simple shapes
+(elements). The mesh determines the computational grid on which the solution is approximated.
+A finer mesh (more, smaller elements) gives more accurate results but takes more
+computational time and memory.
+
+---
+
+**Method of Manufactured Solutions (MMS)**
+A verification technique for numerical codes. The idea: choose a desired exact solution
+first, derive the source term `f` that makes it satisfy the PDE, solve the PDE with that
+source term, and compare the numerical result to the known exact solution. If the error
+does not decrease at the theoretically expected rate as the mesh is refined, the code has
+a bug. MMS does not require the manufactured solution to be physically motivated —
+it just needs to be smooth and satisfy any boundary conditions you apply.
+
+---
+
+**Neumann boundary condition**
+A type of boundary condition that specifies the flux (the derivative of the unknown in
+the direction normal to the boundary) at the boundary. Named after Carl Neumann. Example:
+specifying that 500 W/m² of heat flows into the domain through a surface. In MOOSE:
+`NeumannBC`. The natural (default) Neumann condition is zero flux — no heat flows through
+unspecified boundaries. This is why you do not need to explicitly write a zero-flux BC in MOOSE.
+
+---
+
+**Newton's method (Newton-Raphson)**
+An iterative root-finding algorithm for solving nonlinear equations `F(u) = 0`. At each
+step: (1) compute the Jacobian `J = dF/du` at the current guess, (2) solve `J * delta = -F`,
+(3) update `u += delta`. For well-behaved problems, convergence is quadratic: the number
+of correct decimal places doubles each iteration. For a linear problem (where `F` is linear
+in `u`), Newton converges in exactly one iteration.
+
+---
+
+**Node**
+A point in the mesh. Nodes are the corners of elements (and midside points for
+second-order elements). Primary variable DOFs are stored at nodes for Lagrange elements.
+A 20x20 mesh in 2D has 21x21 = 441 nodes (one more than the number of elements in each
+direction because the mesh is divided into edges, and both endpoints of each edge are nodes).
+
+---
+
+**Nonlinear residual**
+See: Residual. The "nonlinear" qualifier emphasizes that this is the residual of the full
+nonlinear system `F(u) = 0`, as opposed to the linear residual of the inner linear solve.
+
+---
+
+**Parallel computing**
+Running a simulation on multiple CPU cores or multiple computers simultaneously, with
+each processor handling a portion of the work. MOOSE supports two styles:
+- **MPI** (distributed memory): the mesh is partitioned across processes, each with its
+  own memory; communication occurs through message-passing. Run with `mpirun -n N`.
+- **Threads** (shared memory): multiple threads share the same memory; controlled with
+  `--n-threads=N`. Limited to one node.
+
+---
+
+**ParaView**
+A free, open-source scientific visualization application for analyzing and visualizing
+large datasets. The standard tool for viewing MOOSE Exodus output files. Available at
+https://www.paraview.org/. Supports 2D/3D rendering, streamlines, isosurfaces, slices,
+time animation, and plotting.
+
+---
+
+**PDE (Partial Differential Equation)**
+An equation relating a function to its partial derivatives with respect to two or more
+independent variables (usually space and time). The governing equations of most physical
+phenomena (heat conduction, fluid flow, structural mechanics, electromagnetism) are PDEs.
+Example: the 2D heat equation `dT/dt = k*(d²T/dx² + d²T/dy²)` is a PDE because it
+involves partial derivatives with respect to `t`, `x`, and `y`.
+
+---
+
+**PETSc (Portable Extensible Toolkit for Scientific Computation)**
+A large open-source library of data structures and algorithms for scientific computing,
+particularly for solving large systems of PDEs in parallel. MOOSE uses PETSc for its
+linear algebra (sparse matrices, vectors) and linear/nonlinear solvers (GMRES, Newton).
+PETSc provides the Krylov solvers, preconditioners (including the interface to HYPRE/AMG),
+and nonlinear solver infrastructure.
+
+---
+
+**PJFNK (Preconditioned Jacobian-Free Newton-Krylov)**
+The default nonlinear solver strategy in MOOSE. It combines:
+- **Newton**: outer nonlinear iteration (Newton's method) to drive `F(u) = 0`
+- **Jacobian-free**: the Jacobian-vector product is approximated by finite differences of
+  the residual (`J*v ≈ (F(u + ε*v) - F(u)) / ε`), avoiding explicit Jacobian assembly
+- **Krylov**: GMRES iterative solver for the linear system at each Newton step
+- **Preconditioned**: a preconditioner (typically AMG) is used to accelerate GMRES
+
+PJFNK works for almost any problem and requires no hand-coded Jacobian. The tradeoff is
+that the Jacobian approximation is slightly inexact, so Newton convergence is superlinear
+rather than quadratic.
+
+---
+
+**Postprocessor**
+A MOOSE object that computes a single scalar number from the solution at each output step.
+Examples: maximum temperature, domain-averaged concentration, L2 error, current time step
+size. Results are written to the CSV output file and printed on the console. Postprocessors
+are defined in the `[Postprocessors]` block.
+
+---
+
+**Preconditioner**
+A transformation applied to a linear system `A*x = b` to make it easier for an iterative
+solver (like GMRES) to solve. The preconditioned system `M_inv * A * x = M_inv * b` has
+a better-conditioned matrix (eigenvalues more tightly clustered) so GMRES converges in
+fewer iterations. Choosing a good preconditioner is problem-specific. For elliptic PDEs
+(diffusion, elasticity), algebraic multigrid (AMG) is typically the best choice.
+
+---
+
+**Quadrature point**
+A location inside an element where integrals are evaluated by Gaussian quadrature.
+Instead of integrating exactly (which is complicated for arbitrary element geometries),
+MOOSE evaluates the integrand at a small number of carefully chosen points and takes
+a weighted sum. For bilinear quad elements, a 2×2 arrangement of four quadrature points
+per element is standard and integrates polynomials of degree up to 3 exactly. Material
+properties are evaluated at quadrature points during assembly.
+
+---
+
+**Residual**
+The vector `R = F(u)` that measures how poorly the current solution `u` satisfies the
+governing equations. In the finite element context, `R_i` is the integral of the PDE
+error weighted by test function `phi_i`. When `R = 0`, the discrete equations are
+satisfied exactly. Newton's method drives `R` toward zero by iteratively improving `u`.
+The residual norm `||R||` is printed at each Newton iteration and is the primary
+convergence metric in MOOSE console output.
+
+---
+
+**Shape function**
+A polynomial function associated with a mesh node used to approximate the solution within
+elements. For first-order Lagrange elements, the shape function `phi_i` at node `i` equals
+1 at node `i`, 0 at all other nodes, and varies linearly (bilinearly in 2D) in between.
+The solution field is written as `u(x) = sum_i u_i * phi_i(x)` where `u_i` are the
+nodal values (the DOFs). Shape functions are the basis for the finite element approximation.
+
+---
+
+**Steady state / Steady-state problem**
+A problem where the solution does not change with time — the system has reached
+equilibrium. Mathematically: `du/dt = 0`, so the time-derivative term vanishes and the
+PDE reduces to a system in space only. MOOSE solves steady-state problems with
+`type = Steady` in `[Executioner]`.
+
+---
+
+**Stiffness matrix**
+The global sparse matrix `K` assembled from element-level stiffness matrices. For a linear
+elliptic PDE like `-div(k * grad u) = f`, the stiffness matrix encodes how the residual
+changes with respect to the solution: `K_ij = integral( k * grad(phi_i) . grad(phi_j) dV )`.
+Solving `K * u = f` gives the finite element solution. For nonlinear problems, the
+"stiffness matrix" at each Newton step is the Jacobian evaluated at the current iterate.
+
+---
+
+**Sub-application (sub-app)**
+In MOOSE's MultiApp system, a sub-application is a separate MOOSE simulation launched
+and controlled by a parent application. The sub-app has its own input file, mesh,
+variables, and kernels. Data is exchanged between parent and sub-app via `[Transfers]`.
+
+---
+
+**Subdomain**
+A named region of elements in the mesh (also called a "block"). Elements in different
+subdomains can have different material properties. Subdomains are identified by integer
+IDs. In `GeneratedMesh`, all elements are in subdomain (block) 0. Additional subdomains
+are created with mesh generators like `SubdomainBoundingBoxGenerator`.
+
+---
+
+**Test function**
+In the finite element method, the test function (or weight function) `phi_i` is a shape
+function used to convert the PDE from a pointwise condition into an integral (weak form)
+condition. The PDE is required to hold in the sense that its integral against every test
+function is zero. The number of test functions equals the number of DOFs, giving a system
+of equations of the same size as the number of unknowns.
+
+---
+
+**Time integration**
+The method used to advance the solution in time in a transient simulation. MOOSE defaults
+to Backward Euler (first-order implicit). Other options include Crank-Nicolson (second-order
+implicit), BDF2 (second-order implicit multi-step), and others. Implicit methods are
+preferred because they allow large time steps without numerical instability.
+
+---
+
+**Time step (dt)**
+The size of one increment in time during a transient simulation. Smaller time steps give
+more accurate time resolution but require more total computation. Larger time steps are
+faster but may miss rapid transients or cause the nonlinear solver to fail. Adaptive time
+stepping (`IterationAdaptiveDT`) automatically adjusts `dt` to balance accuracy and cost.
+
+---
+
+**Transient problem**
+A time-dependent problem where the solution evolves from initial conditions as time advances.
+Governed by a PDE with a time-derivative term (`du/dt`). MOOSE solves transient problems
+with `type = Transient` in `[Executioner]`. The solution at each time step is found by
+Newton iteration. Results at each stored time step appear as separate frames in the Exodus file.
+
+---
+
+**Upwinding**
+A numerical technique for advection-dominated problems that adds artificial diffusion in the
+direction of flow to prevent unphysical oscillations (Gibbs phenomenon). Without upwinding,
+standard Galerkin finite elements can produce wiggly solutions near sharp concentration
+fronts when advection dominates diffusion. In MOOSE's `ConservativeAdvection` kernel, set
+`upwinding_type = full` to enable full upwinding. Case 8 demonstrates the behavior.
+
+---
+
+**Variable (MOOSE variable)**
+A scalar or vector field that MOOSE solves for (primary variable) or computes as a
+by-product (auxiliary variable). Primary variables are declared in `[Variables]` and have
+their own PDE equations implemented by kernels. Auxiliary variables are declared in
+`[AuxVariables]` and are computed by `[AuxKernels]` or populated by transfers.
+
+---
+
+**Weak form**
+The foundation of the finite element method. Instead of requiring the PDE to hold pointwise
+(the "strong form"), the weak form requires the PDE residual to be zero when integrated
+against every test function. This lower regularity requirement allows approximate piecewise
+polynomial solutions. Integration by parts in the weak form converts second-order spatial
+derivatives into first-order, enabling the use of the piecewise linear (first-order) shape
+functions that MOOSE uses by default.
+
+For example, the strong form `-div(grad u) = f` becomes the weak form:
+`integral( grad(phi_i) . grad(u) dV ) = integral( phi_i * f dV )` for every test function `phi_i`.
+
+---
+
+**VisIt**
+A free, open-source scientific visualization tool from Lawrence Livermore National Laboratory.
+An alternative to ParaView for viewing Exodus II files. Available at
+https://visit-dav.github.io/visit-website/. Particularly well-regarded for large-scale
+parallel simulation data.
+
+---
+
+*End of README — return to the individual case READMEs in each subdirectory for
+detailed walkthroughs of each simulation.*

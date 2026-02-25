@@ -710,7 +710,7 @@ blocks) and applying different `[Materials]` entries to each block.
 
 ```
 domain: [0,1] x [0,1]
-left half  (block 1): k = 1.0
+left half  (block 0): k = 1.0
 right half (block 2): k = 5.0
 ```
 
@@ -748,7 +748,7 @@ Save as `case06_two_materials.i`:
     top_right   = '1.0 1.0 0'
     block_id    = 2             # new subdomain id for the right half
   []
-  # Elements NOT reassigned remain in block 1 (the default).
+  # Elements NOT reassigned remain in block 0 (the default).
 []
 
 [Variables]
@@ -780,10 +780,10 @@ Save as `case06_two_materials.i`:
 []
 
 [Materials]
-  # Left half (block 1, default) — lower conductivity.
+  # Left half (block 0, default) — lower conductivity.
   [mat_left]
     type        = GenericConstantMaterial
-    block       = 1          # applies only to elements in block 1
+    block       = 0          # applies only to elements in block 0
     prop_names  = 'k'
     prop_values = '1.0'
   []
@@ -802,7 +802,7 @@ Save as `case06_two_materials.i`:
   [avg_u_left]
     type     = ElementAverageValue
     variable = u
-    block    = 1
+    block    = 0
   []
   [avg_u_right]
     type     = ElementAverageValue
@@ -908,14 +908,16 @@ Save as `case07_nonlinear_diffusion.i`:
 []
 
 [Materials]
-  # ADParsedMaterial computes a material property from a symbolic expression.
-  # Because we use AD, derivatives with respect to T are computed automatically.
-  # 'coupled_variables' lists the MOOSE variables that appear in 'expression'.
+  # ADPiecewiseLinearInterpolationMaterial defines a material property as a
+  # piecewise-linear function of a MOOSE variable.  Here it gives k(T) = 1 + T
+  # via AD automatic differentiation, so the exact Jacobian is available to
+  # Newton without any hand-coded derivatives.
   [conductivity]
-    type               = ADParsedMaterial
-    property_name      = k
-    coupled_variables  = 'T'
-    expression         = '1 + T'   # k(T) = 1 + T
+    type        = ADPiecewiseLinearInterpolationMaterial
+    property    = k
+    variable    = T
+    xy_data     = '0 1
+                   10 11'   # k(T) = 1 + T, linear between T=0 and T=10
   []
 []
 
@@ -1267,10 +1269,20 @@ Save as `case09_coupled_system.i`:
   petsc_options_iname = '-pc_type -pc_hypre_type'
   petsc_options_value = 'hypre    boomeramg'
 
-  dt       = 0.05
+  dt       = 0.01
   end_time = 2.0
 
   nl_rel_tol = 1e-8
+  nl_abs_tol = 1e-10
+  nl_max_its = 15
+
+  [TimeStepper]
+    type = IterationAdaptiveDT
+    dt = 0.01
+    growth_factor = 2.0
+    cutback_factor = 0.5
+    optimal_iterations = 8
+  []
 []
 
 [Outputs]
