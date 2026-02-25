@@ -107,21 +107,71 @@ The `quickstart-runs/` directory contains 13 fully worked examples, each in its 
 - **Detailed README** — explains the physics, walks through every input-file block, describes the output files, and shows how to interpret the results
 - **Visualization plots** (`.png`) — matplotlib-generated 2D/3D plots of the simulation output
 
-| Case | Topic |
-|---|---|
-| 01 | 1D steady-state diffusion |
-| 02 | 2D Poisson equation |
-| 03 | Transient diffusion |
-| 04 | Custom source term (BodyForce) |
-| 05 | Neumann boundary conditions |
-| 06 | Two-material domain (different conductivities) |
-| 07 | Nonlinear diffusion with AD |
-| 08 | Convection-diffusion |
-| 09 | Coupled two-variable reaction-diffusion |
-| 10 | Adaptive mesh refinement |
-| 11 | 3D steady-state diffusion |
-| 12 | MultiApp parent-child coupling |
-| 13 | Custom kernel (C++ + Python verification) |
+<table>
+<tr>
+<td align="center" width="25%">
+<a href="quickstart-runs/case01-1d-steady-diffusion"><img src="quickstart-runs/case01-1d-steady-diffusion/case01_diffusion_1d.png" width="100%"/></a><br/>
+<b>Case 01</b>: 1D Steady Diffusion
+</td>
+<td align="center" width="25%">
+<a href="quickstart-runs/case02-2d-steady-diffusion"><img src="quickstart-runs/case02-2d-steady-diffusion/case02_contour_2d.png" width="100%"/></a><br/>
+<b>Case 02</b>: 2D Steady Diffusion
+</td>
+<td align="center" width="25%">
+<a href="quickstart-runs/case03-transient-heat"><img src="quickstart-runs/case03-transient-heat/case03_temperature_snapshots.png" width="100%"/></a><br/>
+<b>Case 03</b>: Transient Heat
+</td>
+<td align="center" width="25%">
+<a href="quickstart-runs/case04-manufactured-solution"><img src="quickstart-runs/case04-manufactured-solution/case04_numerical.png" width="100%"/></a><br/>
+<b>Case 04</b>: Manufactured Solution
+</td>
+</tr>
+<tr>
+<td align="center">
+<a href="quickstart-runs/case05-neumann-bc"><img src="quickstart-runs/case05-neumann-bc/case05_contour_2d.png" width="100%"/></a><br/>
+<b>Case 05</b>: Neumann BC
+</td>
+<td align="center">
+<a href="quickstart-runs/case06-two-material-domain"><img src="quickstart-runs/case06-two-material-domain/case06_contour_2d.png" width="100%"/></a><br/>
+<b>Case 06</b>: Two-Material Domain
+</td>
+<td align="center">
+<a href="quickstart-runs/case07-nonlinear-diffusion"><img src="quickstart-runs/case07-nonlinear-diffusion/case07_contour_2d.png" width="100%"/></a><br/>
+<b>Case 07</b>: Nonlinear Diffusion
+</td>
+<td align="center">
+<a href="quickstart-runs/case08-advection-diffusion"><img src="quickstart-runs/case08-advection-diffusion/case08_blob_snapshots.png" width="100%"/></a><br/>
+<b>Case 08</b>: Advection-Diffusion
+</td>
+</tr>
+<tr>
+<td align="center">
+<a href="quickstart-runs/case09-coupled-reaction-diffusion"><img src="quickstart-runs/case09-coupled-reaction-diffusion/case09_u_final.png" width="100%"/></a><br/>
+<b>Case 09</b>: Coupled Reaction-Diffusion
+</td>
+<td align="center">
+<a href="quickstart-runs/case10-adaptive-mesh-refinement"><img src="quickstart-runs/case10-adaptive-mesh-refinement/case10_amr_solution.png" width="100%"/></a><br/>
+<b>Case 10</b>: Adaptive Mesh Refinement
+</td>
+<td align="center">
+<a href="quickstart-runs/case11-adaptive-timestepping"><img src="quickstart-runs/case11-adaptive-timestepping/case11_temperature_final.png" width="100%"/></a><br/>
+<b>Case 11</b>: Adaptive Timestepping
+</td>
+<td align="center">
+<a href="quickstart-runs/case12-multiapp-coupling"><img src="quickstart-runs/case12-multiapp-coupling/case12_parent_temperature.png" width="100%"/></a><br/>
+<b>Case 12</b>: MultiApp Coupling
+</td>
+</tr>
+<tr>
+<td align="center">
+<a href="quickstart-runs/case13-custom-kernel"><img src="quickstart-runs/case13-custom-kernel/case13_postprocessors.png" width="100%"/></a><br/>
+<b>Case 13</b>: Custom Kernel
+</td>
+<td align="center" colspan="3">
+<i>Each case includes a detailed README with physics explanations, input file walkthrough, and plot interpretation guide.</i>
+</td>
+</tr>
+</table>
 
 See [quickstart-runs/README.md](quickstart-runs/README.md) for a comprehensive overview.
 
