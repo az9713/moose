@@ -2,7 +2,7 @@
 MOOSE Quick-Start: Visualization Script for All 13 Cases
 =========================================================
 Generates 2-3 plots per case and saves each PNG into that case's own directory.
-For example, Case 01's plot is written to case01/case01_diffusion_1d.png.
+For example, Case 01's plot is written to case01-1d-steady-diffusion/case01_diffusion_1d.png.
 
 Requirements: matplotlib, numpy, netCDF4
 Usage:
@@ -68,9 +68,26 @@ skipped_cases: list[str] = []
 # Helper utilities
 # ---------------------------------------------------------------------------
 
+CASE_DIRS = {
+    "01": "case01-1d-steady-diffusion",
+    "02": "case02-2d-steady-diffusion",
+    "03": "case03-transient-heat",
+    "04": "case04-manufactured-solution",
+    "05": "case05-neumann-bc",
+    "06": "case06-two-material-domain",
+    "07": "case07-nonlinear-diffusion",
+    "08": "case08-advection-diffusion",
+    "09": "case09-coupled-reaction-diffusion",
+    "10": "case10-adaptive-mesh-refinement",
+    "11": "case11-adaptive-timestepping",
+    "12": "case12-multiapp-coupling",
+    "13": "case13-custom-kernel",
+}
+
+
 def case_path(casenum: str, filename: str) -> str:
     """Return absolute path for a file in a case directory."""
-    return os.path.join(SCRIPT_DIR, f"case{casenum}", filename)
+    return os.path.join(SCRIPT_DIR, CASE_DIRS[casenum], filename)
 
 
 def save_fig(fig: plt.Figure, casenum: str, name: str) -> None:
@@ -79,7 +96,7 @@ def save_fig(fig: plt.Figure, casenum: str, name: str) -> None:
     fig.savefig(path, dpi=DPI, bbox_inches="tight")
     plt.close(fig)
     generated_plots.append(path)
-    print(f"    saved: case{casenum}/{name}")
+    print(f"    saved: {CASE_DIRS[casenum]}/{name}")
 
 
 def file_exists(*paths: str) -> bool:

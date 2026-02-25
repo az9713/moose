@@ -1354,19 +1354,19 @@ new concepts while reusing everything from the previous cases. Study them in ord
 
 | Case | Subdirectory | Title | Physics | Key Concepts Introduced | Difficulty |
 |------|--------------|-------|---------|-------------------------|------------|
-| 01 | `case01/` | Steady-State 1D Diffusion | Laplace equation in 1D: -d²u/dx² = 0, exact solution u=x | Mesh, Variables, Kernels (Diffusion), BCs (DirichletBC), Executioner (Steady), Outputs | Beginner |
-| 02 | `case02/` | Steady-State 2D Diffusion | Laplace equation on unit square, same exact solution u=x (no y variation) | GeneratedMesh in 2D, boundary names (left/right/top/bottom), natural (zero-flux) Neumann BCs | Beginner |
-| 03 | `case03/` | Transient Heat Equation | Heat equation with source: rho*cp*dT/dt = div(k*grad T) + Q | TimeDerivative, MatDiffusion, BodyForce, Materials, Postprocessors, Transient executioner, ConstantDT | Beginner |
-| 04 | `case04/` | Poisson with Manufactured Solution | Poisson equation with known exact solution for code verification | Functions (ParsedFunction), FunctionDirichletBC, ElementL2Error, Method of Manufactured Solutions | Beginner |
-| 05 | `case05/` | Spatially Varying Conductivity | -div((1+x)*grad u) = 0, conductivity varies with x | GenericFunctionMaterial, spatially varying material properties, non-trivial exact solution | Beginner |
-| 06 | `case06/` | Two-Material Domain | Composite domain: left half k=1, right half k=5 | SubdomainBoundingBoxGenerator, block-restricted materials, flux continuity at interfaces | Intermediate |
-| 07 | `case07/` | Nonlinear Diffusion | k(T) = 1 + T, solution-dependent conductivity | ADMatDiffusion, ADPiecewiseLinearInterpolationMaterial, NEWTON solver, quadratic convergence, AD | Intermediate |
-| 08 | `case08/` | Advection-Diffusion | dc/dt + v*grad(c) - D*div(grad c) = 0, moving Gaussian blob | ConservativeAdvection, ICs (FunctionIC), GenericConstantVectorMaterial, top-level HIT variables | Intermediate |
-| 09 | `case09/` | Coupled Two-Variable System | Coupled PDEs: du/dt = Du*Lap(u)+v, dv/dt = Dv*Lap(v)-u | Multiple variables, CoupledForce, IterationAdaptiveDT, off-diagonal coupling | Intermediate |
-| 10 | `case10/` | Adaptive Mesh Refinement | Laplace with boundary step discontinuity, locally refined mesh | Adaptivity block, GradientJumpIndicator, ErrorFractionMarker, non-uniform meshes | Intermediate |
-| 11 | `case11/` | Adaptive Time Stepping | Transient heat with step-change source, dt adapts to difficulty | IterationAdaptiveDT (standalone case study), TimestepSize postprocessor | Intermediate |
-| 12 | `case12/` | MultiApp Coupling | Parent thermal solve + sub-app that uses parent temperature | MultiApps, FullSolveMultiApp, Transfers, MultiAppCopyTransfer, AuxVariables | Advanced |
-| 13 | `case13/` | Full Postprocessor Analysis | Transient heat with five postprocessors, Python plotting | Multiple postprocessors (ElementAverageValue, ElementExtremeValue, ElementIntegral, ElementL2Norm, TimestepSize), CSV analysis, Python CSV reader, matplotlib | Advanced |
+| 01 | `case01-1d-steady-diffusion/` | Steady-State 1D Diffusion | Laplace equation in 1D: -d²u/dx² = 0, exact solution u=x | Mesh, Variables, Kernels (Diffusion), BCs (DirichletBC), Executioner (Steady), Outputs | Beginner |
+| 02 | `case02-2d-steady-diffusion/` | Steady-State 2D Diffusion | Laplace equation on unit square, same exact solution u=x (no y variation) | GeneratedMesh in 2D, boundary names (left/right/top/bottom), natural (zero-flux) Neumann BCs | Beginner |
+| 03 | `case03-transient-heat/` | Transient Heat Equation | Heat equation with source: rho*cp*dT/dt = div(k*grad T) + Q | TimeDerivative, MatDiffusion, BodyForce, Materials, Postprocessors, Transient executioner, ConstantDT | Beginner |
+| 04 | `case04-manufactured-solution/` | Poisson with Manufactured Solution | Poisson equation with known exact solution for code verification | Functions (ParsedFunction), FunctionDirichletBC, ElementL2Error, Method of Manufactured Solutions | Beginner |
+| 05 | `case05-neumann-bc/` | Spatially Varying Conductivity | -div((1+x)*grad u) = 0, conductivity varies with x | GenericFunctionMaterial, spatially varying material properties, non-trivial exact solution | Beginner |
+| 06 | `case06-two-material-domain/` | Two-Material Domain | Composite domain: left half k=1, right half k=5 | SubdomainBoundingBoxGenerator, block-restricted materials, flux continuity at interfaces | Intermediate |
+| 07 | `case07-nonlinear-diffusion/` | Nonlinear Diffusion | k(T) = 1 + T, solution-dependent conductivity | ADMatDiffusion, ADPiecewiseLinearInterpolationMaterial, NEWTON solver, quadratic convergence, AD | Intermediate |
+| 08 | `case08-advection-diffusion/` | Advection-Diffusion | dc/dt + v*grad(c) - D*div(grad c) = 0, moving Gaussian blob | ConservativeAdvection, ICs (FunctionIC), GenericConstantVectorMaterial, top-level HIT variables | Intermediate |
+| 09 | `case09-coupled-reaction-diffusion/` | Coupled Two-Variable System | Coupled PDEs: du/dt = Du*Lap(u)+v, dv/dt = Dv*Lap(v)-u | Multiple variables, CoupledForce, IterationAdaptiveDT, off-diagonal coupling | Intermediate |
+| 10 | `case10-adaptive-mesh-refinement/` | Adaptive Mesh Refinement | Laplace with boundary step discontinuity, locally refined mesh | Adaptivity block, GradientJumpIndicator, ErrorFractionMarker, non-uniform meshes | Intermediate |
+| 11 | `case11-adaptive-timestepping/` | Adaptive Time Stepping | Transient heat with step-change source, dt adapts to difficulty | IterationAdaptiveDT (standalone case study), TimestepSize postprocessor | Intermediate |
+| 12 | `case12-multiapp-coupling/` | MultiApp Coupling | Parent thermal solve + sub-app that uses parent temperature | MultiApps, FullSolveMultiApp, Transfers, MultiAppCopyTransfer, AuxVariables | Advanced |
+| 13 | `case13-custom-kernel/` | Full Postprocessor Analysis | Transient heat with five postprocessors, Python plotting | Multiple postprocessors (ElementAverageValue, ElementExtremeValue, ElementIntegral, ElementL2Norm, TimestepSize), CSV analysis, Python CSV reader, matplotlib | Advanced |
 
 ### What each case produces
 
