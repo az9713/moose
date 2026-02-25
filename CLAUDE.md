@@ -194,6 +194,19 @@ $MOOSE_DIR/scripts/stork.sh MyApp
 
 This creates a complete application skeleton with Makefile, src/include dirs, test harness setup, and documentation scaffolding.
 
+## Documentation
+
+Comprehensive documentation is available in `docs/`:
+
+| Document | Description | Audience |
+|----------|-------------|----------|
+| [Architecture](docs/architecture.md) | System design with ASCII diagrams — class hierarchy, Factory, Action system, solve loop, MultiApp, parallel architecture | Developers |
+| [Developer Guide](docs/developer-guide.md) | Step-by-step tutorial — writing kernels, materials, BCs, postprocessors, AD, testing, debugging | New C++ developers |
+| [User Guide](docs/user-guide.md) | Complete input file reference — every block type, parameters, running simulations, postprocessing | Simulation users |
+| [Quick Start](docs/quick-start.md) | 13 progressive worked examples — from 1D diffusion to MultiApp coupling, with complete input files | Everyone |
+| [Zero to Hero](docs/zero-to-hero.md) | 8-phase study plan (~8 weeks) — prerequisites through production skills, using this repo | Self-learners |
+| [Modules Reference](docs/modules-reference.md) | All 29 physics modules — capabilities, key classes, dependencies, coupling patterns | All users |
+
 ## Code Style
 
 - **C++**: `.clang-format` based on LLVM style — 2-space indent, 100-column limit, Allman braces, no tabs, return type on own line for definitions
