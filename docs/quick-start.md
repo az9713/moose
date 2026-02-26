@@ -1,8 +1,8 @@
-# MOOSE Quick-Start Guide: 29 Working Examples
+# MOOSE Quick-Start Guide: 36 Working Examples
 
-This guide walks a complete beginner through 29 self-contained MOOSE input files,
+This guide walks a complete beginner through 36 self-contained MOOSE input files,
 from the simplest possible diffusion problem to genuine multi-physics simulations
-using MOOSE's physics modules. Cases 01-13 use only the framework. Cases 14-29
+using MOOSE's physics modules. Cases 01-13 use only the framework. Cases 14-36
 use physics modules (heat_transfer, solid_mechanics, navier_stokes, phase_field,
 porous_flow, electromagnetics) and require `combined-opt`. Read them in order.
 
@@ -3964,6 +3964,363 @@ alpha_eff = 1.0 reproduces the Case 16 pure natural-convection result exactly.
 
 ---
 
+### Cases 30-36: Electromagnetic Noise and Quantum Optical Measurements
+
+> Inspired by **Professor Herman A. Haus**'s masterful textbook
+> [*Electromagnetic Noise and Quantum Optical Measurements*](https://doi.org/10.1007/978-3-642-57250-0) (Springer, 2000) —
+> a unified treatment of electromagnetic theory from Maxwell's equations
+> through waveguides, resonators, and optical fibers to noise, solitons,
+> and quantum measurement. Haus was Institute Professor at MIT and a
+> pioneer of laser physics, fiber soliton communication, and coupled
+> mode theory.
+
+Haus's book spans 13 chapters, from classical Maxwell theory (Chs 1-5)
+through quantum noise and photon statistics (Chs 6-9) to solitons and
+squeezing (Chs 10-13). These seven cases draw from the **classical chapters
+only** (Chs 1-5 and 10). The quantum chapters — covering the quantum
+theory of the electromagnetic field, photon operators, homodyne and
+heterodyne detection, squeezed states of the radiation field, and the
+quantum theory of solitons and squeezing — describe inherently
+quantum-mechanical phenomena (operator commutation relations, vacuum
+fluctuations, photon number statistics) that have no classical PDE
+representation. A finite-element solver like MOOSE operates on classical
+field equations; the quantum chapters are therefore outside its scope.
+
+The classical chapters, however, map directly onto PDE problems that MOOSE
+handles naturally: Helmholtz eigenvalue problems (Ch 2), driven resonant
+cavities (Ch 3), wave scattering from dielectric interfaces (Ch 1),
+coupled-mode beating (Ch 3), spectral relaxation of thermal noise (Ch 5),
+dispersive pulse propagation (Ch 4), and nonlinear soliton dynamics (Ch 10).
+
+---
+
+## Case 30: Rectangular Waveguide Cutoff Frequencies
+
+### Physics
+
+Every hollow metallic waveguide has a set of resonant transverse patterns called
+modes. Each mode propagates only above a characteristic **cutoff frequency**
+set by the waveguide's cross-section geometry. Below cutoff the mode is
+evanescent. The cutoff wavenumbers k_c are the eigenvalues of the 2D Helmholtz
+equation on the waveguide cross-section with Dirichlet (PEC) boundary conditions
+(Haus Ch 2):
+
+```
+∇²ψ + k_c² ψ = 0,   ψ = 0 on walls
+```
+
+For a rectangular waveguide of width a and height b the analytical eigenvalues
+are k_c²(m,n) = (mπ/a)² + (nπ/b)² with m,n = 1,2,3,… for TM modes. A 2:1
+aspect ratio (a=2, b=1) gives TM₁₁ at k_c² ≈ 12.337.
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `Diffusion` | Laplacian stiffness matrix ∫∇ψ·∇v dV |
+| `CoefReaction` (coefficient=-1, extra_vector_tags='eigen') | Mass matrix for eigenvalue problem |
+| `DirichletBC` + `EigenDirichletBC` | PEC walls: ψ=0 in both stiffness and mass systems |
+| `PotentialToFieldAux` | Computes E_x, E_y from -∇ψ |
+| `VectorPostprocessors/Eigenvalues` | Reports computed eigenvalues |
+| `Eigenvalue` executioner | SLEPc/KRYLOVSCHUR eigenvalue solver |
+
+### What Makes This Case Interesting
+
+This is MOOSE's eigenvalue mode — instead of solving Ax=b for a known
+right-hand side, it finds values of λ for which Ax=λBx has a non-trivial
+solution. The eigenvalue infrastructure is a specialised executioner that
+wraps SLEPc. The `extra_vector_tags = 'eigen'` label on CoefReaction tells
+the framework which kernel contributions go into the B (mass) matrix versus
+the A (stiffness) matrix.
+
+### Expected Results
+
+The first six eigenvalues match the analytical values within ~0.5%:
+
+| Mode | Analytical k_c² | Computed (40×20 mesh) |
+|------|------------------|-----------------------|
+| TM₁₁ | 12.337 | ~12.36 |
+| TM₂₁ | 22.207 | ~22.27 |
+| TM₃₁ | 37.011 | ~37.15 |
+
+The mode shape for TM₁₁ shows a single central peak.
+
+---
+
+## Case 31: Driven Resonant Cavity — Frequency Response and Q
+
+### Physics
+
+A resonant cavity excited by an oscillating source produces a large field when
+the driving frequency matches an eigenfrequency (resonance) and a weak field
+otherwise. The frequency response has a Lorentzian shape characterised by the
+quality factor Q. This is the simplest model of cavity resonance from Haus Ch 3.
+
+The time-harmonic Helmholtz equation governs the electric field:
+
+```
+∇²E + k²E = −J_source(x,y),   E = 0 on PEC walls
+```
+
+where k² = ω²με is the squared wavenumber. When k² approaches an eigenvalue
+k_c² from Case 30, the system is nearly singular and the response diverges.
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `Diffusion` | Laplacian ∇²E |
+| `CoefReaction` (coefficient = −k²) | Helmholtz reaction term k²E |
+| `BodyForce` | Gaussian source at (0.7, 0.4) |
+| `DirichletBC` | PEC walls E=0 |
+| LU direct solver | Handles near-singular matrix |
+
+### What Makes This Case Interesting
+
+The sign of `CoefReaction` is negative (−k²) because MOOSE's weak-form
+convention is: residual = ∫∇E·∇v dV + coefficient·∫E·v dV − ∫J·v dV = 0,
+giving strong form −∇²E − k²E = −J, i.e., ∇²E + k²E = −J. A positive
+coefficient would give the wrong sign. This is a common pitfall.
+
+### Expected Results
+
+At k²=12.3 (near TM₁₁ resonance at 12.337): large field amplitude matching
+the TM₁₁ mode shape — a single central peak. At k²=15.0 (off-resonance):
+weak, distorted field. The ratio of max_E at resonance vs off-resonance is
+approximately 10-50×.
+
+---
+
+## Case 32: EM Wave Reflection from a Dielectric Slab
+
+### Physics
+
+A plane electromagnetic wave incident on a dielectric slab is partially
+reflected and partially transmitted. This is the most fundamental wave
+scattering problem in electromagnetics (Haus Ch 1). In the frequency domain
+the fields satisfy:
+
+```
+d²E/dx² + k₀²εᵣ(x)·E = 0
+```
+
+where εᵣ(x) is the position-dependent relative permittivity (4 inside the
+slab, 1 in vacuum). The complex field is split into real and imaginary
+parts, each satisfying the same equation. An EMRobinBC at the vacuum
+boundary imposes the incoming wave and absorbs the scattered wave.
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `Diffusion` | d²E/dx² for E_real and E_imag |
+| `ADMatReaction` | −k₀²εᵣ(x)·E reaction term |
+| `EMRobinBC` | Port BC — injects incident wave, absorbs scattered |
+| `DirichletBC` | PEC wall at x=0 |
+| `ReflectionCoefficient` PP | Computes \|R\| from boundary fields |
+| `ADGenericFunctionMaterial` | Space-dependent coefficient from ParsedFunction |
+
+### What Makes This Case Interesting
+
+This case uses the electromagnetics module for a genuine wave problem. The
+real/imaginary splitting is the frequency-domain alternative to time-domain
+wave propagation. The `EMRobinBC` is a first-order absorbing boundary
+condition that couples the two field components. The lossless simplification
+(no imaginary permittivity) eliminates the `ADMatCoupledForce` terms,
+making the two field equations uncoupled except at the port boundary.
+
+### Expected Results
+
+Standing wave pattern in vacuum (wavelength λ₀ = 2π/k₀ ≈ 15 m), shorter
+wavelength inside the slab (λ = λ₀/√εᵣ ≈ 7.5 m). The `ReflectionCoefficient`
+postprocessor reports |R|. For a single-interface half-space, the Fresnel
+formula gives |R| = |(n−1)/(n+1)| = 1/3. The finite slab shows interference
+fringes modifying this value.
+
+---
+
+## Case 33: Coupled Resonator Beating — Energy Exchange
+
+### Physics
+
+Two coupled optical resonators exchange energy periodically, a phenomenon
+called beating. Haus's coupled mode theory (Ch 3) describes this with two
+amplitude equations:
+
+```
+∂u/∂t = D·∇²u − γ·u + κ·v
+∂v/∂t = D·∇²v − γ·v + κ·u
+```
+
+The coupling coefficient κ causes energy to slosh between modes u and v
+at the beat frequency 2κ, while the damping rate γ causes the total energy
+to decay exponentially. With κ=3.0 and γ=0.5, the beating period is
+T = π/κ ≈ 1.05 s and the energy e-folding time is 1/γ = 2 s.
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `ADTimeDerivative` | ∂u/∂t and ∂v/∂t |
+| `ADMatDiffusion` | D·∇²u spatial smoothing |
+| `ADReaction` | −γ·u linear decay |
+| `CoupledForce` | +κ·v cross-coupling |
+| `SMP` preconditioning | Full Jacobian for coupled system |
+
+### What Makes This Case Interesting
+
+This is the simplest demonstration of energy exchange between coupled modes.
+The spatial diffusion (D=0.01) is weak and primarily smooths the fields;
+the dynamics are dominated by the local ODE coupling. Setting D=0 would give
+pure ODE beating with analytic solution u(t) = u₀·cos(κt)·exp(−γt).
+
+### Expected Results
+
+The CSV postprocessors show avg_u and avg_v oscillating out of phase with
+period ≈1.05 s. The sum avg_u² + avg_v² decays as exp(−2γt) = exp(−t).
+By t=3 s the total energy has dropped to ~5% of its initial value.
+
+---
+
+## Case 34: Thermal Noise Relaxation — Fluctuation-Dissipation
+
+### Physics
+
+Thermal noise in a physical system can be modelled as random initial
+conditions on a diffusion equation. The Nyquist theorem (Haus Ch 5) relates
+the spectral density of thermal fluctuations to the dissipation (damping
+rate) of each mode. In this case the "noise" is a random temperature field:
+
+```
+∂T/∂t = D·∇²T,   T = T_eq on walls
+```
+
+Each spatial Fourier mode (m,n) decays at rate λ_mn = D·π²(m² + n²).
+High-frequency noise (small features) decays fast; only the fundamental
+mode m=n=1 survives at late times.
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `ADTimeDerivative` | ∂T/∂t |
+| `ADMatDiffusion` | D·∇²T |
+| `ADDirichletBC` | T=0.5 on all walls |
+| `RandomIC` | Random initial T ∈ [0.3, 0.7] |
+
+### What Makes This Case Interesting
+
+The `RandomIC` object sets each nodal value independently from a uniform
+distribution. The simulation then acts as a spectral filter: watching the
+random speckle smooth out in time is a direct visual demonstration of
+how diffusion preferentially damps short wavelengths.
+
+### Expected Results
+
+t=0: random speckle. t=0.1: small features gone. t=0.5: only the
+fundamental mode (single smooth bump) remains. t=2.0: nearly uniform
+T=0.5. The late-time decay rate of (max_T − 0.5) approaches D·2π² ≈ 1.97.
+
+---
+
+## Case 35: Dispersive Pulse Broadening in an Optical Fiber
+
+### Physics
+
+An optical pulse propagating in a fiber experiences group velocity
+dispersion (GVD): different frequency components travel at different
+speeds, causing the pulse envelope to broaden. Haus Ch 4 derives the
+envelope equation:
+
+```
+∂A/∂t + v_g·∂A/∂x = D_gvd·∂²A/∂x²
+```
+
+This is mathematically identical to advection-diffusion (Case 08), but
+physically describes a pulse translating at group velocity v_g while
+broadening due to GVD coefficient D_gvd. A Gaussian pulse of initial
+width w₀ broadens as w(t) = w₀√(1 + (v_g·t/z_d)²) where the dispersion
+length z_d = w₀²/(2·D_gvd).
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `ADTimeDerivative` | ∂A/∂t |
+| `ADConservativeAdvection` | v_g·∂A/∂x group velocity transport |
+| `ADMatDiffusion` | D_gvd·∂²A/∂x² dispersive broadening |
+| `ADGenericConstantVectorMaterial` | Velocity vector (v_g, 0, 0) |
+
+### What Makes This Case Interesting
+
+This is Case 08 (advection-diffusion) reinterpreted as fiber optics.
+The same mathematical structure describes a completely different physical
+system. The GVD broadening is a real limitation in fiber-optic
+telecommunications — it limits the maximum data rate for a given fiber
+length. Case 36 shows how nonlinearity can counteract this broadening.
+
+### Expected Results
+
+The pulse translates to the right at v_g=1.0 while broadening. The peak
+amplitude drops inversely with the width. The integral ∫A dV is conserved
+(total energy constant). The dispersion length z_d = 0.04/(2·0.01) = 2.0,
+so significant broadening is visible by t=2.
+
+---
+
+## Case 36: Soliton Pulse Propagation — Nonlinear Balance
+
+### Physics
+
+Adding Kerr nonlinearity to the dispersive pulse equation creates the
+possibility of soliton propagation: a pulse that propagates without
+changing shape because the dispersive broadening is exactly balanced by
+nonlinear self-compression (Haus Ch 10):
+
+```
+∂A/∂t + v_g·∂A/∂x = D·∂²A/∂x² − α·A³
+```
+
+The soliton condition is α·A₀²·w₀² = 2D. With A₀=1, w₀=1, D=0.05:
+α=0.1 gives a fundamental soliton with a sech profile that propagates
+without distortion.
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `ADTimeDerivative` | ∂A/∂t |
+| `ADConservativeAdvection` | v_g·∂A/∂x group velocity |
+| `ADMatDiffusion` | D·∂²A/∂x² dispersion |
+| `ADMatReaction` | Nonlinear −α·A³ from material rate |
+| `DerivativeParsedMaterial` | rate = −α·A², with JIT disabled for Docker |
+| `IterationAdaptiveDT` | Adaptive timestepping for nonlinear dynamics |
+
+The key trick is that `ADMatReaction` contributes −rate·A·v to the
+residual. Setting rate = −α·A² gives +α·A³·v, so the strong form gets
+−α·A³ (self-focusing nonlinearity) — the correct sign.
+
+### What Makes This Case Interesting
+
+This is the most advanced case in the series. It combines advection,
+diffusion, and nonlinearity in a single equation, demonstrating the
+`DerivativeParsedMaterial` pattern for expressing a nonlinear reaction
+rate. The soliton is one of the most beautiful results in nonlinear wave
+theory — discovered in water waves by John Scott Russell in 1834 and
+central to modern fiber-optic telecommunications via the work of Hasegawa
+and Tappert (1973).
+
+### Expected Results
+
+With α=0.1 (soliton balance): peak amplitude stays at 1.0 and pulse
+width stays constant as it translates across the domain. With α=0 (Case 35):
+the pulse broadens. With α=0.3 (over-nonlinear): the pulse compresses
+initially and then oscillates. The CSV shows max_A as a function of time —
+a flat line at 1.0 for the soliton case, a decaying curve for dispersive,
+and an oscillating curve for over-nonlinear.
+
+---
+
 ## Troubleshooting Common Errors
 
 **Error: `Object 'Diffusion' was not registered`**
@@ -3994,7 +4351,7 @@ variable name (e.g., `u` or `T`) using the dropdown in the toolbar.
 
 ## Next Steps
 
-After completing these 29 cases:
+After completing these 36 cases:
 
 1. **Read the MOOSE documentation** at https://mooseframework.inl.gov for
    complete reference documentation on every object type.
@@ -4006,6 +4363,6 @@ After completing these 29 cases:
 3. **Write your own application**: Use `moose/scripts/stork.py` to scaffold
    a new MOOSE application with custom kernels, materials, and BCs.
 
-4. **Explore more module features**: Cases 14-29 introduce the major physics
+4. **Explore more module features**: Cases 14-36 introduce the major physics
    modules. Each module has many more capabilities — consult the
    [Modules Reference](modules-reference.md) for full details.

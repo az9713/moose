@@ -1,13 +1,13 @@
 # MOOSE Quickstart Tutorial Cases: Complete Reference
 
-This directory contains 29 self-contained simulation cases for learning MOOSE from zero.
+This directory contains 36 self-contained simulation cases for learning MOOSE from zero.
 Each case has its own subdirectory with an input file (`.i`) and pre-run output files.
 You do not need to build or install anything to study the input files, understand the physics,
 and read the results. If you want to run the simulations yourself, see Section 5.
 
 This document is designed so that someone who has never used MOOSE, never written a finite
 element simulation, and is not familiar with scientific computing file formats can read it
-from top to bottom and understand everything in these 29 cases.
+from top to bottom and understand everything in these 36 cases.
 
 Read every section. Do not skip ahead. The later cases build directly on concepts introduced
 in the earlier ones.
@@ -21,7 +21,7 @@ in the earlier ones.
 3. [Understanding Output Files](#3-understanding-output-files)
 4. [How MOOSE Solves Problems](#4-how-moose-solves-problems-conceptual)
 5. [Running Simulations](#5-running-simulations)
-6. [The 29 Cases at a Glance](#6-the-21-cases-at-a-glance)
+6. [The 36 Cases at a Glance](#6-the-36-cases-at-a-glance)
 7. [Creating Your Own Simulations](#7-creating-your-own-simulations)
 8. [Glossary](#8-glossary)
 
@@ -1347,14 +1347,20 @@ To override: add `file_base = my_custom_name` to the `[Outputs]` block.
 
 ---
 
-## 6. The 29 Cases at a Glance
+## 6. The 36 Cases at a Glance
 
 The cases are ordered from simplest to most complex. Cases 01-13 use only the MOOSE
 framework (Diffusion, BodyForce, MatDiffusion, etc.). Cases 14-21 use physics **modules**
 (heat_transfer, solid_mechanics, navier_stokes, phase_field, porous_flow) and demonstrate
 genuine multi-physics coupling. Cases 22-29 cover continuum electromechanics — charge
 transport, magnetic diffusion, electrohydrodynamic flows, and MHD — inspired by Melcher's
-*Continuum Electromechanics* (MIT, 1981). Study them in order.
+*Continuum Electromechanics* (MIT, 1981). Cases 30-36 cover waveguides, resonators, wave
+scattering, coupled modes, noise, and solitons — inspired by **Professor Herman A. Haus**'s
+*Electromagnetic Noise and Quantum Optical Measurements* (Springer, 2000), drawing from the
+classical chapters (Chs 1-5, 10) only. The book's quantum chapters (Chs 6-9, 11-13) cover
+photon operators, squeezed states, and quantum noise theory — phenomena that have no
+classical PDE representation and are therefore outside the scope of a finite-element solver
+like MOOSE. Study them in order.
 
 | Case | Subdirectory | Title | Physics | Key Concepts Introduced | Difficulty |
 |------|--------------|-------|---------|-------------------------|------------|
@@ -1387,6 +1393,13 @@ transport, magnetic diffusion, electrohydrodynamic flows, and MHD — inspired b
 | 27 | `case27-hartmann-flow/` | MHD Hartmann Flow | Lorentz drag flattens channel flow profile; Darcy friction as MHD analog | porous_medium_treatment, Darcy friction = Lorentz drag, Hartmann profile verification | Advanced |
 | 28 | `case28-twoway-joule-heating/` | Two-Way Joule Heating | Extends Case 17: sigma(T) decreases with T (metallic negative feedback) | ADPiecewiseLinearInterpolationMaterial, tabulated T-dependent conductivity, two-way coupling | Advanced |
 | 29 | `case29-electroconvection/` | Electroconvection — EHD-Enhanced Convection | Natural convection + EHD body force via effective thermal expansion | Boussinesq + EHD combined as alpha_eff, parameter study (Fe controls enhancement/suppression) | Advanced |
+| 30 | `case30-waveguide-cutoff/` | Rectangular Waveguide Cutoff Frequencies | Helmholtz eigenvalue ∇²ψ + k_c²ψ = 0 on 2:1 rectangle | Eigenvalue executioner, CoefReaction(eigen tag), EigenDirichletBC, PotentialToFieldAux | Intermediate |
+| 31 | `case31-driven-cavity/` | Driven Resonant Cavity | Helmholtz ∇²E + k²E = −J, near resonance → large field | CoefReaction(negative coeff), BodyForce as source, resonance vs off-resonance | Intermediate |
+| 32 | `case32-dielectric-slab/` | EM Wave Reflection from Dielectric Slab | 1D Helmholtz with εᵣ(x), real/imag field splitting | EMRobinBC port condition, ADMatReaction, ReflectionCoefficient, ADGenericFunctionMaterial | Advanced |
+| 33 | `case33-coupled-resonators/` | Coupled Resonator Beating | Two coupled modes: ∂u/∂t = D∇²u − γu + κv (mirrored) | ADReaction (decay), CoupledForce (coupling), beating and energy exchange | Intermediate |
+| 34 | `case34-thermal-noise/` | Thermal Noise Relaxation | Diffusion from random IC: ∂T/∂t = D∇²T, spectral mode decay | RandomIC, mode-dependent decay rates, fluctuation-dissipation | Beginner |
+| 35 | `case35-dispersive-pulse/` | Dispersive Pulse Broadening | Advection-diffusion as GVD fiber: ∂A/∂t + v_g∂A/∂x = D∂²A/∂x² | ADConservativeAdvection, ADMatDiffusion, pulse broadening physics | Intermediate |
+| 36 | `case36-soliton-pulse/` | Soliton Pulse Propagation | Nonlinear pulse: ∂A/∂t + v_g∂A/∂x = D∂²A/∂x² − αA³ | ADMatReaction + DerivativeParsedMaterial, soliton balance, JIT workaround | Advanced |
 
 ### What each case produces
 
@@ -1421,16 +1434,23 @@ transport, magnetic diffusion, electrohydrodynamic flows, and MHD — inspired b
 | 27 | `case27_hartmann_flow_out.e`, `case27_hartmann_flow_out.csv` |
 | 28 | `case28_twoway_joule_heating_out.e`, `case28_twoway_joule_heating_out.csv` |
 | 29 | `case29_electroconvection_out.e`, `case29_electroconvection_out.csv` |
+| 30 | `case30_waveguide_cutoff_out.e`, `case30_waveguide_cutoff_out.csv` |
+| 31 | `case31_driven_cavity_out.e`, `case31_driven_cavity_out.csv` |
+| 32 | `case32_dielectric_slab_out.e`, `case32_dielectric_slab_out.csv` |
+| 33 | `case33_coupled_resonators_out.e`, `case33_coupled_resonators_out.csv` |
+| 34 | `case34_thermal_noise_out.e`, `case34_thermal_noise_out.csv` |
+| 35 | `case35_dispersive_pulse_out.e`, `case35_dispersive_pulse_out.csv` |
+| 36 | `case36_soliton_pulse_out.e`, `case36_soliton_pulse_out.csv` |
 
 All pre-run output files for cases 01-13 are included in this directory so you can
-examine them without running anything. Cases 14-29 require `combined-opt` (all modules)
+examine them without running anything. Cases 14-36 require `combined-opt` (all modules)
 to run — see each case's README for Docker instructions.
 
 ---
 
 ## 7. Creating Your Own Simulations
 
-Once you understand the 29 cases, you will want to adapt them or build new simulations
+Once you understand the 36 cases, you will want to adapt them or build new simulations
 from scratch. This section walks through the process systematically.
 
 ### Step 1: Define Your Physics

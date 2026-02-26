@@ -4,7 +4,7 @@
 >
 > This repo **does not include the MOOSE source codes**. Instead, it supplements the original
 > repository with **comprehensive documentation and worked examples** designed to help new users
-> learn the framework from scratch. The 29 progressive quickstart cases are fully explained — from
+> learn the framework from scratch. The 36 progressive quickstart cases are fully explained — from
 > the physics and governing equations, through the input file structure, to interpreting the
 > simulation results — so that users can learn how to set up their own simulations and understand
 > the output without any external help.
@@ -75,7 +75,7 @@ immediately available to every application that enables that module.
 This repository focuses on **learning materials** for the MOOSE framework:
 
 - **Comprehensive documentation** covering architecture, developer workflows, input-file syntax, and all 29 physics modules
-- **29 progressive quickstart examples** (`quickstart-runs/`) — each with a complete input file, detailed README explaining the physics, and matplotlib visualization of the results
+- **36 progressive quickstart examples** (`quickstart-runs/`) — each with a complete input file, detailed README explaining the physics, and matplotlib visualization of the results
 - **An 8-week study plan** for self-learners going from zero to productive MOOSE developer
 - **Docker instructions** for running MOOSE on Windows without compiling from source
 
@@ -90,7 +90,7 @@ To actually build and run MOOSE simulations, you need the framework itself from 
 | [docs/architecture.md](docs/architecture.md) | System architecture with subsystem diagrams covering the Framework → Modules → Applications hierarchy |
 | [docs/developer-guide.md](docs/developer-guide.md) | Step-by-step C++ developer tutorial: writing Kernels, BCs, Materials, and custom objects |
 | [docs/user-guide.md](docs/user-guide.md) | Simulation user reference covering input-file syntax, all major blocks, and solver options |
-| [docs/quick-start.md](docs/quick-start.md) | 29 worked examples progressing from simple diffusion through transient multiphysics |
+| [docs/quick-start.md](docs/quick-start.md) | 36 worked examples progressing from simple diffusion through transient multiphysics |
 | [docs/zero-to-hero.md](docs/zero-to-hero.md) | 8-week structured study plan for new MOOSE developers |
 | [docs/modules-reference.md](docs/modules-reference.md) | Physics module reference with API summaries and example input files |
 | [docs/docker-guide.md](docs/docker-guide.md) | Running MOOSE on Windows with Docker — installation, volume mounts, MPI |
@@ -101,7 +101,7 @@ The official online documentation lives at **https://mooseframework.inl.gov**.
 
 ## Quickstart Examples
 
-The `quickstart-runs/` directory contains **29 fully worked examples**, each in its own subdirectory with:
+The `quickstart-runs/` directory contains **36 fully worked examples**, each in its own subdirectory with:
 
 - **Input file** (`.i`) — ready to run with `moose_test-opt` or `combined-opt`
 - **Detailed README** — explains the physics, walks through every input-file block, describes the output files, and shows how to interpret the results
@@ -279,6 +279,73 @@ These cases cover charge transport, magnetic diffusion, induction heating, elect
 <b>Case 29</b>: Electroconvection<br/>
 <sub>EHD-Enhanced Buoyancy</sub>
 </td>
+</tr>
+</table>
+
+### Cases 30-36: Electromagnetic Noise and Quantum Optical Measurements
+
+> Inspired by **Professor Herman A. Haus**'s masterful textbook
+> [*Electromagnetic Noise and Quantum Optical Measurements*](https://doi.org/10.1007/978-3-642-57250-0) (Springer, 2000) —
+> a unified treatment of electromagnetic theory from Maxwell's equations
+> through waveguides, resonators, and optical fibers to noise, solitons,
+> and quantum measurement. Haus was Institute Professor at MIT and a
+> pioneer of laser physics, fiber soliton communication, and coupled
+> mode theory.
+
+Haus's book spans 13 chapters, from classical Maxwell theory (Chs 1-5)
+through quantum noise and photon statistics (Chs 6-9) to solitons and
+squeezing (Chs 10-13). These cases draw from the **classical chapters
+only** (Chs 1-5 and 10). The quantum chapters — covering photon operators,
+homodyne detection, squeezed states, and the quantum theory of solitons —
+describe phenomena that cannot be represented as classical PDE boundary-value
+problems, and are therefore outside the scope of a finite-element solver like
+MOOSE. The classical chapters, however, map beautifully onto Helmholtz
+eigenvalue problems, driven cavities, wave scattering, coupled-mode dynamics,
+spectral noise relaxation, and nonlinear pulse propagation.
+
+Cases 30 and 32 use the MOOSE electromagnetics module; the rest use the
+framework only. All require `combined-opt` via Docker.
+
+<table>
+<tr>
+<td align="center" width="25%">
+<a href="quickstart-runs/case30-waveguide-cutoff"><img src="quickstart-runs/case30-waveguide-cutoff/case30_waveguide_cutoff.png" width="100%"/></a><br/>
+<b>Case 30</b>: Waveguide Cutoff<br/>
+<sub>TM Eigenvalue Problem</sub>
+</td>
+<td align="center" width="25%">
+<a href="quickstart-runs/case31-driven-cavity"><img src="quickstart-runs/case31-driven-cavity/case31_driven_cavity.png" width="100%"/></a><br/>
+<b>Case 31</b>: Driven Cavity<br/>
+<sub>Helmholtz Resonance</sub>
+</td>
+<td align="center" width="25%">
+<a href="quickstart-runs/case32-dielectric-slab"><img src="quickstart-runs/case32-dielectric-slab/case32_dielectric_slab.png" width="100%"/></a><br/>
+<b>Case 32</b>: Dielectric Slab<br/>
+<sub>Wave Reflection (EMRobinBC)</sub>
+</td>
+<td align="center" width="25%">
+<a href="quickstart-runs/case33-coupled-resonators"><img src="quickstart-runs/case33-coupled-resonators/case33_coupled_resonators.png" width="100%"/></a><br/>
+<b>Case 33</b>: Coupled Resonators<br/>
+<sub>Beating and Energy Exchange</sub>
+</td>
+</tr>
+<tr>
+<td align="center">
+<a href="quickstart-runs/case34-thermal-noise"><img src="quickstart-runs/case34-thermal-noise/case34_thermal_noise.png" width="100%"/></a><br/>
+<b>Case 34</b>: Thermal Noise<br/>
+<sub>Fluctuation-Dissipation</sub>
+</td>
+<td align="center">
+<a href="quickstart-runs/case35-dispersive-pulse"><img src="quickstart-runs/case35-dispersive-pulse/case35_dispersive_pulse.png" width="100%"/></a><br/>
+<b>Case 35</b>: Dispersive Pulse<br/>
+<sub>GVD Broadening in Fiber</sub>
+</td>
+<td align="center">
+<a href="quickstart-runs/case36-soliton-pulse"><img src="quickstart-runs/case36-soliton-pulse/case36_soliton_pulse.png" width="100%"/></a><br/>
+<b>Case 36</b>: Soliton Pulse<br/>
+<sub>Nonlinear Balance (Haus Ch 10)</sub>
+</td>
+<td colspan="1"></td>
 </tr>
 </table>
 

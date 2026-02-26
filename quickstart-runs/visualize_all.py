@@ -1,5 +1,5 @@
 """
-MOOSE Quick-Start: Visualization Script for All 29 Cases
+MOOSE Quick-Start: Visualization Script for All 36 Cases
 =========================================================
 Generates 2-3 plots per case and saves each PNG into that case's own directory.
 For example, Case 01's plot is written to case01-1d-steady-diffusion/case01_diffusion_1d.png.
@@ -98,6 +98,13 @@ CASE_DIRS = {
     "27": "case27-hartmann-flow",
     "28": "case28-twoway-joule-heating",
     "29": "case29-electroconvection",
+    "30": "case30-waveguide-cutoff",
+    "31": "case31-driven-cavity",
+    "32": "case32-dielectric-slab",
+    "33": "case33-coupled-resonators",
+    "34": "case34-thermal-noise",
+    "35": "case35-dispersive-pulse",
+    "36": "case36-soliton-pulse",
 }
 
 
@@ -1893,6 +1900,336 @@ def plot_case29():
     save_fig(fig, "29", "case29_electroconvection.png")
 
 
+def plot_case30():
+    """Case 30: Rectangular Waveguide Cutoff Frequencies"""
+    print("Case 30: Rectangular Waveguide Cutoff")
+    efile = case_path("30", "case30_waveguide_cutoff_out.e")
+    cfile = case_path("30", "case30_waveguide_cutoff_out_eigenvalues_0002.csv")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case30")
+        return
+
+    # Plot mode shape from Exodus
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    names = get_nod_var_names(ds)
+    psi_idx = names.index("psi") + 1
+    psi = get_nod_var(ds, psi_idx, timestep=-1)
+    ds.close()
+
+    # Analytical eigenvalues for a=2, b=1
+    analytical = {
+        "TM\u2081\u2081": (1*math.pi/2)**2 + (1*math.pi/1)**2,
+        "TM\u2082\u2081": (2*math.pi/2)**2 + (1*math.pi/1)**2,
+        "TM\u2083\u2081": (3*math.pi/2)**2 + (1*math.pi/1)**2,
+    }
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.5))
+    fig.suptitle("Case 30: Rectangular Waveguide TM Cutoff Modes (Haus Ch 2)", fontsize=FONT_TITLE)
+
+    # Left: mode shape (first eigenmode = psi at final)
+    tcf = axes[0].tricontourf(x, y, psi, levels=20, cmap="RdBu_r")
+    plt.colorbar(tcf, ax=axes[0], label="\u03c8")
+    axes[0].set_xlabel("x")
+    axes[0].set_ylabel("y")
+    axes[0].set_aspect("equal")
+    axes[0].set_title("Fundamental TM\u2081\u2081 Mode Shape")
+
+    # Right: eigenvalue comparison bar chart
+    if file_exists(cfile):
+        csv_data = read_csv(cfile)
+        # Eigenvalues CSV has column "eigenvalues_0" or similar
+        eig_key = [k for k in csv_data if "eigen" in k.lower()]
+        if eig_key:
+            computed = csv_data[eig_key[0]][:3]
+            labels = list(analytical.keys())
+            ana_vals = list(analytical.values())
+            x_pos = np.arange(len(labels))
+            w = 0.35
+            axes[1].bar(x_pos - w/2, ana_vals[:len(labels)], w, label="Analytical", color="steelblue")
+            axes[1].bar(x_pos + w/2, computed[:len(labels)], w, label="MOOSE", color="coral")
+            axes[1].set_xticks(x_pos)
+            axes[1].set_xticklabels(labels)
+            axes[1].set_ylabel("k_c\u00b2")
+            axes[1].legend()
+            axes[1].set_title("Eigenvalue Comparison")
+            axes[1].grid(True, alpha=0.3)
+        else:
+            axes[1].text(0.5, 0.5, "Eigenvalue CSV\nnot parsed", ha="center", va="center", transform=axes[1].transAxes)
+    else:
+        axes[1].text(0.5, 0.5, "Eigenvalue CSV\nnot found", ha="center", va="center", transform=axes[1].transAxes)
+
+    fig.tight_layout()
+    save_fig(fig, "30", "case30_waveguide_cutoff.png")
+
+
+def plot_case31():
+    """Case 31: Driven Resonant Cavity"""
+    print("Case 31: Driven Resonant Cavity")
+    efile = case_path("31", "case31_driven_cavity_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case31")
+        return
+
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    names = get_nod_var_names(ds)
+    E_idx = names.index("E") + 1
+    E = get_nod_var(ds, E_idx, timestep=-1)
+    ds.close()
+
+    fig, ax = plt.subplots(figsize=FIGSIZE_SINGLE)
+    tcf = ax.tricontourf(x, y, E, levels=30, cmap="RdBu_r")
+    plt.colorbar(tcf, ax=ax, label="E field")
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_aspect("equal")
+    ax.set_title("Case 31: Driven Cavity \u2014 Near Resonance (k\u00b2=12.3)")
+    fig.tight_layout()
+    save_fig(fig, "31", "case31_driven_cavity.png")
+
+
+def plot_case32():
+    """Case 32: Dielectric Slab Reflection"""
+    print("Case 32: Dielectric Slab Reflection")
+    efile = case_path("32", "case32_dielectric_slab_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case32")
+        return
+
+    ds = open_exodus(efile)
+    x = np.array(ds.variables["coordx"][:], dtype=float)
+    names = get_nod_var_names(ds)
+    Er_idx = names.index("E_real") + 1
+    Ei_idx = names.index("E_imag") + 1
+    Er = get_nod_var(ds, Er_idx, timestep=-1)
+    Ei = get_nod_var(ds, Ei_idx, timestep=-1)
+    ds.close()
+
+    E_mag = np.sqrt(Er**2 + Ei**2)
+    order = np.argsort(x)
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.5))
+    fig.suptitle("Case 32: EM Wave Reflection from Dielectric Slab (Haus Ch 1)", fontsize=FONT_TITLE)
+
+    # Left: real and imaginary components
+    axes[0].plot(x[order], Er[order], "b-", label="E_real", linewidth=1)
+    axes[0].plot(x[order], Ei[order], "r--", label="E_imag", linewidth=1)
+    axes[0].axvspan(0, 25, alpha=0.1, color="gray", label="Slab (\u03b5\u1d63=4)")
+    axes[0].set_xlabel("x (m)")
+    axes[0].set_ylabel("E field")
+    axes[0].legend()
+    axes[0].set_title("Real and Imaginary Components")
+    axes[0].grid(True, alpha=0.3)
+
+    # Right: magnitude
+    axes[1].plot(x[order], E_mag[order], "k-", linewidth=1.5)
+    axes[1].axvspan(0, 25, alpha=0.1, color="gray", label="Slab (\u03b5\u1d63=4)")
+    axes[1].set_xlabel("x (m)")
+    axes[1].set_ylabel("|E|")
+    axes[1].legend()
+    axes[1].set_title("Field Magnitude")
+    axes[1].grid(True, alpha=0.3)
+
+    fig.tight_layout()
+    save_fig(fig, "32", "case32_dielectric_slab.png")
+
+
+def plot_case33():
+    """Case 33: Coupled Resonator Beating"""
+    print("Case 33: Coupled Resonator Beating")
+    cfile = case_path("33", "case33_coupled_resonators_out.csv")
+    if not file_exists(cfile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case33")
+        return
+
+    csv_data = read_csv(cfile)
+    t = csv_data["time"]
+    avg_u = csv_data["avg_u"]
+    avg_v = csv_data["avg_v"]
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.5))
+    fig.suptitle("Case 33: Coupled Resonator Beating (Haus Ch 3)", fontsize=FONT_TITLE)
+
+    # Left: time series
+    axes[0].plot(t, avg_u, "b-", label="\u27e8u\u27e9 (mode 1)", linewidth=1.2)
+    axes[0].plot(t, avg_v, "r--", label="\u27e8v\u27e9 (mode 2)", linewidth=1.2)
+    axes[0].set_xlabel("Time (s)")
+    axes[0].set_ylabel("Average amplitude")
+    axes[0].legend()
+    axes[0].set_title("Mode Amplitudes \u2014 Beating")
+    axes[0].grid(True, alpha=0.3)
+
+    # Right: envelope showing exponential decay
+    total = [u**2 + v**2 for u, v in zip(avg_u, avg_v)]
+    axes[1].plot(t, total, "k-", linewidth=1.2, label="\u27e8u\u27e9\u00b2 + \u27e8v\u27e9\u00b2")
+    # Overlay exponential envelope
+    t_arr = np.array(t)
+    if len(t_arr) > 1 and total[0] > 0:
+        envelope = total[0] * np.exp(-2 * 0.5 * t_arr)  # decay at 2*gamma
+        axes[1].plot(t_arr, envelope, "g--", linewidth=1, label="e^{-2\u03b3t} envelope")
+    axes[1].set_xlabel("Time (s)")
+    axes[1].set_ylabel("Energy (arb.)")
+    axes[1].legend()
+    axes[1].set_title("Total Energy Decay")
+    axes[1].grid(True, alpha=0.3)
+
+    fig.tight_layout()
+    save_fig(fig, "33", "case33_coupled_resonators.png")
+
+
+def plot_case34():
+    """Case 34: Thermal Noise Relaxation"""
+    print("Case 34: Thermal Noise Relaxation")
+    efile = case_path("34", "case34_thermal_noise_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case34")
+        return
+
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    times = get_times(ds)
+    names = get_nod_var_names(ds)
+    T_idx = names.index("T") + 1
+
+    snap_times = [0.0, 0.1, 0.5, 2.0]
+    fig, axes = plt.subplots(1, 4, figsize=(16, 3.5))
+    fig.suptitle("Case 34: Thermal Noise Relaxation (Haus Ch 5)", fontsize=FONT_TITLE)
+
+    for i, st in enumerate(snap_times):
+        ti = find_closest_timestep(times, st)
+        T = get_nod_var(ds, T_idx, timestep=ti)
+        tcf = axes[i].tricontourf(x, y, T, levels=20, cmap=CMAP_TEMP, vmin=0.3, vmax=0.7)
+        axes[i].set_aspect("equal")
+        axes[i].set_title(f"t = {times[ti]:.2f}")
+        if i == 0:
+            axes[i].set_ylabel("y")
+        axes[i].set_xlabel("x")
+    plt.colorbar(tcf, ax=axes[-1], label="T")
+    ds.close()
+
+    fig.tight_layout()
+    save_fig(fig, "34", "case34_thermal_noise.png")
+
+
+def plot_case35():
+    """Case 35: Dispersive Pulse Broadening"""
+    print("Case 35: Dispersive Pulse Broadening")
+    efile = case_path("35", "case35_dispersive_pulse_out.e")
+    cfile = case_path("35", "case35_dispersive_pulse_out.csv")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case35")
+        return
+
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    times = get_times(ds)
+    names = get_nod_var_names(ds)
+    A_idx = names.index("A") + 1
+
+    # Extract midline (y near 0.1)
+    mid = nodes_near_y(y, 0.1, tol=0.06)
+
+    snap_times = [0.0, 2.0, 4.0, 6.0]
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.5))
+    fig.suptitle("Case 35: Dispersive Pulse Broadening (Haus Ch 4)", fontsize=FONT_TITLE)
+
+    colors = ["blue", "green", "orange", "red"]
+    for i, st in enumerate(snap_times):
+        ti = find_closest_timestep(times, st)
+        A = get_nod_var(ds, A_idx, timestep=ti)
+        xm = x[mid]
+        Am = A[mid]
+        order = np.argsort(xm)
+        axes[0].plot(xm[order], Am[order], color=colors[i], linewidth=1.2,
+                     label=f"t={times[ti]:.1f}")
+    ds.close()
+
+    axes[0].set_xlabel("x")
+    axes[0].set_ylabel("A")
+    axes[0].legend()
+    axes[0].set_title("Pulse Profiles at Different Times")
+    axes[0].grid(True, alpha=0.3)
+
+    # Right: CSV postprocessor time series
+    if file_exists(cfile):
+        csv_data = read_csv(cfile)
+        t = csv_data["time"]
+        axes[1].plot(t, csv_data.get("max_A", [0]*len(t)), "b-", label="max(A)")
+        axes[1].plot(t, csv_data.get("total_A", [0]*len(t)), "r--", label="\u222bA dV")
+        axes[1].set_xlabel("Time")
+        axes[1].set_ylabel("Value")
+        axes[1].legend()
+        axes[1].set_title("Peak Amplitude and Total Mass")
+        axes[1].grid(True, alpha=0.3)
+
+    fig.tight_layout()
+    save_fig(fig, "35", "case35_dispersive_pulse.png")
+
+
+def plot_case36():
+    """Case 36: Soliton Pulse Propagation"""
+    print("Case 36: Soliton Pulse Propagation")
+    efile = case_path("36", "case36_soliton_pulse_out.e")
+    cfile = case_path("36", "case36_soliton_pulse_out.csv")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case36")
+        return
+
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    times = get_times(ds)
+    names = get_nod_var_names(ds)
+    A_idx = names.index("A") + 1
+
+    mid = nodes_near_y(y, 0.1, tol=0.06)
+
+    snap_times = [0.0, 3.0, 6.0, 9.0]
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.5))
+    fig.suptitle("Case 36: Soliton Pulse Propagation (Haus Ch 10)", fontsize=FONT_TITLE)
+
+    colors = ["blue", "green", "orange", "red"]
+    for i, st in enumerate(snap_times):
+        ti = find_closest_timestep(times, st)
+        A = get_nod_var(ds, A_idx, timestep=ti)
+        xm = x[mid]
+        Am = A[mid]
+        order = np.argsort(xm)
+        axes[0].plot(xm[order], Am[order], color=colors[i], linewidth=1.2,
+                     label=f"t={times[ti]:.1f}")
+
+    ds.close()
+
+    axes[0].set_xlabel("x")
+    axes[0].set_ylabel("A")
+    axes[0].legend()
+    axes[0].set_title("Soliton Profiles (\u03b1=0.1)")
+    axes[0].grid(True, alpha=0.3)
+
+    # Right: max_A time series (should stay constant for soliton)
+    if file_exists(cfile):
+        csv_data = read_csv(cfile)
+        t = csv_data["time"]
+        axes[1].plot(t, csv_data.get("max_A", [0]*len(t)), "b-", linewidth=1.5,
+                     label="max(A)")
+        axes[1].axhline(y=1.0, color="gray", linestyle="--", alpha=0.5, label="A\u2080=1.0")
+        axes[1].set_xlabel("Time")
+        axes[1].set_ylabel("max(A)")
+        axes[1].legend()
+        axes[1].set_title("Peak Amplitude vs Time")
+        axes[1].grid(True, alpha=0.3)
+
+    fig.tight_layout()
+    save_fig(fig, "36", "case36_soliton_pulse.png")
+
+
 # ---------------------------------------------------------------------------
 # Main driver
 # ---------------------------------------------------------------------------
@@ -1927,12 +2264,19 @@ CASE_FUNCTIONS = [
     ("27", plot_case27),
     ("28", plot_case28),
     ("29", plot_case29),
+    ("30", plot_case30),
+    ("31", plot_case31),
+    ("32", plot_case32),
+    ("33", plot_case33),
+    ("34", plot_case34),
+    ("35", plot_case35),
+    ("36", plot_case36),
 ]
 
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("MOOSE Quick-Start Visualization — All 29 Cases")
+    print("MOOSE Quick-Start Visualization — All 36 Cases")
     print("=" * 60)
     print(f"Script directory: {SCRIPT_DIR}")
     print("Plots will be saved into each case subdirectory.\n")
