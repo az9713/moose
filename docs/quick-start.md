@@ -2124,109 +2124,1397 @@ the adaptive timestep on a log scale.
 
 ## Cases 14-21: Advanced Multi-Physics (Module-Based)
 
-Cases 14-21 use MOOSE's physics modules and require `combined-opt` (or equivalent).
-Each case has a complete input file and detailed README in its `quickstart-runs/` subdirectory.
-Run them with Docker:
+Cases 14-21 use MOOSE's physics modules and require `combined-opt` (which includes
+all 25+ modules). If you are on Windows, run them with Docker:
 
 ```bash
-docker run --rm -v $(pwd)/quickstart-runs:/work -w /work idaholab/moose:latest \
-  combined-opt -i case14-thermoelasticity/case14_thermoelasticity.i
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/path/to/quickstart-runs:/work" \
+  -w /work/case14-thermoelasticity \
+  --entrypoint /bin/bash \
+  idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case14_thermoelasticity.i 2>&1 | tail -30'
 ```
 
-### Case 14: Thermoelasticity — Heated Plate with Thermal Stress
+On Linux/macOS with a local build:
 
-**Modules**: heat_transfer + solid_mechanics
+```bash
+combined-opt -i case14_thermoelasticity.i
+```
 
-Steady heat conduction (hot left T=500K, cold right T=300K) creates a temperature
-gradient that drives thermal expansion via `ADComputeThermalExpansionEigenstrain`.
-The `Physics/SolidMechanics/QuasiStatic` action handles displacement variables,
-stress divergence kernels, and strain computation automatically. One-way coupling:
-the temperature field generates an eigenstrain that produces displacement and stress
-without feedback to the thermal solution.
+---
 
-**Key objects**: `ADHeatConduction`, `ADComputeThermalExpansionEigenstrain`,
-`ADComputeLinearElasticStress`, `Physics/SolidMechanics/QuasiStatic`
+## Case 14: Thermoelasticity — Heated Plate with Thermal Stress
 
-### Case 15: Lid-Driven Cavity — Incompressible Navier-Stokes (Re=100)
+### Physics
 
-**Module**: navier_stokes
+This case couples two physics: **heat conduction** and **solid mechanics**. A 2D
+steel plate has its left edge held at 500 K and its right edge at 300 K. The
+resulting temperature gradient causes the material to expand non-uniformly — the
+hot side expands more than the cold side. This differential expansion generates
+internal stresses and deformation even though no external mechanical load is applied.
 
-Classic CFD benchmark solved with MOOSE's finite-volume Navier-Stokes capability.
-A square cavity has three stationary walls and a top lid moving at constant velocity.
-The `[Modules/NavierStokesFV]` action sets up all FV kernels for mass and momentum
-conservation. Reynolds number Re = rho*U*L/mu = 100 produces a single primary vortex
-with small corner eddies.
+The coupling is **one-way**: the temperature field drives the mechanical response
+through a thermal eigenstrain, but the displacement does not feed back into the
+temperature solution.
 
-**Key objects**: `NavierStokesFV` action, `ADGenericFunctorMaterial`, pressure pinning
+Governing equations:
 
-### Case 16: Natural Convection — Buoyancy-Driven Flow (Ra=10⁴)
+```
+Heat:       -div( k * grad(T) ) = 0           (steady-state conduction)
+Mechanics:  div( sigma ) = 0                   (quasi-static equilibrium)
+            epsilon_thermal = alpha * (T - T_ref) * I
+            sigma = C : (epsilon_total - epsilon_thermal)
+```
 
-**Module**: navier_stokes
+### Input File
 
-Differentially heated cavity: hot left wall, cold right wall, insulated top/bottom.
-The Boussinesq approximation couples temperature to momentum through a buoyancy force.
-This is true two-way coupling — temperature drives buoyancy which drives flow which
-advects temperature. The benchmark Nusselt number at Ra=10⁴ is Nu ≈ 2.243.
+Save as `case14_thermoelasticity.i`:
 
-**Key objects**: `NavierStokesFV` with `boussinesq_approximation = true`, energy equation
+```text
+# ============================================================
+# Case 14: Thermoelasticity — Heated Plate with Thermal Stress
+# Steady-state heat conduction drives thermal expansion in a
+# 2D elastic solid.  Hot left (T=500K), cold right (T=300K).
+# One-way coupling: T field -> eigenstrain -> displacement/stress
+# Requires: combined-opt  (heat_transfer + solid_mechanics modules)
+# ============================================================
 
-### Case 17: Joule Heating — Electric Current Generates Heat
+# Material constants for structural steel
+E     = 200e9   # Young's modulus, Pa
+nu    = 0.3     # Poisson's ratio, dimensionless
+alpha = 12e-6   # coefficient of thermal expansion, 1/K
+k_th  = 50      # thermal conductivity, W/(m K)
+cp    = 500     # specific heat, J/(kg K)
+T_ref = 300     # stress-free (reference) temperature, K
 
-**Modules**: electromagnetics + heat_transfer
+[GlobalParams]
+  displacements = 'disp_x disp_y'
+[]
 
-Electric potential V satisfies the Laplace equation; Joule dissipation
-Q = σ|∇V|² heats the conductor. The `ElectromagneticHeatingMaterial` computes the
-heating term from the voltage gradient, and `ADJouleHeatingSource` injects it as a
-body force in the heat equation. Transient simulation watches temperature rise.
+[Mesh]
+  type = GeneratedMesh
+  dim  = 2
+  nx   = 20
+  ny   = 20
+  xmin = 0
+  xmax = 1
+  ymin = 0
+  ymax = 1
+[]
 
-**Key objects**: `ADJouleHeatingSource`, `ElectromagneticHeatingMaterial`, `ADHeatConduction`
+[Variables]
+  [T]
+    [InitialCondition]
+      type  = FunctionIC
+      function = '300 + 200*(1-x)'
+    []
+  []
+[]
 
-### Case 18: Cahn-Hilliard Spinodal Decomposition
+[Kernels]
+  [heat_conduction]
+    type     = ADHeatConduction
+    variable = T
+  []
+[]
 
-**Module**: phase_field
+# The QuasiStatic action automatically creates disp_x and disp_y variables,
+# stress divergence kernels, strain computation, and vonmises_stress output.
+[Physics/SolidMechanics/QuasiStatic]
+  [solid]
+    strain             = SMALL
+    add_variables      = true
+    eigenstrain_names  = 'thermal_eigenstrain'
+    generate_output    = 'vonmises_stress'
+    use_automatic_differentiation = true
+  []
+[]
 
-The Cahn-Hilliard equation models phase separation in a binary mixture. An initially
-uniform composition (c=0.5) with random perturbation spontaneously separates into
-two phases. The split form uses two coupled second-order equations instead of one
-fourth-order PDE, enabling standard C0 finite elements.
+[BCs]
+  [T_hot]
+    type     = DirichletBC
+    variable = T
+    boundary = left
+    value    = 500
+  []
+  [T_cold]
+    type     = DirichletBC
+    variable = T
+    boundary = right
+    value    = 300
+  []
+  [pin_bottom_x]
+    type     = DirichletBC
+    variable = disp_x
+    boundary = bottom
+    value    = 0
+  []
+  [pin_bottom_y]
+    type     = DirichletBC
+    variable = disp_y
+    boundary = bottom
+    value    = 0
+  []
+[]
 
-**Key objects**: `SplitCHParsed`, `SplitCHWRes`, `CoupledTimeDerivative`,
-`DerivativeParsedMaterial`
+[Materials]
+  [thermal_props]
+    type                = ADHeatConductionMaterial
+    thermal_conductivity = ${k_th}
+    specific_heat        = ${cp}
+  []
+  [elasticity_tensor]
+    type          = ADComputeIsotropicElasticityTensor
+    youngs_modulus = ${E}
+    poissons_ratio = ${nu}
+  []
+  [thermal_eigenstrain]
+    type                    = ADComputeThermalExpansionEigenstrain
+    temperature             = T
+    thermal_expansion_coeff = ${alpha}
+    stress_free_temperature  = ${T_ref}
+    eigenstrain_name        = thermal_eigenstrain
+  []
+  [stress]
+    type = ADComputeLinearElasticStress
+  []
+[]
 
-### Case 19: Darcy Flow with Heat Transport in Porous Media
+[Postprocessors]
+  [max_temperature]
+    type       = ElementExtremeValue
+    variable   = T
+    value_type = max
+  []
+  [max_disp_x]
+    type       = ElementExtremeValue
+    variable   = disp_x
+    value_type = max
+  []
+  [max_vonmises]
+    type       = ElementExtremeValue
+    variable   = vonmises_stress
+    value_type = max
+  []
+[]
 
-**Module**: porous_flow
+[Executioner]
+  type = Steady
+  solve_type = 'NEWTON'
+  petsc_options_iname = '-pc_type -pc_factor_mat_solver_type'
+  petsc_options_value = 'lu       mumps'
+  nl_rel_tol = 1e-10
+  nl_abs_tol = 1e-12
+[]
 
-Pressure-driven single-phase flow through a saturated porous medium with heat
-injection from the left boundary. The `PorousFlowBasicTHM` action wires up the
-entire coupled thermo-hydro system — Darcy mass balance, energy balance, and all
-required PorousFlow materials — without any explicit `[Kernels]` block.
+[Outputs]
+  exodus = true
+  csv = true
+[]
+```
 
-**Key objects**: `PorousFlowBasicTHM`, `SimpleFluidProperties`,
-`PorousFlowPermeabilityConst`, `PorousFlowMatrixInternalEnergy`
+### How to Run
 
-### Case 20: Elastic Wave Propagation in a Bar
+```bash
+combined-opt -i case14_thermoelasticity.i
+```
 
-**Module**: solid_mechanics
+### What to Expect
 
-A pressure pulse applied to one end of an elastic bar generates a longitudinal
-stress wave that propagates at c = √(E/ρ) ≈ 5064 m/s. The wave reflects off the
-free right end (compression → tension). The `Physics/SolidMechanics/Dynamic` action
-with Newmark-beta time integration handles the inertial dynamics.
+The steady solver converges in a small number of Newton iterations. The temperature
+field is a linear ramp from 500 K (left) to 300 K (right). The plate bows upward
+because the hot side expands while the bottom is pinned. Von Mises stress is highest
+near the constrained bottom edge where the thermal expansion is resisted.
 
-**Key objects**: `Physics/SolidMechanics/Dynamic`, `NewmarkBeta`, `Pressure` BC
+Output files: `case14_thermoelasticity_out.e` (spatial fields: T, disp_x, disp_y,
+vonmises_stress), `case14_thermoelasticity_out.csv` (postprocessor values).
 
-### Case 21: Bimetallic Strip — Differential Thermal Expansion
+---
 
-**Module**: solid_mechanics
+## Case 15: Lid-Driven Cavity — Incompressible Navier-Stokes (Re=100)
 
-Two bonded metal strips (steel bottom, aluminum top) heated uniformly from 300K to
-500K. Aluminum's higher thermal expansion coefficient (23e-6 vs 12e-6 /K) makes
-it expand more, causing the strip to bend downward. Block-restricted materials give
-each subdomain different elastic and thermal properties.
+### Physics
 
-**Key objects**: `SubdomainBoundingBoxGenerator`, block-restricted
-`ComputeThermalExpansionEigenstrain`, `ComputeIsotropicElasticityTensor`
+The lid-driven cavity is the most widely used benchmark problem in computational
+fluid dynamics. A square cavity filled with viscous fluid has three stationary walls
+and a top lid that moves horizontally at constant velocity U=1. The moving lid drags
+fluid along, creating a recirculating flow pattern.
+
+This case introduces MOOSE's **finite volume (FV)** Navier-Stokes solver, which is
+fundamentally different from the finite element kernels used in Cases 1-14. The FV
+formulation uses cell-centered unknowns and flux-based discretization.
+
+```
+Continuity:   div(v) = 0
+Momentum:     rho * (v . grad) v = -grad(p) + mu * laplacian(v)
+Re = rho * U * L / mu = 1 * 1 * 1 / 0.01 = 100
+```
+
+### Input File
+
+Save as `case15_lid_driven_cavity.i`:
+
+```text
+# ============================================================
+# Case 15: Lid-Driven Cavity — Incompressible Navier-Stokes
+# Classic CFD benchmark: Re = rho*U*L/mu = 1*1*1/0.01 = 100
+# Steady state, 2D square cavity, top wall moves at U=1
+# ============================================================
+
+[Mesh]
+  [gen]
+    type = GeneratedMeshGenerator
+    dim  = 2
+    xmin = 0
+    xmax = 1
+    ymin = 0
+    ymax = 1
+    nx   = 30
+    ny   = 30
+  []
+[]
+
+[Modules]
+  [NavierStokesFV]
+    compressibility          = 'incompressible'
+    porous_medium_treatment  = false
+    add_energy_equation      = false
+
+    density          = 'rho'
+    dynamic_viscosity = 'mu'
+
+    initial_velocity = '0 0 0'
+    initial_pressure = 0.0
+
+    # No-slip on left, right, and bottom walls
+    wall_boundaries   = 'left right bottom'
+    momentum_wall_types = 'noslip noslip noslip'
+
+    # Moving lid (top) treated as a fixed-velocity inlet
+    inlet_boundaries        = 'top'
+    momentum_inlet_types    = 'fixed-velocity'
+    momentum_inlet_functors = '1 0'
+
+    mass_advection_interpolation     = 'average'
+    momentum_advection_interpolation = 'average'
+
+    # Pin pressure to remove the null space
+    pin_pressure       = true
+    pinned_pressure_type  = average
+    pinned_pressure_value = 0
+  []
+[]
+
+[FunctorMaterials]
+  [fluid_properties]
+    type        = ADGenericFunctorMaterial
+    prop_names  = 'rho mu'
+    prop_values = '1   0.01'
+  []
+[]
+
+[Postprocessors]
+  [max_vel_x]
+    type       = ElementExtremeValue
+    variable   = vel_x
+    value_type = max
+  []
+  [max_vel_y]
+    type       = ElementExtremeValue
+    variable   = vel_y
+    value_type = max
+  []
+  [avg_pressure]
+    type     = ElementAverageValue
+    variable = pressure
+  []
+[]
+
+[Executioner]
+  type = Steady
+  solve_type = 'NEWTON'
+  petsc_options_iname = '-pc_type -pc_factor_shift_type'
+  petsc_options_value = 'lu       NONZERO'
+  nl_rel_tol = 1e-8
+  nl_abs_tol = 1e-10
+  nl_max_its = 50
+  l_tol     = 1e-6
+  l_max_its = 200
+[]
+
+[Outputs]
+  exodus = true
+  csv    = true
+[]
+```
+
+### How to Run
+
+```bash
+combined-opt -i case15_lid_driven_cavity.i
+```
+
+### What to Expect
+
+Newton converges in roughly 10-20 iterations. The velocity field shows a large
+primary vortex centered slightly above and to the right of the cavity center, with
+small counter-rotating eddies in the bottom corners. This matches the published
+Ghia et al. (1982) benchmark results at Re=100.
+
+Key observations:
+- All variables (vel_x, vel_y, pressure) are **element variables** — FV does not
+  produce nodal data. Use element-centered plotting.
+- The pressure is determined only up to an additive constant; the `pin_pressure`
+  parameter fixes the average to zero.
+
+Output files: `case15_lid_driven_cavity_out.e`, `case15_lid_driven_cavity_out.csv`.
+
+---
+
+## Case 16: Natural Convection — Buoyancy-Driven Flow (Ra=10⁴)
+
+### Physics
+
+A square cavity has a hot left wall (T=1) and a cold right wall (T=0), with
+insulated top and bottom. The temperature difference drives fluid motion through
+the Boussinesq approximation: density varies linearly with temperature, creating
+buoyancy forces that drive a recirculating flow.
+
+This is **true two-way coupling** — temperature drives buoyancy → buoyancy drives
+flow → flow advects temperature. The problem is parameterized by two dimensionless
+numbers:
+
+```
+Rayleigh number:  Ra = g * alpha * dT * L^3 / (nu * kappa) = 10000
+Prandtl number:   Pr = nu / kappa = 0.71  (air)
+```
+
+The benchmark result by de Vahl Davis (1983) gives an average Nusselt number
+Nu ≈ 2.243 at Ra=10⁴.
+
+### Input File
+
+Save as `case16_natural_convection.i`:
+
+```text
+# ============================================================
+# Case 16: Natural Convection — Buoyancy-Driven Flow
+# Incompressible Navier-Stokes + energy, Boussinesq approximation
+# Ra = 10000, Pr = 0.71 (air)
+# ============================================================
+
+nu    = 0.008426   # = mu  since rho = 1
+kappa = 0.011867   # = k   since rho*cp = 1
+
+[Mesh]
+  [gen]
+    type = GeneratedMeshGenerator
+    dim  = 2
+    xmin = 0
+    xmax = 1
+    ymin = 0
+    ymax = 1
+    nx   = 25
+    ny   = 25
+  []
+[]
+
+[Modules]
+  [NavierStokesFV]
+    compressibility          = 'incompressible'
+    porous_medium_treatment  = false
+    add_energy_equation      = true
+
+    density              = 'rho'
+    dynamic_viscosity    = 'mu'
+    thermal_conductivity = 'k'
+    specific_heat        = 'cp'
+
+    initial_velocity    = '1e-15 1e-15 0'
+    initial_pressure    = 0.0
+    initial_temperature = 0.5
+
+    wall_boundaries       = 'left right top bottom'
+    momentum_wall_types   = 'noslip noslip noslip noslip'
+
+    energy_wall_types    = 'fixed-temperature fixed-temperature heatflux heatflux'
+    energy_wall_functors = '1 0 0 0'
+
+    boussinesq_approximation = true
+    gravity                  = '0 -1 0'
+    ref_temperature          = 0.5
+    thermal_expansion        = 'alpha'
+
+    pin_pressure         = true
+    pinned_pressure_type = average
+    pinned_pressure_value = 0
+
+    mass_advection_interpolation     = 'average'
+    momentum_advection_interpolation = 'upwind'
+    energy_advection_interpolation   = 'upwind'
+  []
+[]
+
+[FunctorMaterials]
+  [const]
+    type        = ADGenericFunctorMaterial
+    prop_names  = 'rho  mu       k         cp  alpha'
+    prop_values = '1.0  ${nu}   ${kappa}  1.0  1.0'
+  []
+[]
+
+[Postprocessors]
+  [max_vel_x]
+    type    = ADElementExtremeFunctorValue
+    functor = vel_x
+  []
+  [max_vel_y]
+    type    = ADElementExtremeFunctorValue
+    functor = vel_y
+  []
+  [avg_T]
+    type     = ElementAverageValue
+    variable = T_fluid
+  []
+[]
+
+[Executioner]
+  type       = Steady
+  solve_type = 'NEWTON'
+  petsc_options_iname = '-pc_type -pc_factor_shift_type'
+  petsc_options_value = 'lu       NONZERO'
+  nl_rel_tol = 1e-8
+  nl_abs_tol = 1e-10
+  nl_max_its = 30
+  automatic_scaling = true
+[]
+
+[Outputs]
+  exodus = true
+  csv    = true
+[]
+```
+
+### How to Run
+
+```bash
+combined-opt -i case16_natural_convection.i
+```
+
+### What to Expect
+
+The solver converges to a steady-state flow with a single clockwise recirculation
+cell. Hot fluid rises along the left wall, crosses the top, descends along the cold
+right wall, and returns along the bottom. The temperature field shows thermal
+boundary layers near the hot and cold walls, with a nearly stratified interior.
+
+The average temperature should remain near 0.5 (energy conservation). Like Case 15,
+all variables are element-centered (FV).
+
+Output files: `case16_natural_convection_out.e`, `case16_natural_convection_out.csv`.
+
+---
+
+## Case 17: Joule Heating — Electric Current Generates Heat
+
+### Physics
+
+When electric current flows through a conductor, electrons collide with the lattice
+and dissipate kinetic energy as heat. This is Joule heating (also called resistive
+heating or ohmic heating). The case solves two coupled equations:
+
+```
+Electric potential:  -div( sigma * grad(V) ) = 0          (Laplace equation)
+Heat equation:       rho*cp * dT/dt = div(k*grad(T)) + sigma*|grad(V)|^2
+```
+
+The Joule heat source Q = sigma * |grad(V)|^2 couples the electric field into the
+thermal equation. This is a **one-way coupling** — the temperature does not affect
+the electrical conductivity in this simplified model.
+
+A new technique appears here: `ADHeatConduction` is reused for the voltage equation
+by pointing its `thermal_conductivity` parameter at `electrical_conductivity`. This
+works because both equations have the same mathematical form: -div(k * grad(u)) = 0.
+
+### Input File
+
+Save as `case17_joule_heating.i`:
+
+```text
+# ============================================================
+# Case 17: Joule Heating — Electric Current Generates Heat
+# -div(sigma * grad(V)) = 0          (voltage)
+# rho*cp * dT/dt = div(k*grad(T)) + sigma*|grad(V)|^2  (heat)
+# Domain: 2D rectangle, x in [0,2], y in [0,1]
+# V = 10 V on left, V = 0 V on right
+# T = 300 K on left and right (electrodes as heat sinks)
+# ============================================================
+
+[Mesh]
+  [gen]
+    type  = GeneratedMeshGenerator
+    dim   = 2
+    nx    = 40
+    ny    = 20
+    xmin  = 0
+    xmax  = 2
+    ymin  = 0
+    ymax  = 1
+  []
+[]
+
+[Variables]
+  [V]
+    initial_condition = 0.0
+  []
+  [T]
+    initial_condition = 300.0
+  []
+[]
+
+[Kernels]
+  # Reuse ADHeatConduction for voltage: same math, different material property
+  [V_diff]
+    type                 = ADHeatConduction
+    variable             = V
+    thermal_conductivity = electrical_conductivity
+  []
+  [T_time]
+    type     = ADHeatConductionTimeDerivative
+    variable = T
+  []
+  [T_diff]
+    type     = ADHeatConduction
+    variable = T
+  []
+  # Joule heating source: Q = sigma * |grad(V)|^2
+  [T_joule]
+    type         = ADJouleHeatingSource
+    variable     = T
+    heating_term = electric_field_heating
+  []
+[]
+
+[BCs]
+  [V_left]
+    type     = ADDirichletBC
+    variable = V
+    boundary = left
+    value    = 10.0
+  []
+  [V_right]
+    type     = ADDirichletBC
+    variable = V
+    boundary = right
+    value    = 0.0
+  []
+  [T_left]
+    type     = ADDirichletBC
+    variable = T
+    boundary = left
+    value    = 300.0
+  []
+  [T_right]
+    type     = ADDirichletBC
+    variable = T
+    boundary = right
+    value    = 300.0
+  []
+[]
+
+[Materials]
+  [thermal]
+    type        = ADGenericConstantMaterial
+    prop_names  = 'thermal_conductivity specific_heat density'
+    prop_values = '50.0              500.0        8000.0'
+  []
+  [electrical]
+    type        = ADGenericConstantMaterial
+    prop_names  = 'electrical_conductivity'
+    prop_values = '1e6'
+  []
+  [joule_material]
+    type                       = ElectromagneticHeatingMaterial
+    electric_field             = V
+    electric_field_heating_name = electric_field_heating
+    electrical_conductivity    = electrical_conductivity
+    formulation                = time
+    solver                     = electrostatic
+  []
+[]
+
+[Postprocessors]
+  [max_T]
+    type       = ElementExtremeValue
+    variable   = T
+    value_type = max
+  []
+  [avg_T]
+    type     = ElementAverageValue
+    variable = T
+  []
+[]
+
+[Preconditioning]
+  [SMP]
+    type = SMP
+    full = true
+  []
+[]
+
+[Executioner]
+  type = Transient
+  solve_type = NEWTON
+  petsc_options_iname = '-pc_type -pc_hypre_type'
+  petsc_options_value = 'hypre    boomeramg'
+  dt       = 0.25
+  end_time = 5.0
+  nl_rel_tol = 1e-8
+  nl_abs_tol = 1e-10
+[]
+
+[Outputs]
+  exodus = true
+  csv    = true
+[]
+```
+
+### How to Run
+
+```bash
+combined-opt -i case17_joule_heating.i
+```
+
+### What to Expect
+
+The voltage field establishes immediately (Laplace equation, no time dependence) as
+a linear ramp from 10 V (left) to 0 V (right). The current density is uniform:
+J = sigma * dV/dx = 1e6 * 10/2 = 5e6 A/m^2. The Joule source Q = sigma * (dV/dx)^2
+= 1e6 * 25 = 25 MW/m^3 heats the conductor uniformly.
+
+Temperature rises from 300 K toward a steady state where Joule input balances
+conduction to the cold electrodes. The maximum temperature occurs at the center of
+the conductor (x=1), forming a parabolic profile symmetric about the midpoint.
+
+Output files: `case17_joule_heating_out.e`, `case17_joule_heating_out.csv`.
+
+---
+
+## Case 18: Cahn-Hilliard Spinodal Decomposition
+
+### Physics
+
+The Cahn-Hilliard equation models **phase separation** in a binary mixture (alloy,
+polymer blend, or any two-component system). Starting from a nearly uniform
+composition c = 0.5 with small random perturbations, the system spontaneously
+separates into two distinct phases (c ≈ 0 and c ≈ 1). This happens because the
+free energy F(c) = c^2 * (1-c)^2 has a double-well shape with an unstable region
+between the two minima.
+
+The equation is fourth-order, so it is split into two coupled second-order equations
+to allow standard linear (C0) finite elements:
+
+```
+dc/dt = div( M * grad(w) )              (mass transport)
+w     = dF/dc - kappa * laplacian(c)    (chemical potential)
+```
+
+Periodic boundary conditions eliminate edge effects. The gradient energy coefficient
+kappa controls the interface width between phases.
+
+### Input File
+
+Save as `case18_cahn_hilliard.i`:
+
+```text
+# ============================================================
+# Case 18: Cahn-Hilliard Spinodal Decomposition
+# Split form: dc/dt = div(M*grad(w)), w = dF/dc - kappa*lap(c)
+# Free energy: F(c) = c^2*(1-c)^2, periodic BCs
+# Domain: [0,25] x [0,25], 40x40 mesh
+# ============================================================
+
+[Mesh]
+  type = GeneratedMesh
+  dim  = 2
+  nx   = 40
+  ny   = 40
+  xmin = 0
+  xmax = 25
+  ymin = 0
+  ymax = 25
+[]
+
+[Variables]
+  [c]
+    order  = FIRST
+    family = LAGRANGE
+    [InitialCondition]
+      type = RandomIC
+      min  = 0.44
+      max  = 0.56
+    []
+  []
+  [w]
+    order  = FIRST
+    family = LAGRANGE
+  []
+[]
+
+[Kernels]
+  # Equation 1 (on w): dc/dt - div(M*grad(w)) = 0
+  [c_dot]
+    type     = CoupledTimeDerivative
+    variable = w
+    v        = c
+  []
+  [w_res]
+    type     = SplitCHWRes
+    variable = w
+    mob_name = M
+  []
+
+  # Equation 2 (on c): w - dF/dc + kappa*laplacian(c) = 0
+  [c_res]
+    type       = SplitCHParsed
+    variable   = c
+    f_name     = F
+    kappa_name = kappa_c
+    w          = w
+  []
+[]
+
+[BCs]
+  [Periodic]
+    [all]
+      auto_direction = 'x y'
+    []
+  []
+[]
+
+[Materials]
+  [free_energy]
+    type             = DerivativeParsedMaterial
+    property_name    = F
+    coupled_variables = 'c'
+    expression       = 'c^2*(1-c)^2'
+    derivative_order = 2
+    disable_fpoptimizer = true
+    enable_jit          = false
+  []
+  [const]
+    type        = GenericConstantMaterial
+    prop_names  = 'kappa_c M'
+    prop_values = '1.0     1.0'
+  []
+[]
+
+[Postprocessors]
+  [avg_c]
+    type       = ElementAverageValue
+    variable   = c
+    execute_on = 'initial timestep_end'
+  []
+  [bulk_energy]
+    type          = ElementIntegralMaterialProperty
+    mat_prop      = F
+    execute_on    = 'initial timestep_end'
+  []
+[]
+
+[Executioner]
+  type       = Transient
+  solve_type = 'NEWTON'
+  scheme     = bdf2
+  petsc_options_iname = '-pc_type -pc_factor_mat_solver_type'
+  petsc_options_value = 'lu       mumps'
+  nl_max_its = 30
+  nl_rel_tol = 1e-8
+  nl_abs_tol = 1e-11
+  end_time   = 100.0
+  [TimeStepper]
+    type           = IterationAdaptiveDT
+    dt             = 0.1
+    growth_factor  = 1.2
+    cutback_factor = 0.5
+    optimal_iterations = 8
+  []
+[]
+
+[Outputs]
+  exodus = true
+  csv    = true
+  [checkpoint]
+    type      = Checkpoint
+    num_files = 2
+  []
+[]
+```
+
+### How to Run
+
+```bash
+combined-opt -i case18_cahn_hilliard.i
+```
+
+### What to Expect
+
+The simulation starts from near-uniform c ≈ 0.5 with random noise. Within the first
+few time steps, the spinodal instability amplifies the perturbations. By t ≈ 10,
+distinct domains of c ≈ 0 and c ≈ 1 have formed. Over time, these domains coarsen —
+small regions shrink and large ones grow to reduce interface energy.
+
+Key checks:
+- `avg_c` should remain at ~0.5 throughout (mass conservation)
+- `bulk_energy` should decrease monotonically (thermodynamic consistency)
+- The `DerivativeParsedMaterial` requires `disable_fpoptimizer = true` and
+  `enable_jit = false` when running in Docker (no `mpicxx` available)
+
+Output files: `case18_cahn_hilliard_out.e`, `case18_cahn_hilliard_out.csv`.
+
+---
+
+## Case 19: Darcy Flow with Heat Transport in Porous Media
+
+### Physics
+
+This case models **thermo-hydro (TH) coupling** in a saturated porous medium. A
+pressure gradient drives groundwater flow through porous rock (Darcy's law), and hot
+fluid injected at the inlet carries heat downstream (advection-diffusion). This is
+relevant to geothermal energy extraction, groundwater contamination, and CO2 storage.
+
+```
+Mass balance:  d(rho*phi)/dt + div(rho * q) = 0
+               q = -k/mu * grad(P)                        (Darcy velocity)
+Energy:        (rho*cp)_eff * dT/dt + rho_f*cp_f * q . grad(T) = div(lambda*grad(T))
+```
+
+The `PorousFlowBasicTHM` action automatically creates all kernels, time derivatives,
+and the PorousFlow material hierarchy. This drastically reduces input file complexity
+compared to specifying each kernel individually.
+
+### Input File
+
+Save as `case19_porous_flow.i`:
+
+```text
+# ============================================================
+# Case 19: Darcy Flow with Heat Transport in Porous Media
+# PorousFlowBasicTHM action: coupled thermo-hydro
+# Domain: 3 m x 2 m, pressure-driven flow, hot injection
+# ============================================================
+
+[Mesh]
+  type = GeneratedMesh
+  dim  = 2
+  nx   = 30
+  ny   = 20
+  xmin = 0
+  xmax = 3
+  ymin = 0
+  ymax = 2
+[]
+
+[GlobalParams]
+  PorousFlowDictator = dictator
+[]
+
+[Variables]
+  [porepressure]
+    initial_condition = 1e6
+  []
+  [temperature]
+    initial_condition = 300
+    scaling = 1e-6
+  []
+[]
+
+[PorousFlowBasicTHM]
+  porepressure    = porepressure
+  temperature     = temperature
+  coupling_type   = ThermoHydro
+  gravity         = '0 0 0'
+  fp              = simple_fluid
+  multiply_by_density = true
+[]
+
+[FluidProperties]
+  [simple_fluid]
+    type                = SimpleFluidProperties
+    density0            = 1000
+    viscosity           = 0.001
+    thermal_expansion   = 0
+    cp                  = 4186
+    cv                  = 4186
+    thermal_conductivity = 0.6
+  []
+[]
+
+[Materials]
+  [porosity]
+    type          = PorousFlowPorosity
+    porosity_zero = 0.3
+    mechanical    = false
+    thermal       = false
+    fluid         = false
+  []
+  [biot_modulus]
+    type                 = PorousFlowConstantBiotModulus
+    biot_coefficient     = 1.0
+    solid_bulk_compliance = 1e-10
+    fluid_bulk_modulus   = 2e9
+  []
+  [thermal_expansion]
+    type                = PorousFlowConstantThermalExpansionCoefficient
+    biot_coefficient    = 1.0
+    drained_coefficient = 0.0
+    fluid_coefficient   = 0.0
+  []
+  [permeability]
+    type        = PorousFlowPermeabilityConst
+    permeability = '1e-12 0 0  0 1e-12 0  0 0 1e-12'
+  []
+  [rock_heat]
+    type               = PorousFlowMatrixInternalEnergy
+    density            = 2600
+    specific_heat_capacity = 800
+  []
+  [thermal_conductivity]
+    type = PorousFlowThermalConductivityIdeal
+    dry_thermal_conductivity = '2.0 0 0  0 2.0 0  0 0 2.0'
+  []
+[]
+
+[BCs]
+  [p_inlet]
+    type     = DirichletBC
+    variable = porepressure
+    boundary = left
+    value    = 1.1e6
+  []
+  [p_outlet]
+    type     = DirichletBC
+    variable = porepressure
+    boundary = right
+    value    = 1.0e6
+  []
+  [T_inlet]
+    type     = DirichletBC
+    variable = temperature
+    boundary = left
+    value    = 350
+  []
+  [T_outlet]
+    type     = DirichletBC
+    variable = temperature
+    boundary = right
+    value    = 300
+  []
+[]
+
+[Postprocessors]
+  [avg_T]
+    type     = ElementAverageValue
+    variable = temperature
+  []
+  [max_T]
+    type = ElementExtremeValue
+    variable = temperature
+  []
+[]
+
+[Executioner]
+  type       = Transient
+  solve_type = NEWTON
+  petsc_options_iname = '-pc_type -pc_factor_mat_solver_type'
+  petsc_options_value = 'lu       mumps'
+  dt       = 100
+  end_time = 5000
+  nl_rel_tol = 1e-8
+  nl_abs_tol = 1e-10
+[]
+
+[Outputs]
+  exodus = true
+  csv    = true
+[]
+```
+
+### How to Run
+
+```bash
+combined-opt -i case19_porous_flow.i
+```
+
+### What to Expect
+
+The pressure field establishes quickly as a linear gradient from 1.1 MPa (left) to
+1.0 MPa (right). The Darcy velocity is approximately q = k/mu * dP/dx =
+1e-12 / 0.001 * (0.1e6 / 3) ≈ 3.3e-8 m/s.
+
+Hot fluid (350 K) enters from the left and slowly displaces the cool ambient fluid
+(300 K). The thermal front advances slower than the fluid because heat is also stored
+in the rock matrix (thermal retardation). By t = 5000 s, a thermal plume extends
+partway across the domain. The `avg_T` postprocessor rises gradually as the domain
+warms.
+
+Output files: `case19_porous_flow_out.e`, `case19_porous_flow_out.csv`.
+
+---
+
+## Case 20: Elastic Wave Propagation in a Bar
+
+### Physics
+
+This case introduces **dynamic solid mechanics** — the equation of motion includes
+inertia (mass times acceleration), making the problem truly time-dependent rather
+than quasi-static. A short pressure pulse applied to the left end of an elastic bar
+generates a compressive stress wave that propagates at the longitudinal wave speed:
+
+```
+c = sqrt(E / rho) = sqrt(200e9 / 7800) ≈ 5064 m/s
+```
+
+The wave reaches the free right end at t ≈ L/c ≈ 2 ms, where it reflects with a
+sign reversal (compression becomes tension) and the displacement doubles momentarily.
+The reflected wave then travels back to the left.
+
+Newmark-beta time integration (beta=0.25, gamma=0.5 — the trapezoidal rule) provides
+unconditionally stable implicit time stepping for this dynamic problem.
+
+### Input File
+
+Save as `case20_elastic_wave.i`:
+
+```text
+# ============================================================
+# Case 20: Elastic Wave Propagation in a Bar
+# Dynamic solid mechanics with Newmark-beta time integration
+# Thin 2D strip (100x5 elements) approximates a 1D bar
+# Pressure pulse at left, free right end (wave reflection)
+# ============================================================
+
+[Mesh]
+  type = GeneratedMesh
+  dim  = 2
+  nx   = 100
+  ny   = 5
+  xmin = 0.0
+  xmax = 10.0
+  ymin = 0.0
+  ymax = 0.5
+[]
+
+[GlobalParams]
+  displacements = 'disp_x disp_y'
+[]
+
+# The Dynamic action sets up displacement variables, velocity/acceleration
+# AuxVariables, StressDivergence kernels, and InertialForce kernels
+# with Newmark-beta integration.
+[Physics]
+  [SolidMechanics]
+    [Dynamic]
+      [all]
+        add_variables  = true
+        newmark_beta   = 0.25
+        newmark_gamma  = 0.5
+        strain         = SMALL
+        density        = 7800
+        generate_output = 'stress_xx stress_yy vonmises_stress'
+      []
+    []
+  []
+[]
+
+[BCs]
+  # Pressure pulse on the left face
+  [Pressure]
+    [pulse_left]
+      boundary = left
+      function = pressure_pulse
+      factor = 1
+    []
+  []
+  [fix_y_bottom]
+    type     = DirichletBC
+    variable = disp_y
+    boundary = bottom
+    value    = 0.0
+  []
+  [fix_y_top]
+    type     = DirichletBC
+    variable = disp_y
+    boundary = top
+    value    = 0.0
+  []
+  [fix_y_left]
+    type     = DirichletBC
+    variable = disp_y
+    boundary = left
+    value    = 0.0
+  []
+  # Right end is FREE — no BC on disp_x
+[]
+
+# 1 MPa trapezoidal pulse: ramp up in 0.2 ms, hold 0.2 ms, ramp down 0.2 ms
+[Functions]
+  [pressure_pulse]
+    type = PiecewiseLinear
+    x = '0.0    0.0002  0.0004  0.0006'
+    y = '0.0    1.0e6   1.0e6   0.0'
+  []
+[]
+
+[Materials]
+  [elasticity]
+    type           = ComputeIsotropicElasticityTensor
+    youngs_modulus = 200.0e9
+    poissons_ratio = 0.0
+  []
+  [stress]
+    type = ComputeLinearElasticStress
+  []
+[]
+
+[Postprocessors]
+  [disp_x_right]
+    type  = PointValue
+    variable = disp_x
+    point = '10.0 0.25 0'
+  []
+  [disp_x_left]
+    type  = PointValue
+    variable = disp_x
+    point = '0.0 0.25 0'
+  []
+  [avg_stress_xx]
+    type     = ElementAverageValue
+    variable = stress_xx
+  []
+[]
+
+[Executioner]
+  type = Transient
+  solve_type = 'PJFNK'
+  petsc_options_iname = '-pc_type -pc_factor_shift_type'
+  petsc_options_value = 'lu       NONZERO'
+  dt       = 2.0e-5
+  end_time = 0.006
+  nl_rel_tol = 1e-8
+  nl_abs_tol = 1e-12
+[]
+
+[Outputs]
+  csv = true
+  [exodus]
+    type     = Exodus
+    time_step_interval = 5
+  []
+[]
+```
+
+### How to Run
+
+```bash
+combined-opt -i case20_elastic_wave.i
+```
+
+### What to Expect
+
+The simulation runs 300 time steps (dt = 20 us, end_time = 6 ms). The pressure
+pulse creates a compressive wave packet that takes about 2 ms to traverse the 10 m
+bar. Key events visible in the `disp_x_right` postprocessor:
+
+- t ≈ 0 - 0.4 ms: Pulse applied at left end
+- t ≈ 2 ms: Wave arrives at free right end — displacement doubles momentarily
+- t ≈ 4 ms: Reflected wave returns to left end
+- t ≈ 6 ms: Second reflection from left boundary
+
+The `[exodus]` sub-block writes every 5th step using `time_step_interval = 5` to
+keep the output file manageable.
+
+Output files: `case20_elastic_wave_exodus.e` (note: named sub-block, not `_out.e`),
+`case20_elastic_wave_out.csv`.
+
+---
+
+## Case 21: Bimetallic Strip — Differential Thermal Expansion
+
+### Physics
+
+Two metal strips bonded together (steel on the bottom, aluminum on top) are heated
+uniformly from 300 K to 500 K. Because aluminum has a higher coefficient of thermal
+expansion (23e-6 /K vs 12e-6 /K for steel), it tries to expand more than the steel.
+The bond constrains both materials to deform together, producing internal stresses
+and causing the strip to bend — this is the classic bimetallic thermostat mechanism.
+
+This case combines the multi-material technique from Case 6 with the thermoelasticity
+from Case 14. `SubdomainBoundingBoxGenerator` splits the mesh into two blocks, and
+block-restricted materials give each subdomain different elastic and thermal properties.
+
+### Input File
+
+Save as `case21_bimetallic_strip.i`:
+
+```text
+# ============================================================
+# Case 21: Thermo-Mechanical Bimetallic Strip
+# Steel (bottom, block 0): alpha=12e-6, E=200 GPa, nu=0.3
+# Aluminum (top, block 1): alpha=23e-6, E=70 GPa, nu=0.33
+# Uniform heating from T_ref=300K to T=500K, pinned at left
+# ============================================================
+
+[Mesh]
+  [gen]
+    type = GeneratedMeshGenerator
+    dim  = 2
+    nx   = 40
+    ny   = 8
+    xmin = 0
+    xmax = 10
+    ymin = 0
+    ymax = 1
+  []
+  # Reassign top half (y > 0.5) to block 1 (aluminum)
+  [top_block]
+    type        = SubdomainBoundingBoxGenerator
+    input       = gen
+    bottom_left = '0 0.5 0'
+    top_right   = '10 1.0 0'
+    block_id    = 1
+  []
+[]
+
+[GlobalParams]
+  displacements = 'disp_x disp_y'
+[]
+
+[Physics]
+  [SolidMechanics]
+    [QuasiStatic]
+      [all]
+        strain              = SMALL
+        add_variables       = true
+        generate_output     = 'vonmises_stress stress_xx stress_yy'
+        eigenstrain_names   = 'thermal_eigenstrain'
+      []
+    []
+  []
+[]
+
+# Temperature is prescribed (not solved), set to 500 K everywhere
+[AuxVariables]
+  [T]
+    initial_condition = 500
+  []
+[]
+
+[Materials]
+  # Steel (block 0)
+  [elasticity_steel]
+    type           = ComputeIsotropicElasticityTensor
+    block          = 0
+    youngs_modulus = 200e9
+    poissons_ratio = 0.3
+  []
+  [thermal_expansion_steel]
+    type                    = ComputeThermalExpansionEigenstrain
+    block                   = 0
+    eigenstrain_name        = thermal_eigenstrain
+    stress_free_temperature = 300
+    thermal_expansion_coeff = 12e-6
+    temperature             = T
+  []
+  [stress_steel]
+    type  = ComputeLinearElasticStress
+    block = 0
+  []
+
+  # Aluminum (block 1)
+  [elasticity_aluminum]
+    type           = ComputeIsotropicElasticityTensor
+    block          = 1
+    youngs_modulus = 70e9
+    poissons_ratio = 0.33
+  []
+  [thermal_expansion_aluminum]
+    type                    = ComputeThermalExpansionEigenstrain
+    block                   = 1
+    eigenstrain_name        = thermal_eigenstrain
+    stress_free_temperature = 300
+    thermal_expansion_coeff = 23e-6
+    temperature             = T
+  []
+  [stress_aluminum]
+    type  = ComputeLinearElasticStress
+    block = 1
+  []
+[]
+
+[BCs]
+  [fix_x_left]
+    type     = DirichletBC
+    variable = disp_x
+    boundary = left
+    value    = 0
+  []
+  [fix_y_left]
+    type     = DirichletBC
+    variable = disp_y
+    boundary = left
+    value    = 0
+  []
+[]
+
+[Postprocessors]
+  [tip_disp_y]
+    type     = PointValue
+    variable = disp_y
+    point    = '10 0.5 0'
+  []
+  [max_vonmises]
+    type     = ElementExtremeValue
+    variable = vonmises_stress
+  []
+[]
+
+[Executioner]
+  type       = Steady
+  solve_type = 'NEWTON'
+  petsc_options_iname = '-pc_type -pc_hypre_type'
+  petsc_options_value = 'hypre    boomeramg'
+  nl_rel_tol = 1e-10
+  nl_abs_tol = 1e-12
+[]
+
+[Outputs]
+  exodus = true
+  csv    = true
+[]
+```
+
+### How to Run
+
+```bash
+combined-opt -i case21_bimetallic_strip.i
+```
+
+### What to Expect
+
+The steady solver converges in a few Newton iterations (the problem is linear).
+The strip bends downward because the aluminum top layer (alpha = 23e-6 /K) expands
+more than the steel bottom layer (alpha = 12e-6 /K), pushing the free right tip
+downward. The `tip_disp_y` postprocessor gives the vertical deflection at the
+right end midline.
+
+Von Mises stress is highest near the bonded interface (y = 0.5) and near the fixed
+left edge, where the differential expansion is most constrained. The deformed shape
+resembles a cantilever beam under a distributed load.
+
+Output files: `case21_bimetallic_strip_out.e` (contains fields for both blocks:
+disp_x, disp_y, vonmises_stress, stress_xx, stress_yy), `case21_bimetallic_strip_out.csv`.
 
 ---
 
