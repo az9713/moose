@@ -1,13 +1,13 @@
 # MOOSE Quickstart Tutorial Cases: Complete Reference
 
-This directory contains 13 self-contained simulation cases for learning MOOSE from zero.
+This directory contains 21 self-contained simulation cases for learning MOOSE from zero.
 Each case has its own subdirectory with an input file (`.i`) and pre-run output files.
 You do not need to build or install anything to study the input files, understand the physics,
 and read the results. If you want to run the simulations yourself, see Section 5.
 
 This document is designed so that someone who has never used MOOSE, never written a finite
 element simulation, and is not familiar with scientific computing file formats can read it
-from top to bottom and understand everything in these 13 cases.
+from top to bottom and understand everything in these 21 cases.
 
 Read every section. Do not skip ahead. The later cases build directly on concepts introduced
 in the earlier ones.
@@ -21,7 +21,7 @@ in the earlier ones.
 3. [Understanding Output Files](#3-understanding-output-files)
 4. [How MOOSE Solves Problems](#4-how-moose-solves-problems-conceptual)
 5. [Running Simulations](#5-running-simulations)
-6. [The 13 Cases at a Glance](#6-the-13-cases-at-a-glance)
+6. [The 21 Cases at a Glance](#6-the-21-cases-at-a-glance)
 7. [Creating Your Own Simulations](#7-creating-your-own-simulations)
 8. [Glossary](#8-glossary)
 
@@ -105,7 +105,7 @@ MOOSE also handles:
 - **Nonlinear problems**: handles problems where material properties depend on the solution
   itself (like a material that gets stiffer as it heats up)
 
-### What are the 13 cases in this directory?
+### What are the 21 cases in this directory?
 
 These cases form a progressive tutorial starting from the simplest possible problem
 (1D steady-state diffusion with an exact solution of u = x) and building up to
@@ -246,7 +246,7 @@ L = 1.0
 
 ### All Standard Block Types Explained
 
-The following sections explain every block type you will encounter in the 13 cases.
+The following sections explain every block type you will encounter in the 21 cases.
 Each explanation defines what the block does, what parameters mean, and gives a
 realistic example.
 
@@ -347,7 +347,7 @@ Each sub-block declares one variable. The sub-block name is the variable name:
 - `family = LAGRANGE` (default): nodal shape functions. The solution is continuous
   (no jumps across element boundaries). Appropriate for temperature, concentration, etc.
 
-For the 13 tutorial cases, you will always see `[Variables]` with simple empty sub-blocks
+For the 21 tutorial cases, you will always see `[Variables]` with simple empty sub-blocks
 (using all defaults) because first-order Lagrange is standard.
 
 ---
@@ -623,7 +623,7 @@ and many more (the expression is parsed by the `fparser` library).
 []
 ```
 
-For the 13 tutorial cases, `ParsedFunction` is used to define exact solutions for
+For the 21 tutorial cases, `ParsedFunction` is used to define exact solutions for
 verification (Method of Manufactured Solutions), initial concentration distributions,
 and spatially varying material properties.
 
@@ -1347,10 +1347,12 @@ To override: add `file_base = my_custom_name` to the `[Outputs]` block.
 
 ---
 
-## 6. The 13 Cases at a Glance
+## 6. The 21 Cases at a Glance
 
-The cases are ordered from simplest to most complex. Each new case introduces one or two
-new concepts while reusing everything from the previous cases. Study them in order.
+The cases are ordered from simplest to most complex. Cases 01-13 use only the MOOSE
+framework (Diffusion, BodyForce, MatDiffusion, etc.). Cases 14-21 use physics **modules**
+(heat_transfer, solid_mechanics, navier_stokes, phase_field, porous_flow, electromagnetics)
+and demonstrate genuine multi-physics coupling. Study them in order.
 
 | Case | Subdirectory | Title | Physics | Key Concepts Introduced | Difficulty |
 |------|--------------|-------|---------|-------------------------|------------|
@@ -1367,6 +1369,14 @@ new concepts while reusing everything from the previous cases. Study them in ord
 | 11 | `case11-adaptive-timestepping/` | Adaptive Time Stepping | Transient heat with step-change source, dt adapts to difficulty | IterationAdaptiveDT (standalone case study), TimestepSize postprocessor | Intermediate |
 | 12 | `case12-multiapp-coupling/` | MultiApp Coupling | Parent thermal solve + sub-app that uses parent temperature | MultiApps, FullSolveMultiApp, Transfers, MultiAppCopyTransfer, AuxVariables | Advanced |
 | 13 | `case13-custom-kernel/` | Full Postprocessor Analysis | Transient heat with five postprocessors, Python plotting | Multiple postprocessors (ElementAverageValue, ElementExtremeValue, ElementIntegral, ElementL2Norm, TimestepSize), CSV analysis, Python CSV reader, matplotlib | Advanced |
+| 14 | `case14-thermoelasticity/` | Thermoelasticity — Heated Plate | Heat conduction + thermal stress: T→eigenstrain→displacement | ADHeatConduction, Physics/SolidMechanics/QuasiStatic action, ADComputeThermalExpansionEigenstrain, vonmises_stress, one-way coupling | Advanced |
+| 15 | `case15-lid-driven-cavity/` | Lid-Driven Cavity (Re=100) | Incompressible Navier-Stokes FV, classic CFD benchmark | Modules/NavierStokesFV action, finite volume, ADGenericFunctorMaterial, pressure pinning, moving wall | Advanced |
+| 16 | `case16-natural-convection/` | Natural Convection (Ra=10⁴) | Buoyancy-driven flow with Boussinesq approximation, two-way fluid-thermal coupling | NavierStokesFV + energy equation, boussinesq_approximation, Rayleigh/Prandtl number | Advanced |
+| 17 | `case17-joule-heating/` | Joule Heating | Electric potential (Laplace) + heat equation with Joule source Q=σ|∇V|² | ADJouleHeatingSource, ElectromagneticHeatingMaterial, electro-thermal coupling | Advanced |
+| 18 | `case18-cahn-hilliard/` | Cahn-Hilliard Spinodal Decomposition | Phase separation via split Cahn-Hilliard equation, periodic BCs | SplitCHParsed, SplitCHWRes, CoupledTimeDerivative, DerivativeParsedMaterial, phase_field module | Advanced |
+| 19 | `case19-porous-flow/` | Darcy Flow + Heat in Porous Media | Single-phase saturated thermo-hydro flow, thermal plume advection | PorousFlowBasicTHM action, SimpleFluidProperties, PorousFlowPermeabilityConst, variable scaling | Advanced |
+| 20 | `case20-elastic-wave/` | Elastic Wave Propagation | Dynamic solid mechanics — stress wave in a bar with Newmark-beta | Physics/SolidMechanics/Dynamic action, NewmarkBeta, InertialForce, Pressure BC, wave reflection | Advanced |
+| 21 | `case21-bimetallic-strip/` | Bimetallic Strip Bending | Two metals with different thermal expansion heated uniformly → bending | Multi-material (block-restricted), ComputeThermalExpansionEigenstrain, SubdomainBoundingBoxGenerator | Advanced |
 
 ### What each case produces
 
@@ -1385,15 +1395,24 @@ new concepts while reusing everything from the previous cases. Study them in ord
 | 11 | `case11_adaptive_dt_out.e`, `case11_adaptive_dt_out.csv` |
 | 12 | `case12_parent_out.e`, `case12_parent_out_thermal_sub0.e` |
 | 13 | `case13_postprocessors_out.e`, `case13_postprocessors_out.csv` |
+| 14 | `case14_thermoelasticity_out.e`, `case14_thermoelasticity_out.csv` |
+| 15 | `case15_lid_driven_cavity_out.e`, `case15_lid_driven_cavity_out.csv` |
+| 16 | `case16_natural_convection_out.e`, `case16_natural_convection_out.csv` |
+| 17 | `case17_joule_heating_out.e`, `case17_joule_heating_out.csv` |
+| 18 | `case18_cahn_hilliard_out.e`, `case18_cahn_hilliard_out.csv` |
+| 19 | `case19_porous_flow_out.e`, `case19_porous_flow_out.csv` |
+| 20 | `case20_elastic_wave_exodus.e`, `case20_elastic_wave_out.csv` |
+| 21 | `case21_bimetallic_strip_out.e`, `case21_bimetallic_strip_out.csv` |
 
 All pre-run output files for cases 01-13 are included in this directory so you can
-examine them without running anything.
+examine them without running anything. Cases 14-21 require `combined-opt` (all modules)
+to run — see each case's README for Docker instructions.
 
 ---
 
 ## 7. Creating Your Own Simulations
 
-Once you understand the 13 cases, you will want to adapt them or build new simulations
+Once you understand the 21 cases, you will want to adapt them or build new simulations
 from scratch. This section walks through the process systematically.
 
 ### Step 1: Define Your Physics
@@ -1615,7 +1634,7 @@ Q_value = 0.0
 
 ## 8. Glossary
 
-This glossary defines every technical term that appears in the 13 tutorial cases.
+This glossary defines every technical term that appears in the 21 tutorial cases.
 If you encounter an unfamiliar word while reading an input file or console output,
 look it up here.
 

@@ -1,8 +1,10 @@
-# MOOSE Quick-Start Guide: 13 Working Examples
+# MOOSE Quick-Start Guide: 21 Working Examples
 
-This guide walks a complete beginner through 13 self-contained MOOSE input files,
-from the simplest possible diffusion problem to a multi-application coupled system.
-Every example builds on the one before it. Read them in order.
+This guide walks a complete beginner through 21 self-contained MOOSE input files,
+from the simplest possible diffusion problem to genuine multi-physics simulations
+using MOOSE's physics modules. Cases 01-13 use only the framework. Cases 14-21
+use physics modules (heat_transfer, solid_mechanics, navier_stokes, phase_field,
+porous_flow, electromagnetics) and require `combined-opt`. Read them in order.
 
 ## Prerequisites
 
@@ -2109,6 +2111,122 @@ the adaptive timestep on a log scale.
 | 11   | Adaptive dt         | IterationAdaptiveDT                                   | PJFNK     |
 | 12   | MultiApp coupling   | FullSolveMultiApp, MultiAppCopyTransfer               | PJFNK     |
 | 13   | Full analysis       | Multiple postprocessors, CSV, Python plotting         | PJFNK     |
+| 14   | Thermoelasticity    | ADHeatConduction, SolidMechanics/QuasiStatic, eigenstrain | Newton |
+| 15   | Lid-driven cavity   | NavierStokesFV action, FV incompressible, Re=100      | Newton    |
+| 16   | Natural convection  | NavierStokesFV + energy, Boussinesq, Ra=10⁴           | Newton    |
+| 17   | Joule heating       | ADJouleHeatingSource, ElectromagneticHeatingMaterial   | Newton    |
+| 18   | Cahn-Hilliard       | SplitCHParsed, DerivativeParsedMaterial, phase_field   | Newton    |
+| 19   | Porous flow + heat  | PorousFlowBasicTHM, SimpleFluidProperties              | Newton    |
+| 20   | Elastic wave        | SolidMechanics/Dynamic, NewmarkBeta, Pressure BC       | PJFNK     |
+| 21   | Bimetallic strip    | Multi-material eigenstrain, block-restricted materials  | Newton    |
+
+---
+
+## Cases 14-21: Advanced Multi-Physics (Module-Based)
+
+Cases 14-21 use MOOSE's physics modules and require `combined-opt` (or equivalent).
+Each case has a complete input file and detailed README in its `quickstart-runs/` subdirectory.
+Run them with Docker:
+
+```bash
+docker run --rm -v $(pwd)/quickstart-runs:/work -w /work idaholab/moose:latest \
+  combined-opt -i case14-thermoelasticity/case14_thermoelasticity.i
+```
+
+### Case 14: Thermoelasticity — Heated Plate with Thermal Stress
+
+**Modules**: heat_transfer + solid_mechanics
+
+Steady heat conduction (hot left T=500K, cold right T=300K) creates a temperature
+gradient that drives thermal expansion via `ADComputeThermalExpansionEigenstrain`.
+The `Physics/SolidMechanics/QuasiStatic` action handles displacement variables,
+stress divergence kernels, and strain computation automatically. One-way coupling:
+the temperature field generates an eigenstrain that produces displacement and stress
+without feedback to the thermal solution.
+
+**Key objects**: `ADHeatConduction`, `ADComputeThermalExpansionEigenstrain`,
+`ADComputeLinearElasticStress`, `Physics/SolidMechanics/QuasiStatic`
+
+### Case 15: Lid-Driven Cavity — Incompressible Navier-Stokes (Re=100)
+
+**Module**: navier_stokes
+
+Classic CFD benchmark solved with MOOSE's finite-volume Navier-Stokes capability.
+A square cavity has three stationary walls and a top lid moving at constant velocity.
+The `[Modules/NavierStokesFV]` action sets up all FV kernels for mass and momentum
+conservation. Reynolds number Re = rho*U*L/mu = 100 produces a single primary vortex
+with small corner eddies.
+
+**Key objects**: `NavierStokesFV` action, `ADGenericFunctorMaterial`, pressure pinning
+
+### Case 16: Natural Convection — Buoyancy-Driven Flow (Ra=10⁴)
+
+**Module**: navier_stokes
+
+Differentially heated cavity: hot left wall, cold right wall, insulated top/bottom.
+The Boussinesq approximation couples temperature to momentum through a buoyancy force.
+This is true two-way coupling — temperature drives buoyancy which drives flow which
+advects temperature. The benchmark Nusselt number at Ra=10⁴ is Nu ≈ 2.243.
+
+**Key objects**: `NavierStokesFV` with `boussinesq_approximation = true`, energy equation
+
+### Case 17: Joule Heating — Electric Current Generates Heat
+
+**Modules**: electromagnetics + heat_transfer
+
+Electric potential V satisfies the Laplace equation; Joule dissipation
+Q = σ|∇V|² heats the conductor. The `ElectromagneticHeatingMaterial` computes the
+heating term from the voltage gradient, and `ADJouleHeatingSource` injects it as a
+body force in the heat equation. Transient simulation watches temperature rise.
+
+**Key objects**: `ADJouleHeatingSource`, `ElectromagneticHeatingMaterial`, `ADHeatConduction`
+
+### Case 18: Cahn-Hilliard Spinodal Decomposition
+
+**Module**: phase_field
+
+The Cahn-Hilliard equation models phase separation in a binary mixture. An initially
+uniform composition (c=0.5) with random perturbation spontaneously separates into
+two phases. The split form uses two coupled second-order equations instead of one
+fourth-order PDE, enabling standard C0 finite elements.
+
+**Key objects**: `SplitCHParsed`, `SplitCHWRes`, `CoupledTimeDerivative`,
+`DerivativeParsedMaterial`
+
+### Case 19: Darcy Flow with Heat Transport in Porous Media
+
+**Module**: porous_flow
+
+Pressure-driven single-phase flow through a saturated porous medium with heat
+injection from the left boundary. The `PorousFlowBasicTHM` action wires up the
+entire coupled thermo-hydro system — Darcy mass balance, energy balance, and all
+required PorousFlow materials — without any explicit `[Kernels]` block.
+
+**Key objects**: `PorousFlowBasicTHM`, `SimpleFluidProperties`,
+`PorousFlowPermeabilityConst`, `PorousFlowMatrixInternalEnergy`
+
+### Case 20: Elastic Wave Propagation in a Bar
+
+**Module**: solid_mechanics
+
+A pressure pulse applied to one end of an elastic bar generates a longitudinal
+stress wave that propagates at c = √(E/ρ) ≈ 5064 m/s. The wave reflects off the
+free right end (compression → tension). The `Physics/SolidMechanics/Dynamic` action
+with Newmark-beta time integration handles the inertial dynamics.
+
+**Key objects**: `Physics/SolidMechanics/Dynamic`, `NewmarkBeta`, `Pressure` BC
+
+### Case 21: Bimetallic Strip — Differential Thermal Expansion
+
+**Module**: solid_mechanics
+
+Two bonded metal strips (steel bottom, aluminum top) heated uniformly from 300K to
+500K. Aluminum's higher thermal expansion coefficient (23e-6 vs 12e-6 /K) makes
+it expand more, causing the strip to bend downward. Block-restricted materials give
+each subdomain different elastic and thermal properties.
+
+**Key objects**: `SubdomainBoundingBoxGenerator`, block-restricted
+`ComputeThermalExpansionEigenstrain`, `ComputeIsotropicElasticityTensor`
 
 ---
 
@@ -2142,7 +2260,7 @@ variable name (e.g., `u` or `T`) using the dropdown in the toolbar.
 
 ## Next Steps
 
-After completing these 13 cases:
+After completing these 21 cases:
 
 1. **Read the MOOSE documentation** at https://mooseframework.inl.gov for
    complete reference documentation on every object type.
@@ -2154,7 +2272,6 @@ After completing these 13 cases:
 3. **Write your own application**: Use `moose/scripts/stork.py` to scaffold
    a new MOOSE application with custom kernels, materials, and BCs.
 
-4. **Try physics modules**: MOOSE ships with modules for heat conduction
-   (`modules/heat_transfer`), solid mechanics (`modules/solid_mechanics`),
-   and fluid flow (`modules/navier_stokes`). Each has its own quick-start
-   examples.
+4. **Explore more module features**: Cases 14-21 introduce the major physics
+   modules. Each module has many more capabilities — consult the
+   [Modules Reference](modules-reference.md) for full details.

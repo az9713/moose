@@ -4,7 +4,7 @@
 >
 > This repo **does not include the MOOSE source codes**. Instead, it supplements the original
 > repository with **comprehensive documentation and worked examples** designed to help new users
-> learn the framework from scratch. The 13 progressive quickstart cases are fully explained — from
+> learn the framework from scratch. The 21 progressive quickstart cases are fully explained — from
 > the physics and governing equations, through the input file structure, to interpreting the
 > simulation results — so that users can learn how to set up their own simulations and understand
 > the output without any external help.
@@ -75,7 +75,7 @@ immediately available to every application that enables that module.
 This repository focuses on **learning materials** for the MOOSE framework:
 
 - **Comprehensive documentation** covering architecture, developer workflows, input-file syntax, and all 29 physics modules
-- **13 progressive quickstart examples** (`quickstart-runs/`) — each with a complete input file, detailed README explaining the physics, and matplotlib visualization of the results
+- **21 progressive quickstart examples** (`quickstart-runs/`) — each with a complete input file, detailed README explaining the physics, and matplotlib visualization of the results
 - **An 8-week study plan** for self-learners going from zero to productive MOOSE developer
 - **Docker instructions** for running MOOSE on Windows without compiling from source
 
@@ -90,7 +90,7 @@ To actually build and run MOOSE simulations, you need the framework itself from 
 | [docs/architecture.md](docs/architecture.md) | System architecture with subsystem diagrams covering the Framework → Modules → Applications hierarchy |
 | [docs/developer-guide.md](docs/developer-guide.md) | Step-by-step C++ developer tutorial: writing Kernels, BCs, Materials, and custom objects |
 | [docs/user-guide.md](docs/user-guide.md) | Simulation user reference covering input-file syntax, all major blocks, and solver options |
-| [docs/quick-start.md](docs/quick-start.md) | 13 worked examples progressing from simple diffusion through transient multiphysics |
+| [docs/quick-start.md](docs/quick-start.md) | 21 worked examples progressing from simple diffusion through transient multiphysics |
 | [docs/zero-to-hero.md](docs/zero-to-hero.md) | 8-week structured study plan for new MOOSE developers |
 | [docs/modules-reference.md](docs/modules-reference.md) | Physics module reference with API summaries and example input files |
 | [docs/docker-guide.md](docs/docker-guide.md) | Running MOOSE on Windows with Docker — installation, volume mounts, MPI |
@@ -101,11 +101,13 @@ The official online documentation lives at **https://mooseframework.inl.gov**.
 
 ## Quickstart Examples
 
-The `quickstart-runs/` directory contains 13 fully worked examples, each in its own subdirectory with:
+The `quickstart-runs/` directory contains **21 fully worked examples**, each in its own subdirectory with:
 
 - **Input file** (`.i`) — ready to run with `moose_test-opt` or `combined-opt`
 - **Detailed README** — explains the physics, walks through every input-file block, describes the output files, and shows how to interpret the results
 - **Visualization plots** (`.png`) — matplotlib-generated 2D/3D plots of the simulation output
+
+### Cases 01-13: Framework Fundamentals
 
 <table>
 <tr>
@@ -165,10 +167,59 @@ The `quickstart-runs/` directory contains 13 fully worked examples, each in its 
 <tr>
 <td align="center">
 <a href="quickstart-runs/case13-custom-kernel"><img src="quickstart-runs/case13-custom-kernel/case13_postprocessors.png" width="100%"/></a><br/>
-<b>Case 13</b>: Custom Kernel
+<b>Case 13</b>: Postprocessor Analysis
 </td>
-<td align="center" colspan="3">
-<i>Each case includes a detailed README with physics explanations, input file walkthrough, and plot interpretation guide.</i>
+<td colspan="3"></td>
+</tr>
+</table>
+
+### Cases 14-21: Advanced Multi-Physics (Module-Based)
+
+These cases use MOOSE physics modules (`heat_transfer`, `solid_mechanics`, `navier_stokes`, `phase_field`, `porous_flow`) and require `combined-opt` via Docker.
+
+<table>
+<tr>
+<td align="center" width="25%">
+<a href="quickstart-runs/case14-thermoelasticity"><img src="quickstart-runs/case14-thermoelasticity/case14_thermoelasticity.png" width="100%"/></a><br/>
+<b>Case 14</b>: Thermoelasticity<br/>
+<sub>Heat + Solid Mechanics</sub>
+</td>
+<td align="center" width="25%">
+<a href="quickstart-runs/case15-lid-driven-cavity"><img src="quickstart-runs/case15-lid-driven-cavity/case15_velocity_magnitude.png" width="100%"/></a><br/>
+<b>Case 15</b>: Lid-Driven Cavity<br/>
+<sub>Navier-Stokes FV (Re=100)</sub>
+</td>
+<td align="center" width="25%">
+<a href="quickstart-runs/case16-natural-convection"><img src="quickstart-runs/case16-natural-convection/case16_temperature.png" width="100%"/></a><br/>
+<b>Case 16</b>: Natural Convection<br/>
+<sub>Fluid + Heat (Ra=10⁴)</sub>
+</td>
+<td align="center" width="25%">
+<a href="quickstart-runs/case17-joule-heating"><img src="quickstart-runs/case17-joule-heating/case17_joule_heating.png" width="100%"/></a><br/>
+<b>Case 17</b>: Joule Heating<br/>
+<sub>Electromagnetics + Heat</sub>
+</td>
+</tr>
+<tr>
+<td align="center">
+<a href="quickstart-runs/case18-cahn-hilliard"><img src="quickstart-runs/case18-cahn-hilliard/case18_phase_separation.png" width="100%"/></a><br/>
+<b>Case 18</b>: Cahn-Hilliard<br/>
+<sub>Phase Field Decomposition</sub>
+</td>
+<td align="center">
+<a href="quickstart-runs/case19-porous-flow"><img src="quickstart-runs/case19-porous-flow/case19_thermal_plume.png" width="100%"/></a><br/>
+<b>Case 19</b>: Porous Flow<br/>
+<sub>Darcy Flow + Heat Transport</sub>
+</td>
+<td align="center">
+<a href="quickstart-runs/case20-elastic-wave"><img src="quickstart-runs/case20-elastic-wave/case20_wave_snapshots.png" width="100%"/></a><br/>
+<b>Case 20</b>: Elastic Wave<br/>
+<sub>Dynamic Solid Mechanics</sub>
+</td>
+<td align="center">
+<a href="quickstart-runs/case21-bimetallic-strip"><img src="quickstart-runs/case21-bimetallic-strip/case21_bimetallic_strip.png" width="100%"/></a><br/>
+<b>Case 21</b>: Bimetallic Strip<br/>
+<sub>Multi-Material Thermo-Mechanics</sub>
 </td>
 </tr>
 </table>

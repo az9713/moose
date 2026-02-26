@@ -1,5 +1,5 @@
 """
-MOOSE Quick-Start: Visualization Script for All 13 Cases
+MOOSE Quick-Start: Visualization Script for All 21 Cases
 =========================================================
 Generates 2-3 plots per case and saves each PNG into that case's own directory.
 For example, Case 01's plot is written to case01-1d-steady-diffusion/case01_diffusion_1d.png.
@@ -82,6 +82,14 @@ CASE_DIRS = {
     "11": "case11-adaptive-timestepping",
     "12": "case12-multiapp-coupling",
     "13": "case13-custom-kernel",
+    "14": "case14-thermoelasticity",
+    "15": "case15-lid-driven-cavity",
+    "16": "case16-natural-convection",
+    "17": "case17-joule-heating",
+    "18": "case18-cahn-hilliard",
+    "19": "case19-porous-flow",
+    "20": "case20-elastic-wave",
+    "21": "case21-bimetallic-strip",
 }
 
 
@@ -167,6 +175,44 @@ def read_csv(path: str) -> dict[str, list[float]]:
 def find_closest_timestep(times: np.ndarray, target: float) -> int:
     """Return the index of the time value closest to `target`."""
     return int(np.argmin(np.abs(times - target)))
+
+
+def get_elem_var_names(ds) -> list[str]:
+    """Decode the list of element variable names stored in the Exodus file."""
+    ev = ds.variables["name_elem_var"]
+    return list(nc.chartostring(ev[:]))
+
+
+def get_elem_var(ds, index_1based: int, block: int = 1, timestep: int = -1) -> np.ndarray:
+    """
+    Return element variable values for a given element block.
+
+    Parameters
+    ----------
+    ds            : open netCDF4 Dataset
+    index_1based  : variable index starting at 1
+    block         : element block number (1-based)
+    timestep      : time-step index; -1 means the last available step
+    """
+    key = f"vals_elem_var{index_1based}eb{block}"
+    data = ds.variables[key][timestep, :]
+    return np.array(data, dtype=float)
+
+
+def get_elem_centroids_2d(ds, block: int = 1):
+    """
+    Compute element centroid coordinates for a 2D mesh.
+
+    Returns (cx, cy) arrays where each entry is the average of the
+    element's node coordinates.
+    """
+    x = np.array(ds.variables["coordx"][:], dtype=float)
+    y = np.array(ds.variables["coordy"][:], dtype=float)
+    conn_key = f"connect{block}"
+    conn = ds.variables[conn_key][:] - 1  # Exodus uses 1-based indexing
+    cx = np.mean(x[conn], axis=1)
+    cy = np.mean(y[conn], axis=1)
+    return cx, cy
 
 
 def nodes_near_y(y: np.ndarray, y_target: float, tol: float = 0.02) -> np.ndarray:
@@ -812,6 +858,538 @@ def plot_case13():
 
 
 # ---------------------------------------------------------------------------
+# Cases 14-21: Advanced Multi-Physics
+# ---------------------------------------------------------------------------
+
+def plot_case14():
+    """Case 14: Thermoelasticity — Temperature, displacement, and von Mises stress"""
+    print("Case 14: Thermoelasticity")
+    efile = case_path("14", "case14_thermoelasticity_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case14")
+        return
+
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    names = get_nod_var_names(ds)
+    elem_names = get_elem_var_names(ds)
+    cx, cy = get_elem_centroids_2d(ds)
+
+    # Nodal variables
+    T_idx = names.index("T") + 1
+    disp_x_idx = names.index("disp_x") + 1
+    disp_y_idx = names.index("disp_y") + 1
+
+    T = get_nod_var(ds, T_idx, timestep=-1)
+    disp_x = get_nod_var(ds, disp_x_idx, timestep=-1)
+    disp_y = get_nod_var(ds, disp_y_idx, timestep=-1)
+
+    # Element variable (von Mises stress lives on elements, not nodes)
+    vm_idx = elem_names.index("vonmises_stress") + 1
+    vonmises = get_elem_var(ds, vm_idx, timestep=-1)
+    ds.close()
+
+    # Plot 1: 2x2 panel — T, disp_x, disp_y, vonmises_stress
+    fig, axes = plt.subplots(2, 2, figsize=FIGSIZE_LARGE)
+    fig.suptitle("Case 14: Thermoelasticity — Heated Plate", fontsize=FONT_TITLE)
+
+    # Top row: nodal variables (T, disp_x) — use tricontourf on nodes
+    for col_idx, (vals, cmap, label) in enumerate([
+        (T, CMAP_TEMP, "Temperature (K)"),
+        (disp_x, CMAP_SCALAR, "disp_x (m)"),
+    ]):
+        tcf = axes[0, col_idx].tricontourf(x, y, vals, levels=20, cmap=cmap)
+        plt.colorbar(tcf, ax=axes[0, col_idx], label=label)
+        axes[0, col_idx].set_xlabel("x")
+        axes[0, col_idx].set_ylabel("y")
+        axes[0, col_idx].set_aspect("equal")
+        axes[0, col_idx].set_title(label.split("(")[0].strip())
+
+    # Bottom-left: disp_y (nodal)
+    tcf = axes[1, 0].tricontourf(x, y, disp_y, levels=20, cmap=CMAP_SCALAR)
+    plt.colorbar(tcf, ax=axes[1, 0], label="disp_y (m)")
+    axes[1, 0].set_xlabel("x")
+    axes[1, 0].set_ylabel("y")
+    axes[1, 0].set_aspect("equal")
+    axes[1, 0].set_title("disp_y")
+
+    # Bottom-right: von Mises stress (element variable — use scatter on centroids)
+    sc = axes[1, 1].scatter(cx, cy, c=vonmises, s=8, cmap="inferno", edgecolors="none")
+    plt.colorbar(sc, ax=axes[1, 1], label="von Mises (Pa)")
+    axes[1, 1].set_xlabel("x")
+    axes[1, 1].set_ylabel("y")
+    axes[1, 1].set_aspect("equal")
+    axes[1, 1].set_title("von Mises Stress")
+
+    fig.tight_layout()
+    save_fig(fig, "14", "case14_thermoelasticity.png")
+
+
+def plot_case15():
+    """Case 15: Lid-Driven Cavity — velocity and pressure fields"""
+    print("Case 15: Lid-Driven Cavity")
+    efile = case_path("15", "case15_lid_driven_cavity_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case15")
+        return
+
+    ds = open_exodus(efile)
+    cx, cy = get_elem_centroids_2d(ds)
+    names = get_elem_var_names(ds)
+
+    # FV variables are element-centered
+    vel_x_name = "vel_x" if "vel_x" in names else "superficial_vel_x"
+    vel_y_name = "vel_y" if "vel_y" in names else "superficial_vel_y"
+    p_name = "pressure"
+
+    vel_x_idx = names.index(vel_x_name) + 1
+    vel_y_idx = names.index(vel_y_name) + 1
+    p_idx = names.index(p_name) + 1
+
+    vx = get_elem_var(ds, vel_x_idx, timestep=-1)
+    vy = get_elem_var(ds, vel_y_idx, timestep=-1)
+    p = get_elem_var(ds, p_idx, timestep=-1)
+    ds.close()
+
+    vel_mag = np.sqrt(vx ** 2 + vy ** 2)
+
+    # Plot 1: velocity magnitude contour (element centroids)
+    fig, ax = plt.subplots(figsize=FIGSIZE_SQUARE)
+    tcf = ax.tricontourf(cx, cy, vel_mag, levels=20, cmap="plasma")
+    plt.colorbar(tcf, ax=ax, label="|velocity|")
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_aspect("equal")
+    ax.set_title("Case 15: Lid-Driven Cavity — Velocity Magnitude (Re=100)")
+    fig.tight_layout()
+    save_fig(fig, "15", "case15_velocity_magnitude.png")
+
+    # Plot 2: pressure field
+    fig, ax = plt.subplots(figsize=FIGSIZE_SQUARE)
+    tcf = ax.tricontourf(cx, cy, p, levels=20, cmap="RdBu_r")
+    plt.colorbar(tcf, ax=ax, label="Pressure")
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_aspect("equal")
+    ax.set_title("Case 15: Pressure Field")
+    fig.tight_layout()
+    save_fig(fig, "15", "case15_pressure.png")
+
+    # Plot 3: quiver plot
+    fig, ax = plt.subplots(figsize=FIGSIZE_SQUARE)
+    n = len(cx)
+    step = max(1, n // 400)
+    ax.quiver(cx[::step], cy[::step], vx[::step], vy[::step],
+              vel_mag[::step], cmap="plasma", scale=15, width=0.003)
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_aspect("equal")
+    ax.set_title("Case 15: Velocity Vectors")
+    fig.tight_layout()
+    save_fig(fig, "15", "case15_velocity_vectors.png")
+
+
+def plot_case16():
+    """Case 16: Natural Convection — temperature and velocity in heated cavity"""
+    print("Case 16: Natural Convection")
+    efile = case_path("16", "case16_natural_convection_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case16")
+        return
+
+    ds = open_exodus(efile)
+    cx, cy = get_elem_centroids_2d(ds)
+    names = get_elem_var_names(ds)
+
+    T_name = "T_fluid" if "T_fluid" in names else "temperature"
+    vel_x_name = "vel_x" if "vel_x" in names else "superficial_vel_x"
+    vel_y_name = "vel_y" if "vel_y" in names else "superficial_vel_y"
+
+    T_idx = names.index(T_name) + 1
+    vx_idx = names.index(vel_x_name) + 1
+    vy_idx = names.index(vel_y_name) + 1
+
+    T = get_elem_var(ds, T_idx, timestep=-1)
+    vx = get_elem_var(ds, vx_idx, timestep=-1)
+    vy = get_elem_var(ds, vy_idx, timestep=-1)
+    ds.close()
+
+    vel_mag = np.sqrt(vx ** 2 + vy ** 2)
+
+    # Plot 1: temperature field
+    fig, ax = plt.subplots(figsize=FIGSIZE_SQUARE)
+    tcf = ax.tricontourf(cx, cy, T, levels=20, cmap=CMAP_TEMP)
+    plt.colorbar(tcf, ax=ax, label="Temperature")
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_aspect("equal")
+    ax.set_title("Case 16: Natural Convection — Temperature (Ra=10$^4$)")
+    fig.tight_layout()
+    save_fig(fig, "16", "case16_temperature.png")
+
+    # Plot 2: velocity magnitude
+    fig, ax = plt.subplots(figsize=FIGSIZE_SQUARE)
+    tcf = ax.tricontourf(cx, cy, vel_mag, levels=20, cmap="plasma")
+    plt.colorbar(tcf, ax=ax, label="|velocity|")
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_aspect("equal")
+    ax.set_title("Case 16: Velocity Magnitude")
+    fig.tight_layout()
+    save_fig(fig, "16", "case16_velocity_magnitude.png")
+
+
+def plot_case17():
+    """Case 17: Joule Heating — voltage and temperature evolution"""
+    print("Case 17: Joule Heating")
+    efile = case_path("17", "case17_joule_heating_out.e")
+    cfile = case_path("17", "case17_joule_heating_out.csv")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case17")
+        return
+
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    names = get_nod_var_names(ds)
+    times = get_times(ds)
+
+    V_idx = names.index("V") + 1
+    T_idx = names.index("T") + 1
+
+    V = get_nod_var(ds, V_idx, timestep=-1)
+    T_final = get_nod_var(ds, T_idx, timestep=-1)
+
+    # Plot 1: side-by-side V and T at final time
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    fig.suptitle("Case 17: Joule Heating — Final State", fontsize=FONT_TITLE)
+
+    tcf1 = axes[0].tricontourf(x, y, V, levels=20, cmap="RdYlBu_r")
+    plt.colorbar(tcf1, ax=axes[0], label="V (Volts)")
+    axes[0].set_title("Electric Potential V")
+    axes[0].set_xlabel("x")
+    axes[0].set_ylabel("y")
+    axes[0].set_aspect("equal")
+
+    tcf2 = axes[1].tricontourf(x, y, T_final, levels=20, cmap=CMAP_TEMP)
+    plt.colorbar(tcf2, ax=axes[1], label="T (K)")
+    axes[1].set_title("Temperature T")
+    axes[1].set_xlabel("x")
+    axes[1].set_ylabel("y")
+    axes[1].set_aspect("equal")
+
+    ds.close()
+    fig.tight_layout()
+    save_fig(fig, "17", "case17_joule_heating.png")
+
+    # Plot 2: temperature history from CSV
+    if file_exists(cfile):
+        data = read_csv(cfile)
+        t_csv = data["time"]
+        max_T = data.get("max_T", data.get("max_temperature", []))
+        avg_T = data.get("avg_T", data.get("avg_temperature", []))
+
+        if max_T and avg_T:
+            fig, ax = plt.subplots(figsize=FIGSIZE_SINGLE)
+            ax.plot(t_csv, max_T, "r-o", markersize=3, label="max_T")
+            ax.plot(t_csv, avg_T, "b-s", markersize=3, label="avg_T")
+            ax.set_xlabel("Time (s)")
+            ax.set_ylabel("Temperature (K)")
+            ax.set_title("Case 17: Temperature Rise from Joule Heating")
+            ax.legend()
+            ax.grid(True, alpha=0.4)
+            fig.tight_layout()
+            save_fig(fig, "17", "case17_temperature_history.png")
+
+
+def plot_case18():
+    """Case 18: Cahn-Hilliard — phase separation snapshots"""
+    print("Case 18: Cahn-Hilliard Spinodal Decomposition")
+    efile = case_path("18", "case18_cahn_hilliard_out.e")
+    cfile = case_path("18", "case18_cahn_hilliard_out.csv")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case18")
+        return
+
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    names = get_nod_var_names(ds)
+    times = get_times(ds)
+
+    c_idx = names.index("c") + 1
+
+    # Plot 1: 2x2 snapshots at different times
+    n_steps = len(times)
+    target_frac = [0.0, 0.15, 0.5, 1.0]
+    snap_indices = [max(0, min(n_steps - 1, int(f * (n_steps - 1)))) for f in target_frac]
+
+    fig, axes = plt.subplots(2, 2, figsize=(10, 9))
+    fig.suptitle("Case 18: Cahn-Hilliard Spinodal Decomposition", fontsize=FONT_TITLE)
+    for panel, idx in enumerate(snap_indices):
+        row, col = divmod(panel, 2)
+        c_snap = get_nod_var(ds, c_idx, timestep=idx)
+        tcf = axes[row, col].tricontourf(x, y, c_snap, levels=20, cmap="PiYG")
+        plt.colorbar(tcf, ax=axes[row, col], label="c")
+        axes[row, col].set_title(f"t = {times[idx]:.1f}")
+        axes[row, col].set_xlabel("x")
+        axes[row, col].set_ylabel("y")
+        axes[row, col].set_aspect("equal")
+    ds.close()
+    fig.tight_layout()
+    save_fig(fig, "18", "case18_phase_separation.png")
+
+    # Plot 2: free energy and avg_c from CSV
+    if file_exists(cfile):
+        data = read_csv(cfile)
+        t_csv = data["time"]
+        avg_c = data.get("avg_c", [])
+        bulk_E = data.get("bulk_energy", data.get("total_free_energy", []))
+
+        if avg_c and bulk_E:
+            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=FIGSIZE_WIDE)
+            fig.suptitle("Case 18: Conservation and Energy", fontsize=FONT_TITLE)
+
+            ax1.plot(t_csv, avg_c, "b-", linewidth=1.5)
+            ax1.set_xlabel("Time")
+            ax1.set_ylabel("Average c")
+            ax1.set_title("Mass Conservation")
+            ax1.grid(True, alpha=0.4)
+
+            ax2.plot(t_csv, bulk_E, "r-", linewidth=1.5)
+            ax2.set_xlabel("Time")
+            ax2.set_ylabel("Bulk Free Energy")
+            ax2.set_title("Free Energy Decay")
+            ax2.grid(True, alpha=0.4)
+
+            fig.tight_layout()
+            save_fig(fig, "18", "case18_energy_conservation.png")
+
+
+def plot_case19():
+    """Case 19: Porous Flow — pressure and temperature fields"""
+    print("Case 19: Porous Flow with Heat Transport")
+    efile = case_path("19", "case19_porous_flow_out.e")
+    cfile = case_path("19", "case19_porous_flow_out.csv")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case19")
+        return
+
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    names = get_nod_var_names(ds)
+    times = get_times(ds)
+
+    p_idx = names.index("porepressure") + 1
+    T_idx = names.index("temperature") + 1
+
+    p_final = get_nod_var(ds, p_idx, timestep=-1)
+    T_final = get_nod_var(ds, T_idx, timestep=-1)
+
+    # Plot 1: side-by-side pressure and temperature
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+    fig.suptitle("Case 19: Porous Flow — Final State", fontsize=FONT_TITLE)
+
+    tcf1 = axes[0].tricontourf(x, y, p_final, levels=20, cmap="Blues")
+    plt.colorbar(tcf1, ax=axes[0], label="Pressure (Pa)")
+    axes[0].set_title("Porepressure")
+    axes[0].set_xlabel("x")
+    axes[0].set_ylabel("y")
+    axes[0].set_aspect("equal")
+
+    tcf2 = axes[1].tricontourf(x, y, T_final, levels=20, cmap=CMAP_TEMP)
+    plt.colorbar(tcf2, ax=axes[1], label="T (K)")
+    axes[1].set_title("Temperature")
+    axes[1].set_xlabel("x")
+    axes[1].set_ylabel("y")
+    axes[1].set_aspect("equal")
+
+    # Plot 2: temperature snapshots (thermal plume evolution)
+    n_steps = len(times)
+    if n_steps >= 4:
+        target_frac = [0.0, 0.33, 0.66, 1.0]
+        snap_indices = [max(0, min(n_steps - 1, int(f * (n_steps - 1)))) for f in target_frac]
+
+        fig2, axes2 = plt.subplots(1, 4, figsize=(16, 3.5))
+        fig2.suptitle("Case 19: Thermal Plume Evolution", fontsize=FONT_TITLE)
+        for col, idx in enumerate(snap_indices):
+            T_snap = get_nod_var(ds, T_idx, timestep=idx)
+            tcf = axes2[col].tricontourf(x, y, T_snap, levels=20, cmap=CMAP_TEMP,
+                                          vmin=295, vmax=355)
+            plt.colorbar(tcf, ax=axes2[col])
+            axes2[col].set_title(f"t = {times[idx]:.0f} s")
+            axes2[col].set_xlabel("x")
+            axes2[col].set_ylabel("y")
+            axes2[col].set_aspect("equal")
+        fig2.tight_layout()
+        save_fig(fig2, "19", "case19_thermal_plume.png")
+
+    ds.close()
+    fig.tight_layout()
+    save_fig(fig, "19", "case19_porous_flow.png")
+
+    # Plot 3: CSV time history
+    if file_exists(cfile):
+        data = read_csv(cfile)
+        t_csv = data["time"]
+        max_T = data.get("max_T", [])
+        avg_T = data.get("avg_T", [])
+
+        if max_T and avg_T:
+            fig, ax = plt.subplots(figsize=FIGSIZE_SINGLE)
+            ax.plot(t_csv, max_T, "r-o", markersize=3, label="max_T")
+            ax.plot(t_csv, avg_T, "b-s", markersize=3, label="avg_T")
+            ax.set_xlabel("Time (s)")
+            ax.set_ylabel("Temperature (K)")
+            ax.set_title("Case 19: Temperature History")
+            ax.legend()
+            ax.grid(True, alpha=0.4)
+            fig.tight_layout()
+            save_fig(fig, "19", "case19_temperature_history.png")
+
+
+def plot_case20():
+    """Case 20: Elastic Wave — displacement and stress snapshots"""
+    print("Case 20: Elastic Wave Propagation")
+    # The named [exodus] sub-block produces a file without "_out" in the name:
+    #   case20_elastic_wave_exodus.e  (not case20_elastic_wave_out.e)
+    efile = case_path("20", "case20_elastic_wave_exodus.e")
+    cfile = case_path("20", "case20_elastic_wave_out.csv")
+
+    if not file_exists(efile):
+        # Fallback to standard naming in case output config changes
+        alt = case_path("20", "case20_elastic_wave_out.e")
+        if file_exists(alt):
+            efile = alt
+        else:
+            print("    SKIP: output file not found")
+            skipped_cases.append("case20")
+            return
+
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    names = get_nod_var_names(ds)
+    times = get_times(ds)
+
+    dx_idx = names.index("disp_x") + 1
+
+    # Plot 1: displacement snapshots at different times
+    n_steps = len(times)
+    if n_steps < 4:
+        snap_indices = list(range(n_steps))
+    else:
+        target_frac = [0.1, 0.3, 0.6, 0.9]
+        snap_indices = [max(0, min(n_steps - 1, int(f * (n_steps - 1)))) for f in target_frac]
+
+    fig, axes = plt.subplots(len(snap_indices), 1, figsize=(12, 3 * len(snap_indices)))
+    if len(snap_indices) == 1:
+        axes = [axes]
+    fig.suptitle("Case 20: Elastic Wave — disp_x Along Bar", fontsize=FONT_TITLE)
+    for row, idx in enumerate(snap_indices):
+        dx_snap = get_nod_var(ds, dx_idx, timestep=idx)
+        tcf = axes[row].tricontourf(x, y, dx_snap, levels=20, cmap="RdBu_r")
+        plt.colorbar(tcf, ax=axes[row], label="disp_x (m)")
+        axes[row].set_title(f"t = {times[idx]:.5f} s")
+        axes[row].set_xlabel("x (m)")
+        axes[row].set_ylabel("y (m)")
+    ds.close()
+    fig.tight_layout()
+    save_fig(fig, "20", "case20_wave_snapshots.png")
+
+    # Plot 2: tip displacement vs time from CSV
+    if file_exists(cfile):
+        data = read_csv(cfile)
+        t_csv = data["time"]
+        tip_dx = data.get("disp_x_right", data.get("tip_disp_x", []))
+
+        if tip_dx:
+            fig, ax = plt.subplots(figsize=FIGSIZE_SINGLE)
+            ax.plot(t_csv, tip_dx, "b-", linewidth=1)
+            ax.set_xlabel("Time (s)")
+            ax.set_ylabel("disp_x at right end (m)")
+            ax.set_title("Case 20: Tip Displacement — Wave Arrival and Reflection")
+            ax.grid(True, alpha=0.4)
+            fig.tight_layout()
+            save_fig(fig, "20", "case20_tip_displacement.png")
+
+
+def plot_case21():
+    """Case 21: Bimetallic Strip — deformation and stress"""
+    print("Case 21: Bimetallic Strip")
+    efile = case_path("21", "case21_bimetallic_strip_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case21")
+        return
+
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    names = get_nod_var_names(ds)
+    elem_names = get_elem_var_names(ds)
+
+    dx_idx = names.index("disp_x") + 1
+    dy_idx = names.index("disp_y") + 1
+
+    disp_x = get_nod_var(ds, dx_idx, timestep=-1)
+    disp_y = get_nod_var(ds, dy_idx, timestep=-1)
+
+    # von Mises stress is an element variable — read from element centroids
+    vm_idx = elem_names.index("vonmises_stress") + 1
+    # Case 21 has two element blocks (steel, aluminum); read both and concatenate
+    vm_parts = []
+    cx_parts = []
+    cy_parts = []
+    for blk in range(1, 3):
+        key = f"vals_elem_var{vm_idx}eb{blk}"
+        if key in ds.variables:
+            vm_parts.append(get_elem_var(ds, vm_idx, block=blk, timestep=-1))
+            blk_cx, blk_cy = get_elem_centroids_2d(ds, block=blk)
+            cx_parts.append(blk_cx)
+            cy_parts.append(blk_cy)
+    vonmises = np.concatenate(vm_parts)
+    cx = np.concatenate(cx_parts)
+    cy = np.concatenate(cy_parts)
+    ds.close()
+
+    # Plot 1: deformed shape colored by disp_y
+    # Scale displacements for visibility
+    disp_scale = 5.0
+    x_def = x + disp_x * disp_scale
+    y_def = y + disp_y * disp_scale
+
+    fig, axes = plt.subplots(2, 1, figsize=(12, 6))
+    fig.suptitle("Case 21: Bimetallic Strip — Thermal Bending", fontsize=FONT_TITLE)
+
+    # Top: original + deformed shape
+    axes[0].scatter(x, y, c="lightgray", s=2, label="Original")
+    sc = axes[0].scatter(x_def, y_def, c=disp_y, s=3, cmap="RdBu_r")
+    plt.colorbar(sc, ax=axes[0], label="disp_y (m)")
+    axes[0].set_xlabel("x (m)")
+    axes[0].set_ylabel("y (m)")
+    axes[0].set_title(f"Deformed Shape ({disp_scale}x magnification)")
+    axes[0].set_aspect("equal")
+    axes[0].legend(loc="upper right", markerscale=5)
+
+    # Bottom: von Mises stress on element centroids
+    sc2 = axes[1].scatter(cx, cy, c=vonmises, s=8, cmap="inferno", edgecolors="none")
+    plt.colorbar(sc2, ax=axes[1], label="von Mises (Pa)")
+    axes[1].axhline(y=0.5, color="white", linestyle="--", linewidth=1, alpha=0.7,
+                     label="Material interface")
+    axes[1].set_xlabel("x (m)")
+    axes[1].set_ylabel("y (m)")
+    axes[1].set_title("von Mises Stress Distribution")
+    axes[1].set_aspect("equal")
+    axes[1].legend(loc="upper right")
+
+    fig.tight_layout()
+    save_fig(fig, "21", "case21_bimetallic_strip.png")
+
+
+# ---------------------------------------------------------------------------
 # Main driver
 # ---------------------------------------------------------------------------
 
@@ -829,12 +1407,20 @@ CASE_FUNCTIONS = [
     ("11", plot_case11),
     ("12", plot_case12),
     ("13", plot_case13),
+    ("14", plot_case14),
+    ("15", plot_case15),
+    ("16", plot_case16),
+    ("17", plot_case17),
+    ("18", plot_case18),
+    ("19", plot_case19),
+    ("20", plot_case20),
+    ("21", plot_case21),
 ]
 
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("MOOSE Quick-Start Visualization — All 13 Cases")
+    print("MOOSE Quick-Start Visualization — All 21 Cases")
     print("=" * 60)
     print(f"Script directory: {SCRIPT_DIR}")
     print("Plots will be saved into each case subdirectory.\n")
