@@ -1347,7 +1347,7 @@ To override: add `file_base = my_custom_name` to the `[Outputs]` block.
 
 ---
 
-## 6. The 36 Cases at a Glance
+## 6. The 44 Cases at a Glance
 
 The cases are ordered from simplest to most complex. Cases 01-13 use only the MOOSE
 framework (Diffusion, BodyForce, MatDiffusion, etc.). Cases 14-21 use physics **modules**
@@ -1357,10 +1357,10 @@ transport, magnetic diffusion, electrohydrodynamic flows, and MHD — inspired b
 *Continuum Electromechanics* (MIT, 1981). Cases 30-36 cover waveguides, resonators, wave
 scattering, coupled modes, noise, and solitons — inspired by **Professor Herman A. Haus**'s
 *Electromagnetic Noise and Quantum Optical Measurements* (Springer, 2000), drawing from the
-classical chapters (Chs 1-5, 10) only. The book's quantum chapters (Chs 6-9, 11-13) cover
-photon operators, squeezed states, and quantum noise theory — phenomena that have no
-classical PDE representation and are therefore outside the scope of a finite-element solver
-like MOOSE. Study them in order.
+classical chapters (Chs 1-5, 10) only. Cases 37-44 cover advanced fluid dynamics —
+instabilities, boundary layers, turbulence, compressible flow, rotating fluids, and MHD
+waves — inspired by **Michel Rieutord**'s *Fluid Dynamics: An Introduction* (Springer, 2015),
+spanning Chapters 4-10. Study them in order.
 
 | Case | Subdirectory | Title | Physics | Key Concepts Introduced | Difficulty |
 |------|--------------|-------|---------|-------------------------|------------|
@@ -1400,6 +1400,14 @@ like MOOSE. Study them in order.
 | 34 | `case34-thermal-noise/` | Thermal Noise Relaxation | Diffusion from random IC: ∂T/∂t = D∇²T, spectral mode decay | RandomIC, mode-dependent decay rates, fluctuation-dissipation | Beginner |
 | 35 | `case35-dispersive-pulse/` | Dispersive Pulse Broadening | Advection-diffusion as GVD fiber: ∂A/∂t + v_g∂A/∂x = D∂²A/∂x² | ADConservativeAdvection, ADMatDiffusion, pulse broadening physics | Intermediate |
 | 36 | `case36-soliton-pulse/` | Soliton Pulse Propagation | Nonlinear pulse: ∂A/∂t + v_g∂A/∂x = D∂²A/∂x² − αA³ | ADMatReaction + DerivativeParsedMaterial, soliton balance, JIT workaround | Advanced |
+| 37 | `case37-rayleigh-benard/` | Rayleigh-Benard Convection Onset | Boussinesq NS heated from below, Ra=2000 > Ra_c=1708 | NavierStokesFV + Boussinesq, transient onset, convective rolls | Advanced |
+| 38 | `case38-kelvin-helmholtz/` | Kelvin-Helmholtz Instability | Shear layer rollup, tanh velocity profile, passive scalar | NavierStokesFV + energy as passive scalar, inlet/outlet BCs, upwind | Advanced |
+| 39 | `case39-blasius-boundary-layer/` | Blasius Boundary Layer | Flat plate laminar flow, Re_L=400, Blasius similarity | NavierStokesFV steady, biased mesh (bias_y), PointValue sampling | Advanced |
+| 40 | `case40-turbulent-channel/` | Turbulent Channel k-epsilon | RANS k-epsilon with wall functions, Re=13700, log-law validation | SIMPLE segregated, MooseLinearVariableFVReal, k-epsilon, wall functions | Expert |
+| 41 | `case41-rayleigh-taylor/` | Rayleigh-Taylor Instability | Heavy-over-light Boussinesq, mushroom fingers, RT growth | NavierStokesFV + Boussinesq, tanh interface IC, sinusoidal perturbation | Advanced |
+| 42 | `case42-sod-shock-tube/` | Sod Shock Tube — 1D Riemann | Compressible Euler, shock/contact/rarefaction at t=0.2 | CNS HLLC flux splitting, ExplicitSSPRungeKutta, IdealGasFluidProperties | Expert |
+| 43 | `case43-ekman-spiral/` | Ekman Spiral — Rotating BL | Coriolis-coupled vx/vy in rotating frame, exact solution | CoupledForce, BodyForce, ADMatDiffusion, analytical Ekman spiral | Intermediate |
+| 44 | `case44-alfven-wave/` | Alfven Wave — MHD Elsasser | Elsasser decomposition: d+ rightward, d- zero, diffusive decay | ADConservativeAdvection, ADMatDiffusion, opposite velocities | Advanced |
 
 ### What each case produces
 
@@ -1441,16 +1449,24 @@ like MOOSE. Study them in order.
 | 34 | `case34_thermal_noise_out.e`, `case34_thermal_noise_out.csv` |
 | 35 | `case35_dispersive_pulse_out.e`, `case35_dispersive_pulse_out.csv` |
 | 36 | `case36_soliton_pulse_out.e`, `case36_soliton_pulse_out.csv` |
+| 37 | `case37_rayleigh_benard_out.e`, `case37_rayleigh_benard_out.csv` |
+| 38 | `case38_kelvin_helmholtz_out.e`, `case38_kelvin_helmholtz_out.csv` |
+| 39 | `case39_blasius_boundary_layer_out.e`, `case39_blasius_boundary_layer_out.csv` |
+| 40 | `case40_turbulent_channel_out.e`, `case40_turbulent_channel_out.csv` |
+| 41 | `case41_rayleigh_taylor_out.e`, `case41_rayleigh_taylor_out.csv` |
+| 42 | `case42_sod_shock_tube_out.e`, `case42_sod_shock_tube_out.csv` |
+| 43 | `case43_ekman_spiral_out.e`, `case43_ekman_spiral_out.csv` |
+| 44 | `case44_alfven_wave_out.e`, `case44_alfven_wave_out.csv` |
 
 All pre-run output files for cases 01-13 are included in this directory so you can
-examine them without running anything. Cases 14-36 require `combined-opt` (all modules)
+examine them without running anything. Cases 14-44 require `combined-opt` (all modules)
 to run — see each case's README for Docker instructions.
 
 ---
 
 ## 7. Creating Your Own Simulations
 
-Once you understand the 36 cases, you will want to adapt them or build new simulations
+Once you understand the 44 cases, you will want to adapt them or build new simulations
 from scratch. This section walks through the process systematically.
 
 ### Step 1: Define Your Physics

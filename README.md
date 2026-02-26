@@ -4,7 +4,7 @@
 >
 > This repo **does not include the MOOSE source codes**. Instead, it supplements the original
 > repository with **comprehensive documentation and worked examples** designed to help new users
-> learn the framework from scratch. The 36 progressive quickstart cases are fully explained — from
+> learn the framework from scratch. The 44 progressive quickstart cases are fully explained — from
 > the physics and governing equations, through the input file structure, to interpreting the
 > simulation results — so that users can learn how to set up their own simulations and understand
 > the output without any external help.
@@ -90,7 +90,7 @@ To actually build and run MOOSE simulations, you need the framework itself from 
 | [docs/architecture.md](docs/architecture.md) | System architecture with subsystem diagrams covering the Framework → Modules → Applications hierarchy |
 | [docs/developer-guide.md](docs/developer-guide.md) | Step-by-step C++ developer tutorial: writing Kernels, BCs, Materials, and custom objects |
 | [docs/user-guide.md](docs/user-guide.md) | Simulation user reference covering input-file syntax, all major blocks, and solver options |
-| [docs/quick-start.md](docs/quick-start.md) | 36 worked examples progressing from simple diffusion through transient multiphysics |
+| [docs/quick-start.md](docs/quick-start.md) | 44 worked examples progressing from simple diffusion through advanced fluid dynamics |
 | [docs/zero-to-hero.md](docs/zero-to-hero.md) | 8-week structured study plan for new MOOSE developers |
 | [docs/modules-reference.md](docs/modules-reference.md) | Physics module reference with API summaries and example input files |
 | [docs/docker-guide.md](docs/docker-guide.md) | Running MOOSE on Windows with Docker — installation, volume mounts, MPI |
@@ -101,7 +101,7 @@ The official online documentation lives at **https://mooseframework.inl.gov**.
 
 ## Quickstart Examples
 
-The `quickstart-runs/` directory contains **36 fully worked examples**, each in its own subdirectory with:
+The `quickstart-runs/` directory contains **44 fully worked examples**, each in its own subdirectory with:
 
 - **Input file** (`.i`) — ready to run with `moose_test-opt` or `combined-opt`
 - **Detailed README** — explains the physics, walks through every input-file block, describes the output files, and shows how to interpret the results
@@ -346,6 +346,68 @@ framework only. All require `combined-opt` via Docker.
 <sub>Nonlinear Balance (Haus Ch 10)</sub>
 </td>
 <td colspan="1"></td>
+</tr>
+</table>
+
+### Cases 37-44: Advanced Fluid Dynamics
+
+> Inspired by **Michel Rieutord**'s textbook
+> [*Fluid Dynamics: An Introduction*](https://doi.org/10.1007/978-3-319-09351-2) (Springer, 2015) —
+> a graduate-level treatment covering viscous flows, waves, instabilities,
+> thermal convection, rotating fluids, turbulence, and magnetohydrodynamics.
+> Rieutord is Professor of Astrophysics at the Universite de Toulouse and a
+> specialist in stellar fluid dynamics.
+
+Rieutord's book spans 10 chapters from kinematics and dynamics (Chs 1-3)
+through viscous flows (Ch 4), waves (Ch 5), instabilities (Ch 6), thermal
+convection (Ch 7), rotating fluids (Ch 8), turbulence (Ch 9), and MHD (Ch 10).
+These cases draw from Chapters 4-10, covering the full spectrum of fluid
+dynamics phenomena accessible to a finite-element/volume solver.
+
+<table>
+<tr>
+<td align="center" width="25%">
+<a href="quickstart-runs/case37-rayleigh-benard"><img src="quickstart-runs/case37-rayleigh-benard/case37_rayleigh_benard.png" width="100%"/></a><br/>
+<b>Case 37</b>: Rayleigh-Benard<br/>
+<sub>Convection Onset (Ra=2000)</sub>
+</td>
+<td align="center" width="25%">
+<a href="quickstart-runs/case38-kelvin-helmholtz"><img src="quickstart-runs/case38-kelvin-helmholtz/case38_kelvin_helmholtz.png" width="100%"/></a><br/>
+<b>Case 38</b>: Kelvin-Helmholtz<br/>
+<sub>Shear Layer Rollup</sub>
+</td>
+<td align="center" width="25%">
+<a href="quickstart-runs/case39-blasius-boundary-layer"><img src="quickstart-runs/case39-blasius-boundary-layer/case39_blasius_boundary_layer.png" width="100%"/></a><br/>
+<b>Case 39</b>: Blasius BL<br/>
+<sub>Flat Plate Laminar Flow</sub>
+</td>
+<td align="center" width="25%">
+<a href="quickstart-runs/case40-turbulent-channel"><img src="quickstart-runs/case40-turbulent-channel/case40_turbulent_channel.png" width="100%"/></a><br/>
+<b>Case 40</b>: Turbulent Channel<br/>
+<sub>RANS k-epsilon</sub>
+</td>
+</tr>
+<tr>
+<td align="center">
+<a href="quickstart-runs/case41-rayleigh-taylor"><img src="quickstart-runs/case41-rayleigh-taylor/case41_rayleigh_taylor.png" width="100%"/></a><br/>
+<b>Case 41</b>: Rayleigh-Taylor<br/>
+<sub>Heavy-over-Light Instability</sub>
+</td>
+<td align="center">
+<a href="quickstart-runs/case42-sod-shock-tube"><img src="quickstart-runs/case42-sod-shock-tube/case42_sod_shock_tube.png" width="100%"/></a><br/>
+<b>Case 42</b>: Sod Shock Tube<br/>
+<sub>1D Riemann Problem (HLLC)</sub>
+</td>
+<td align="center">
+<a href="quickstart-runs/case43-ekman-spiral"><img src="quickstart-runs/case43-ekman-spiral/case43_ekman_spiral.png" width="100%"/></a><br/>
+<b>Case 43</b>: Ekman Spiral<br/>
+<sub>Rotating Boundary Layer</sub>
+</td>
+<td align="center">
+<a href="quickstart-runs/case44-alfven-wave"><img src="quickstart-runs/case44-alfven-wave/case44_alfven_wave.png" width="100%"/></a><br/>
+<b>Case 44</b>: Alfven Wave<br/>
+<sub>MHD Elsasser Variables</sub>
+</td>
 </tr>
 </table>
 

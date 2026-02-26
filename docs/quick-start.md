@@ -4321,6 +4321,371 @@ and an oscillating curve for over-nonlinear.
 
 ---
 
+## Case 37: Rayleigh-Benard Convection Onset
+
+### Physics
+
+Fluid heated from below between two rigid plates becomes unstable to
+convective rolls above the critical Rayleigh number Ra_c = 1708. This is
+the classical Benard problem (Rieutord Ch 7, Sec 7.5). The Boussinesq
+incompressible Navier-Stokes equations with buoyancy coupling are:
+
+```
+div(u) = 0
+rho*(du/dt + u.grad(u)) = -grad(p) + mu*lap(u) - rho*alpha*(T-T_ref)*g
+dT/dt + u.grad(T) = kappa*lap(T)
+```
+
+With Ra = 2000 (just above Ra_c = 1708) and Pr = 0.71 (air), convective
+rolls form and the Nusselt number Nu > 1 indicates heat transport
+exceeding pure conduction.
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `[Modules/NavierStokesFV]` | Incompressible FV NS with Boussinesq buoyancy and energy equation |
+| `boussinesq_approximation = true` | Activates buoyancy coupling rho_eff = rho*(1 - alpha*(T - T_ref)) |
+| `FunctorMaterials/ADGenericFunctorMaterial` | Constant rho, mu, k, cp, alpha |
+| `IterationAdaptiveDT` | Adaptive timestepping for convection onset |
+| `ElementAverageValue` | Conservation check: avg(T) should stay at 0.5 |
+
+### What Makes This Case Interesting
+
+This is the first case to use Boussinesq buoyancy coupling with heating
+from below. Case 16 (natural convection) heats from the side at Ra = 10000
+in steady state. Here, the heating is from below, Ra is near critical, and
+the simulation captures the transient onset of convective rolls — a
+fundamentally different instability mechanism. The initial condition includes
+a small sinusoidal perturbation to seed the instability.
+
+### Expected Results
+
+Average temperature remains at 0.5 (conservation). Convective velocities
+develop slowly since Ra = 2000 is only ~17% above critical. max(vel_y)
+grows from the initial perturbation level as the rolls form. The temperature
+field shows weak convective rolls at the final time.
+
+---
+
+## Case 38: Kelvin-Helmholtz Instability — Shear Layer Rollup
+
+### Physics
+
+Two counterflowing streams separated by a shear layer roll up into
+Kelvin-Helmholtz billows (Rieutord Ch 6, Sec 6.3.1). The velocity profile
+is a tanh shear layer with half-thickness delta = 0.05, and a passive scalar
+(temperature repurposed as dye) marks the two streams:
+
+```
+vel_x = tanh((y - 0.5) / 0.05)
+T     = 0.5*(1 + tanh((y - 0.5) / 0.05))
+```
+
+A sinusoidal perturbation vel_y = 0.01*sin(2*pi*x) seeds the instability.
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `[Modules/NavierStokesFV]` | Incompressible FV NS with energy equation (passive scalar) |
+| `ParsedFunction` | tanh velocity profile and scalar IC at inlet and initial condition |
+| `inlet_boundaries` / `outlet_boundaries` | Inlet/outlet BCs to approximate periodic flow |
+| `momentum_wall_types = 'slip slip'` | Free-slip top/bottom walls (symmetry planes) |
+| `upwind` advection interpolation | Stabilizes steep shear layer gradients |
+
+### What Makes This Case Interesting
+
+This demonstrates a classical hydrodynamic instability with inlet/outlet
+boundary conditions (rather than periodic). The energy equation is repurposed
+as a passive scalar tracer — T acts as a dye that is advected by the flow
+without affecting it. The initial tanh profile and sinusoidal perturbation
+are set through MOOSE functions referenced directly by the NavierStokesFV
+action's `initial_velocity` and `initial_temperature` parameters.
+
+### Expected Results
+
+The shear layer rolls up into vortex structures that grow over time.
+The passive scalar contours show billow formation at t ~ 0.5-1.0 and
+continued evolution through t = 2.0. Average temperature remains at
+~0.5 (scalar conservation). max(vel_y) grows as the perturbation amplifies.
+
+---
+
+## Case 39: Blasius Boundary Layer — Flat Plate Laminar Flow
+
+### Physics
+
+The laminar boundary layer over a flat plate follows the Blasius similarity
+solution (Rieutord Ch 4, Sec 4.3). Uniform flow U = 1 enters from the left
+and encounters a no-slip wall at y = 0, creating a growing viscous shear
+layer:
+
+```
+delta_99(x) = 5.0 * sqrt(mu * x / (rho * U))
+```
+
+The velocity profile u/U collapses onto the universal Blasius function
+f'(eta) when plotted against eta = y*sqrt(U/(nu*x)). Key results:
+f''(0) = 0.332, C_f = 0.664/sqrt(Re_x).
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `[Modules/NavierStokesFV]` | Incompressible FV NS, steady state, no energy equation |
+| `GeneratedMeshGenerator` with `bias_y = 0.5` | Wall-refined mesh (more cells near y = 0) |
+| `inlet_boundaries` / `outlet_boundaries` | Uniform inflow, pressure outlet |
+| `wall_boundaries` (no-slip) + `slip` top | Flat plate at y = 0, free-stream at top |
+| `PointValue` postprocessors | Sample velocity at specific stations along the plate |
+
+### What Makes This Case Interesting
+
+This is the first steady-state FV Navier-Stokes case with a non-trivial
+spatial structure. The biased mesh (bias_y = 0.5) concentrates cells near
+the wall where velocity gradients are steepest. Velocity profiles at
+multiple x-stations should collapse onto the self-similar Blasius solution
+when normalized by the local boundary layer thickness.
+
+### Expected Results
+
+The streamwise velocity contour shows the boundary layer growing along
+the plate. Velocity profiles at x = 0.5, 1.0, and 1.5 show the
+characteristic S-shaped profile transitioning from u = 0 at the wall to
+u = U in the free stream. The boundary layer thickness at x = 2 is
+delta_99 ~ 0.5 for Re_L = 400.
+
+---
+
+## Case 40: Turbulent Channel Flow — RANS k-epsilon Model
+
+### Physics
+
+Fully-developed turbulent flow in a 2D channel with RANS k-epsilon closure
+and wall functions (Rieutord Ch 9, Sec 9.8). The mean velocity profile
+follows the log-law of the wall:
+
+```
+u+ = (1/kappa) * ln(y+) + B,   kappa = 0.41, B = 5.2
+```
+
+The k-epsilon model solves two additional transport equations for turbulent
+kinetic energy (TKE) and its dissipation rate (TKED), which together
+determine the turbulent viscosity mu_t = rho*C_mu*k^2/epsilon.
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `MooseLinearVariableFVReal` | Linear FV variables: vel_x, vel_y, pressure, TKE, TKED |
+| `SIMPLE` executioner | Segregated pressure-velocity coupling algorithm |
+| `LinearWCNSFVMomentumFlux` | Momentum advection and diffusion |
+| `LinearFVTKESourceSink` / `LinearFVTKEDSourceSink` | k-epsilon production and destruction |
+| `kEpsilonViscosityAux` | Computes mu_t from k and epsilon fields |
+| `LinearFVTurbulentViscosityWallFunctionBC` | Wall-function boundary conditions |
+| `RhieChowMassFlux` | Pressure-velocity coupling in the mass equation |
+
+### What Makes This Case Interesting
+
+This is the only case using the SIMPLE segregated solver and linear FV
+variables. Unlike Newton-coupled systems (Cases 15-16), each equation is
+solved independently and iterated to convergence. The k-epsilon turbulence
+model with wall functions is the industry-standard RANS approach. The
+stitched mesh uses two blocks with opposing y-bias for wall refinement
+on both channel walls.
+
+### Expected Results
+
+The SIMPLE solver converges in ~340 iterations. The centerline velocity
+is approximately 1.1 * U_bulk (bulk velocity = 1), consistent with fully
+developed turbulent channel flow. The velocity profile shows the
+characteristic blunt shape of turbulent flow (much flatter than laminar
+parabolic). TKE peaks near the walls and is lowest at the centerline.
+
+---
+
+## Case 41: Rayleigh-Taylor Instability — Heavy over Light
+
+### Physics
+
+A heavy fluid sitting atop a light fluid in a gravitational field is
+inherently unstable (Rieutord Ch 6, Sec 6.3). A small perturbation at the
+interface grows into mushroom-shaped fingers as the heavy fluid sinks
+through the light fluid. The Boussinesq approximation uses temperature as
+a density marker:
+
+```
+rho_eff = rho * (1 - alpha*(T - T_ref))
+```
+
+With alpha = 1, T_ref = 0.5: T = 0 (cold, heavy) on top, T = 1 (hot,
+light) on bottom. The initial interface at y = 1 is perturbed by a
+sinusoidal displacement.
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `[Modules/NavierStokesFV]` | Incompressible FV NS with Boussinesq buoyancy and energy |
+| `ParsedFunction` (tanh interface IC) | Smooth initial density step at y = 1 |
+| `ParsedFunction` (cosine perturbation) | Seeds the single-mode RT instability |
+| `wall_boundaries` (all no-slip) | Confines the instability in a closed box |
+| `IterationAdaptiveDT` | Adaptive timestepping as fingers accelerate |
+
+### What Makes This Case Interesting
+
+This case demonstrates a Rayleigh-Taylor instability in a tall domain
+[0,1] x [0,2] with 25 x 50 elements. The initial condition combines a
+tanh density step with a sinusoidal perturbation, seeding a single-mode
+instability. The Boussinesq buoyancy drives the heavy fluid downward and
+light fluid upward, creating the classic mushroom-finger morphology.
+
+### Expected Results
+
+max(vel_y) grows from ~0.03 at early times to ~0.33 at t = 3 as the RT
+fingers develop. avg(T) remains at 0.5 throughout (scalar conservation).
+The temperature contour snapshots at t = 0, 1, 2, 3 show progressive
+development of the mushroom-shaped instability pattern.
+
+---
+
+## Case 42: Sod Shock Tube — 1D Riemann Problem
+
+### Physics
+
+A membrane at x = 0.5 separates high-pressure gas (left) from low-pressure
+gas (right). At t = 0 the membrane bursts, producing three distinct waves:
+a leftward rarefaction fan, a rightward contact discontinuity, and a
+rightward shock wave (Rieutord Ch 5, Sec 5.5). The Rankine-Hugoniot jump
+conditions govern the shock speed and post-shock state:
+
+```
+Left state:   rho = 1.0,   p = 1.0,   u = 0
+Right state:  rho = 0.125, p = 0.1,   u = 0
+gamma = 1.4 (ideal diatomic gas)
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `CNSFVMassHLLC`, `CNSFVMomentumHLLC`, `CNSFVFluidEnergyHLLC` | HLLC Riemann flux splitting for compressible Euler equations |
+| `FVTimeKernel` | Time derivative of conservative variables (rho, rho*u, rho*E) |
+| `ExplicitSSPRungeKutta` (order 2) | Explicit time integration for hyperbolic system |
+| `IdealGasFluidProperties` | Equation of state: p = (gamma-1)*rho*e |
+| `ConservedVarValuesMaterial` | Converts conservative to primitive variables |
+| `AuxVariables` (pressure, vel_x) | Post-processes primitive fields from conservative variables |
+
+### What Makes This Case Interesting
+
+This is the only compressible flow case. Unlike the incompressible FV NS
+cases (Cases 15-16, 37-41), it solves the conservative Euler equations
+using HLLC flux splitting and an explicit Runge-Kutta time integrator —
+there is no nonlinear Newton solve. The Sod shock tube is the benchmark
+problem for validating any compressible flow solver against an exact
+analytical solution.
+
+### Expected Results
+
+At t = 0.2: shock at x ~ 0.85, contact discontinuity at x ~ 0.69,
+rarefaction fan spanning x ~ 0.26 to 0.49. Total mass is conserved
+exactly (0.5625). The density profile shows all three wave structures
+cleanly resolved on the 200-cell mesh.
+
+---
+
+## Case 43: Ekman Spiral — Rotating Boundary Layer
+
+### Physics
+
+Steady viscous flow near a wall in a rotating frame produces the Ekman
+spiral (Rieutord Ch 8, Sec 8.4). The Coriolis force couples the x and y
+velocity components, causing the velocity vector to rotate through the
+boundary layer of thickness delta_E = sqrt(nu/Omega):
+
+```
+nu * d²vx/dz² + 2*Omega*vy = 0
+nu * d²vy/dz² - 2*Omega*vx = -2*Omega*U_g
+```
+
+The analytical solution is:
+vx(z) = U_g*(1 - exp(-z/delta_E)*cos(z/delta_E)),
+vy(z) = U_g*exp(-z/delta_E)*sin(z/delta_E).
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `ADMatDiffusion` | Viscous diffusion nu*d²/dz² for both vx and vy |
+| `CoupledForce` (coef = +2*Omega for vx, -2*Omega for vy) | Coriolis cross-coupling between velocity components |
+| `BodyForce` (value = 2*Omega*U_g) | Geostrophic pressure gradient driving the flow |
+| `DirichletBC` | No-slip at wall (z=0), geostrophic flow at z_max |
+| `PointValue` at z = delta_E | Validates against analytical vx = 0.801, vy = 0.310 |
+
+### What Makes This Case Interesting
+
+This returns to the coupled scalar PDE pattern of Case 9, but now the
+coupling has physical meaning: Coriolis acceleration in a rotating reference
+frame. The careful derivation of CoupledForce signs (documented in the input
+file) illustrates how MOOSE's residual conventions determine the coefficient
+values. The Ekman hodograph (vy vs vx) traces a beautiful spiral from
+(0, 0) at the wall to (U_g, 0) in the geostrophic interior.
+
+### Expected Results
+
+The solver converges in a single Newton iteration (linear problem). Computed
+values match the analytical Ekman solution to 3 significant figures:
+vx(delta_E) = 0.801, vy(delta_E) = 0.310, max(vy) = 0.322 at
+z = pi/4 * delta_E = 0.0785.
+
+---
+
+## Case 44: Alfven Wave Propagation — MHD Elsasser Variables
+
+### Physics
+
+A transverse MHD wave propagates in a conducting fluid with a background
+magnetic field B_0 (Rieutord Ch 10, Sec 10.4). Using Elsasser variables
+d+ = vy + by/sqrt(mu_0*rho) and d- = vy - by/sqrt(mu_0*rho), the MHD
+equations decouple into two advection-diffusion equations:
+
+```
+d(d+)/dt + v_A * d(d+)/dx = D_eff * d²(d+)/dx²
+d(d-)/dt - v_A * d(d-)/dx = D_eff * d²(d-)/dx²
+```
+
+A Gaussian pulse in d+ propagates rightward at the Alfven speed v_A while
+d- remains identically zero.
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `ADTimeDerivative` | d(d±)/dt |
+| `ADConservativeAdvection` | Alfven wave advection ±v_A * d(d±)/dx |
+| `ADMatDiffusion` | Resistive/viscous dissipation D_eff * d²(d±)/dx² |
+| `ADGenericConstantVectorMaterial` | Advection velocity vectors (+v_A, 0, 0) and (-v_A, 0, 0) |
+| `ElementExtremeValue` | Peak tracking for d+ decay and d- baseline |
+
+### What Makes This Case Interesting
+
+This is the final case in the series and the first to touch magnetohydrodynamics.
+The Elsasser decomposition reduces the vector MHD system to two decoupled
+advection-diffusion equations — the same pattern as Case 36 (soliton pulse)
+but now with two fields advecting in opposite directions. The rightward d+
+pulse propagates and diffusively decays while d- remains exactly zero,
+confirming the clean decoupling of the Elsasser variables.
+
+### Expected Results
+
+The d+ Gaussian peak propagates rightward at v_A = 1.0, reaching x = 9 at
+t = 6. Its amplitude decays as 1/sqrt(1 + 4*D*t/w^2) due to diffusion —
+from 1.0 at t = 0 to ~0.36 at t = 6. d- stays at machine-zero throughout,
+confirming perfect decoupling. Total integral of d+ decays monotonically
+(diffusive dissipation).
+
+---
+
 ## Troubleshooting Common Errors
 
 **Error: `Object 'Diffusion' was not registered`**
@@ -4351,7 +4716,7 @@ variable name (e.g., `u` or `T`) using the dropdown in the toolbar.
 
 ## Next Steps
 
-After completing these 36 cases:
+After completing these 44 cases:
 
 1. **Read the MOOSE documentation** at https://mooseframework.inl.gov for
    complete reference documentation on every object type.
@@ -4363,6 +4728,7 @@ After completing these 36 cases:
 3. **Write your own application**: Use `moose/scripts/stork.py` to scaffold
    a new MOOSE application with custom kernels, materials, and BCs.
 
-4. **Explore more module features**: Cases 14-36 introduce the major physics
-   modules. Each module has many more capabilities — consult the
-   [Modules Reference](modules-reference.md) for full details.
+4. **Explore more module features**: Cases 14-44 introduce the major physics
+   modules — from solid mechanics and heat transfer through Navier-Stokes,
+   electrodynamics, and MHD. Each module has many more capabilities — consult
+   the [Modules Reference](modules-reference.md) for full details.

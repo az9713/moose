@@ -1,5 +1,5 @@
 """
-MOOSE Quick-Start: Visualization Script for All 36 Cases
+MOOSE Quick-Start: Visualization Script for All 44 Cases
 =========================================================
 Generates 2-3 plots per case and saves each PNG into that case's own directory.
 For example, Case 01's plot is written to case01-1d-steady-diffusion/case01_diffusion_1d.png.
@@ -105,6 +105,14 @@ CASE_DIRS = {
     "34": "case34-thermal-noise",
     "35": "case35-dispersive-pulse",
     "36": "case36-soliton-pulse",
+    "37": "case37-rayleigh-benard",
+    "38": "case38-kelvin-helmholtz",
+    "39": "case39-blasius-boundary-layer",
+    "40": "case40-turbulent-channel",
+    "41": "case41-rayleigh-taylor",
+    "42": "case42-sod-shock-tube",
+    "43": "case43-ekman-spiral",
+    "44": "case44-alfven-wave",
 }
 
 
@@ -2230,6 +2238,472 @@ def plot_case36():
     save_fig(fig, "36", "case36_soliton_pulse.png")
 
 
+def plot_case37():
+    """Case 37: Rayleigh-Benard Convection Onset"""
+    print("Case 37: Rayleigh-Benard Convection")
+    efile = case_path("37", "case37_rayleigh_benard_out.e")
+    cfile = case_path("37", "case37_rayleigh_benard_out.csv")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case37")
+        return
+
+    ds = open_exodus(efile)
+    times = get_times(ds)
+    names = get_elem_var_names(ds)
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.5))
+    fig.suptitle("Case 37: Rayleigh-Benard Convection (Rieutord Ch 7)", fontsize=FONT_TITLE)
+
+    # Left: T_fluid contour at final time
+    T_idx = names.index("T_fluid") + 1
+    cx, cy = get_elem_centroids_2d(ds)
+    T_final = get_elem_var(ds, T_idx, timestep=-1)
+    tcf = axes[0].tricontourf(cx, cy, T_final, levels=20, cmap=CMAP_TEMP)
+    plt.colorbar(tcf, ax=axes[0], label="T")
+    axes[0].set_xlabel("x")
+    axes[0].set_ylabel("y")
+    axes[0].set_title("Temperature (final)")
+    axes[0].set_aspect("equal")
+    ds.close()
+
+    # Right: velocity and T time series from CSV
+    if file_exists(cfile):
+        csv_data = read_csv(cfile)
+        t = csv_data["time"]
+        axes[1].plot(t, csv_data.get("max_vel_y", [0]*len(t)), "b-", label="max(vel_y)")
+        axes[1].plot(t, csv_data.get("avg_T", [0]*len(t)), "r--", label="avg(T)")
+        axes[1].set_xlabel("Time")
+        axes[1].set_ylabel("Value")
+        axes[1].legend()
+        axes[1].set_title("Convection Onset Diagnostics")
+        axes[1].grid(True, alpha=0.3)
+
+    fig.tight_layout()
+    save_fig(fig, "37", "case37_rayleigh_benard.png")
+
+
+def plot_case38():
+    """Case 38: Kelvin-Helmholtz Instability"""
+    print("Case 38: Kelvin-Helmholtz Instability")
+    efile = case_path("38", "case38_kelvin_helmholtz_out.e")
+    cfile = case_path("38", "case38_kelvin_helmholtz_out.csv")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case38")
+        return
+
+    ds = open_exodus(efile)
+    times = get_times(ds)
+    names = get_elem_var_names(ds)
+    T_idx = names.index("T_fluid") + 1
+    cx, cy = get_elem_centroids_2d(ds)
+
+    snap_times = [0.0, 0.5, 1.0, 1.5]
+    fig, axes = plt.subplots(2, 2, figsize=(12, 6))
+    fig.suptitle("Case 38: Kelvin-Helmholtz Instability (Rieutord Ch 6)", fontsize=FONT_TITLE)
+
+    for i, st in enumerate(snap_times):
+        ax = axes[i // 2][i % 2]
+        ti = find_closest_timestep(times, st)
+        T = get_elem_var(ds, T_idx, timestep=ti)
+        tcf = ax.tricontourf(cx, cy, T, levels=20, cmap=CMAP_TEMP)
+        ax.set_title(f"t = {times[ti]:.2f}")
+        ax.set_aspect("equal")
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+    ds.close()
+
+    fig.tight_layout()
+    save_fig(fig, "38", "case38_kelvin_helmholtz.png")
+
+
+def plot_case39():
+    """Case 39: Blasius Boundary Layer"""
+    print("Case 39: Blasius Boundary Layer")
+    efile = case_path("39", "case39_blasius_boundary_layer_out.e")
+    cfile = case_path("39", "case39_blasius_boundary_layer_out.csv")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case39")
+        return
+
+    ds = open_exodus(efile)
+    names = get_elem_var_names(ds)
+    vel_x_idx = names.index("vel_x") + 1
+    cx, cy = get_elem_centroids_2d(ds)
+    vel_x = get_elem_var(ds, vel_x_idx, timestep=-1)
+    ds.close()
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.5))
+    fig.suptitle("Case 39: Blasius Boundary Layer (Rieutord Ch 4)", fontsize=FONT_TITLE)
+
+    # Left: vel_x contour
+    tcf = axes[0].tricontourf(cx, cy, vel_x, levels=20, cmap=CMAP_SCALAR)
+    plt.colorbar(tcf, ax=axes[0], label="vel_x")
+    axes[0].set_xlabel("x")
+    axes[0].set_ylabel("y")
+    axes[0].set_title("Streamwise Velocity")
+    axes[0].set_aspect("equal")
+
+    # Right: velocity profiles at x=0.5, 1.0, 1.5 compared to Blasius
+    mu, rho, U = 0.005, 1.0, 1.0
+    for x_station in [0.5, 1.0, 1.5]:
+        mask = np.abs(cx - x_station) < 0.04
+        if np.sum(mask) > 2:
+            y_prof = cy[mask]
+            u_prof = vel_x[mask]
+            order = np.argsort(y_prof)
+            axes[1].plot(u_prof[order] / U, y_prof[order],
+                         label=f"x={x_station}")
+    axes[1].set_xlabel("u / U")
+    axes[1].set_ylabel("y")
+    axes[1].set_title("Velocity Profiles at x-stations")
+    axes[1].legend()
+    axes[1].grid(True, alpha=0.3)
+    axes[1].set_xlim(-0.1, 1.2)
+
+    fig.tight_layout()
+    save_fig(fig, "39", "case39_blasius_boundary_layer.png")
+
+
+def plot_case40():
+    """Case 40: Turbulent Channel Flow k-epsilon"""
+    print("Case 40: Turbulent Channel Flow")
+    efile = case_path("40", "case40_turbulent_channel_out.e")
+    cfile = case_path("40", "case40_turbulent_channel_out.csv")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case40")
+        return
+
+    ds = open_exodus(efile)
+    names = get_elem_var_names(ds)
+    vel_x_idx = names.index("vel_x") + 1
+
+    # Multi-block mesh: try both blocks
+    try:
+        cx1, cy1 = get_elem_centroids_2d(ds, block=1)
+        vx1 = get_elem_var(ds, vel_x_idx, block=1, timestep=-1)
+        cx2, cy2 = get_elem_centroids_2d(ds, block=2)
+        vx2 = get_elem_var(ds, vel_x_idx, block=2, timestep=-1)
+        cx = np.concatenate([cx1, cx2])
+        cy = np.concatenate([cy1, cy2])
+        vel_x = np.concatenate([vx1, vx2])
+    except Exception:
+        cx, cy = get_elem_centroids_2d(ds)
+        vel_x = get_elem_var(ds, vel_x_idx, timestep=-1)
+    ds.close()
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.5))
+    fig.suptitle("Case 40: Turbulent Channel (k-epsilon, Rieutord Ch 9)", fontsize=FONT_TITLE)
+
+    # Left: vel_x contour
+    tcf = axes[0].tricontourf(cx, cy, vel_x, levels=20, cmap=CMAP_SCALAR)
+    plt.colorbar(tcf, ax=axes[0], label="vel_x")
+    axes[0].set_xlabel("x")
+    axes[0].set_ylabel("y")
+    axes[0].set_title("Streamwise Velocity")
+
+    # Right: velocity profile at outlet (x ~ 0.9*L)
+    x_outlet = 0.9 * 30
+    mask = np.abs(cx - x_outlet) < 2.0
+    if np.sum(mask) > 2:
+        y_prof = cy[mask]
+        u_prof = vel_x[mask]
+        order = np.argsort(y_prof)
+        axes[1].plot(u_prof[order], y_prof[order], "b-o", markersize=3)
+    axes[1].set_xlabel("vel_x")
+    axes[1].set_ylabel("y")
+    axes[1].set_title("Mean Velocity Profile (x = 27)")
+    axes[1].grid(True, alpha=0.3)
+    axes[1].axhline(0, color="gray", ls="--", alpha=0.3)
+
+    fig.tight_layout()
+    save_fig(fig, "40", "case40_turbulent_channel.png")
+
+
+def plot_case41():
+    """Case 41: Rayleigh-Taylor Instability"""
+    print("Case 41: Rayleigh-Taylor Instability")
+    efile = case_path("41", "case41_rayleigh_taylor_out.e")
+    cfile = case_path("41", "case41_rayleigh_taylor_out.csv")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case41")
+        return
+
+    ds = open_exodus(efile)
+    times = get_times(ds)
+    names = get_elem_var_names(ds)
+    T_idx = names.index("T_fluid") + 1
+    cx, cy = get_elem_centroids_2d(ds)
+
+    snap_times = [0.0, 1.0, 2.0, 3.0]
+    fig, axes = plt.subplots(1, 4, figsize=(14, 5))
+    fig.suptitle("Case 41: Rayleigh-Taylor Instability (Rieutord Ch 6)", fontsize=FONT_TITLE)
+
+    for i, st in enumerate(snap_times):
+        ti = find_closest_timestep(times, st)
+        T = get_elem_var(ds, T_idx, timestep=ti)
+        tcf = axes[i].tricontourf(cx, cy, T, levels=20, cmap=CMAP_TEMP)
+        axes[i].set_title(f"t = {times[ti]:.1f}")
+        axes[i].set_aspect("equal")
+        axes[i].set_xlabel("x")
+        if i == 0:
+            axes[i].set_ylabel("y")
+    ds.close()
+
+    fig.tight_layout()
+    save_fig(fig, "41", "case41_rayleigh_taylor.png")
+
+
+def plot_case43():
+    """Case 43: Ekman Spiral — Rotating Boundary Layer"""
+    print("Case 43: Ekman Spiral")
+    efile = case_path("43", "case43_ekman_spiral_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case43")
+        return
+
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    names = get_nod_var_names(ds)
+    vx_idx = names.index("vx") + 1
+    vy_idx = names.index("vy") + 1
+
+    vx = get_nod_var(ds, vx_idx, timestep=-1)
+    vy = get_nod_var(ds, vy_idx, timestep=-1)
+    ds.close()
+
+    # x-coordinate represents z (vertical through the Ekman layer)
+    # Take nodes near the middle of the dummy y-dimension
+    mid = nodes_near_y(y, 0.005, tol=0.006)
+    z_vals = x[mid]
+    vx_vals = vx[mid]
+    vy_vals = vy[mid]
+    order = np.argsort(z_vals)
+    z_s = z_vals[order]
+    vx_s = vx_vals[order]
+    vy_s = vy_vals[order]
+
+    # Analytical solution: Ekman spiral
+    delta_E = 0.1  # sqrt(nu / Omega) = sqrt(0.01/1.0)
+    U_g = 1.0
+    z_an = np.linspace(0, 0.7, 300)
+    vx_an = U_g * (1 - np.exp(-z_an / delta_E) * np.cos(z_an / delta_E))
+    vy_an = U_g * np.exp(-z_an / delta_E) * np.sin(z_an / delta_E)
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    fig.suptitle("Case 43: Ekman Spiral (Rieutord Ch 8)", fontsize=FONT_TITLE)
+
+    # Left: vx and vy profiles vs z with analytical overlay
+    axes[0].plot(z_s, vx_s, "b-", linewidth=1.8, label="vx (MOOSE)")
+    axes[0].plot(z_an, vx_an, "b--", linewidth=1.0, alpha=0.7, label="vx (analytical)")
+    axes[0].plot(z_s, vy_s, "r-", linewidth=1.8, label="vy (MOOSE)")
+    axes[0].plot(z_an, vy_an, "r--", linewidth=1.0, alpha=0.7, label="vy (analytical)")
+    axes[0].axhline(y=U_g, color="gray", ls=":", alpha=0.5, label=f"U_g = {U_g}")
+    axes[0].axvline(x=delta_E, color="gray", ls=":", alpha=0.5)
+    axes[0].text(delta_E + 0.01, 0.05, r"$\delta_E$", fontsize=10, color="gray")
+    axes[0].set_xlabel("z (height)")
+    axes[0].set_ylabel("Velocity")
+    axes[0].set_title("Ekman Layer Profiles")
+    axes[0].legend(fontsize=9)
+    axes[0].grid(True, alpha=0.3)
+
+    # Right: Ekman spiral (hodograph) — vy vs vx
+    axes[1].plot(vx_s, vy_s, "b-o", markersize=2, linewidth=1.2, label="MOOSE")
+    axes[1].plot(vx_an, vy_an, "r--", linewidth=1.0, alpha=0.7, label="Analytical")
+    axes[1].plot(U_g, 0, "k*", markersize=10, label="Geostrophic (U_g, 0)")
+    axes[1].plot(0, 0, "ks", markersize=6, label="Wall (0, 0)")
+    axes[1].set_xlabel("vx")
+    axes[1].set_ylabel("vy")
+    axes[1].set_title("Ekman Spiral (Hodograph)")
+    axes[1].legend(fontsize=9)
+    axes[1].grid(True, alpha=0.3)
+    axes[1].set_aspect("equal")
+
+    fig.tight_layout()
+    save_fig(fig, "43", "case43_ekman_spiral.png")
+
+
+def plot_case44():
+    """Case 44: Alfven Wave Propagation — Elsasser Variables"""
+    print("Case 44: Alfven Wave Propagation")
+    efile = case_path("44", "case44_alfven_wave_out.e")
+    cfile = case_path("44", "case44_alfven_wave_out.csv")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case44")
+        return
+
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    times = get_times(ds)
+    names = get_nod_var_names(ds)
+    dp_idx = names.index("d_plus") + 1
+    dm_idx = names.index("d_minus") + 1
+
+    # Quasi-1D: take nodes near y midplane
+    mid = nodes_near_y(y, 0.06, tol=0.07)
+
+    snap_times = [0.0, 2.0, 4.0, 6.0]
+    colors = ["blue", "green", "orange", "red"]
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.5))
+    fig.suptitle("Case 44: Alfven Wave Propagation (Rieutord Ch 10)", fontsize=FONT_TITLE)
+
+    # Left: d+ profiles at multiple times
+    for i, st in enumerate(snap_times):
+        ti = find_closest_timestep(times, st)
+        dp = get_nod_var(ds, dp_idx, timestep=ti)
+        xm = x[mid]
+        dpm = dp[mid]
+        order = np.argsort(xm)
+        axes[0].plot(xm[order], dpm[order], color=colors[i], linewidth=1.2,
+                     label=f"t={times[ti]:.1f}")
+
+    # Overlay analytical Gaussian: peak at x = 3 + v_A*t, amplitude decays
+    v_A, w, D = 1.0, 0.5, 0.01
+    x_an = np.linspace(0, 12, 500)
+    for i, st in enumerate(snap_times):
+        sigma2 = w**2 / 4 + D * st
+        amp = (w**2 / 4 / (w**2 / 4 + D * st))**0.5
+        g = amp * np.exp(-(x_an - 3 - v_A * st)**2 / (4 * sigma2))
+        axes[0].plot(x_an, g, color=colors[i], ls="--", alpha=0.5, linewidth=0.8)
+
+    axes[0].set_xlabel("x")
+    axes[0].set_ylabel("d+")
+    axes[0].legend(fontsize=9)
+    axes[0].set_title("d+ Profiles (solid=MOOSE, dashed=analytical)")
+    axes[0].grid(True, alpha=0.3)
+
+    ds.close()
+
+    # Right: time series from CSV
+    if file_exists(cfile):
+        csv_data = read_csv(cfile)
+        t = csv_data["time"]
+        axes[1].plot(t, csv_data.get("max_d_plus", [0]*len(t)), "b-", linewidth=1.5,
+                     label="max(d+)")
+        axes[1].plot(t, csv_data.get("max_d_minus", [0]*len(t)), "r-", linewidth=1.5,
+                     label="max(d-)")
+        # Analytical peak decay
+        t_an = np.linspace(0, 6, 200)
+        amp_an = (w**2 / 4 / (w**2 / 4 + D * t_an))**0.5
+        axes[1].plot(t_an, amp_an, "b--", alpha=0.5, label="Analytical decay")
+        axes[1].set_xlabel("Time")
+        axes[1].set_ylabel("Peak amplitude")
+        axes[1].legend(fontsize=9)
+        axes[1].set_title("Peak Amplitudes vs Time")
+        axes[1].grid(True, alpha=0.3)
+
+    fig.tight_layout()
+    save_fig(fig, "44", "case44_alfven_wave.png")
+
+
+def plot_case42():
+    """Case 42: Sod Shock Tube — 1D Riemann Problem"""
+    print("Case 42: Sod Shock Tube")
+    efile = case_path("42", "case42_sod_shock_tube_out.e")
+    cfile = case_path("42", "case42_sod_shock_tube_out.csv")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case42")
+        return
+
+    ds = open_exodus(efile)
+    x = np.array(ds.variables["coordx"][:], dtype=float)
+    times = get_times(ds)
+
+    # FV variables are element-centered; reconstruct cell centroids from node coords.
+    # For a uniform 1D mesh the centroid of element i is the midpoint of its two nodes.
+    conn = ds.variables["connect1"][:] - 1  # shape (n_elem, 2), 0-based
+    cx = 0.5 * (x[conn[:, 0]] + x[conn[:, 1]])  # element centroid x-coordinates
+
+    elem_names = get_elem_var_names(ds)
+
+    def get_field(name):
+        """Return element field array at the final timestep."""
+        idx = elem_names.index(name) + 1
+        return get_elem_var(ds, idx, block=1, timestep=-1)
+
+    def get_field_at(name, ti):
+        """Return element field array at timestep index ti."""
+        idx = elem_names.index(name) + 1
+        return get_elem_var(ds, idx, block=1, timestep=ti)
+
+    order = np.argsort(cx)
+    cx_s = cx[order]
+
+    # Snapshot times to overlay on density profile plot
+    snap_times = [0.0, 0.05, 0.10, 0.20]
+    colors = ["steelblue", "forestgreen", "darkorange", "crimson"]
+
+    fig, axes = plt.subplots(1, 2, figsize=(13, 5))
+    fig.suptitle("Case 42: Sod Shock Tube — 1D Riemann Problem", fontsize=FONT_TITLE)
+
+    # Left panel: density profiles at multiple times
+    for snap_t, col in zip(snap_times, colors):
+        ti = find_closest_timestep(times, snap_t)
+        rho = get_field_at("rho", ti)[order]
+        axes[0].plot(cx_s, rho, color=col, linewidth=1.4, label=f"t={times[ti]:.2f}")
+
+    # Mark wave positions at t=0.2 with vertical dashed lines
+    axes[0].axvline(x=0.26, color="gray", linestyle=":", linewidth=0.8, alpha=0.7)
+    axes[0].axvline(x=0.49, color="gray", linestyle=":", linewidth=0.8, alpha=0.7)
+    axes[0].axvline(x=0.69, color="gray", linestyle="--", linewidth=0.8, alpha=0.7)
+    axes[0].axvline(x=0.85, color="gray", linestyle="-.", linewidth=0.8, alpha=0.7)
+    axes[0].text(0.275, 0.88, "raref.", fontsize=8, color="gray",
+                 transform=axes[0].get_xaxis_transform())
+    axes[0].text(0.695, 0.88, "contact", fontsize=8, color="gray",
+                 transform=axes[0].get_xaxis_transform())
+    axes[0].text(0.855, 0.88, "shock", fontsize=8, color="gray",
+                 transform=axes[0].get_xaxis_transform())
+
+    axes[0].set_xlabel("x")
+    axes[0].set_ylabel("Density (rho)")
+    axes[0].set_title("Density Profiles at t = 0, 0.05, 0.10, 0.20")
+    axes[0].legend(loc="upper right", fontsize=9)
+    axes[0].grid(True, alpha=0.3)
+    axes[0].set_xlim(0, 1)
+
+    ds.close()
+
+    # Right panel: postprocessor time series from CSV
+    if file_exists(cfile):
+        csv_data = read_csv(cfile)
+        t = csv_data["time"]
+        max_rho = csv_data.get("max_rho", [])
+        min_rho = csv_data.get("min_rho", [])
+        total_mass = csv_data.get("total_mass", [])
+
+        ax2 = axes[1]
+        if max_rho:
+            ax2.plot(t, max_rho, "b-", linewidth=1.4, label="max(rho)")
+        if min_rho:
+            ax2.plot(t, min_rho, "r-", linewidth=1.4, label="min(rho)")
+        if total_mass:
+            # Normalise total mass to its initial value so it plots near 1.0
+            m0 = total_mass[0] if total_mass[0] != 0 else 1.0
+            ax2.plot(t, [m / m0 for m in total_mass], "g--", linewidth=1.4,
+                     label="total mass / m\u2080")
+
+        ax2.axhline(y=1.0, color="gray", linestyle=":", linewidth=0.8, alpha=0.6)
+        ax2.set_xlabel("Time")
+        ax2.set_ylabel("Value")
+        ax2.set_title("Density Extremes and Mass Conservation")
+        ax2.legend(fontsize=9)
+        ax2.grid(True, alpha=0.3)
+    else:
+        axes[1].text(0.5, 0.5, "CSV not found", ha="center", va="center",
+                     transform=axes[1].transAxes)
+
+    fig.tight_layout()
+    save_fig(fig, "42", "case42_sod_shock_tube.png")
+
+
 # ---------------------------------------------------------------------------
 # Main driver
 # ---------------------------------------------------------------------------
@@ -2271,12 +2745,20 @@ CASE_FUNCTIONS = [
     ("34", plot_case34),
     ("35", plot_case35),
     ("36", plot_case36),
+    ("37", plot_case37),
+    ("38", plot_case38),
+    ("39", plot_case39),
+    ("40", plot_case40),
+    ("41", plot_case41),
+    ("42", plot_case42),
+    ("43", plot_case43),
+    ("44", plot_case44),
 ]
 
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("MOOSE Quick-Start Visualization — All 36 Cases")
+    print("MOOSE Quick-Start Visualization — All 44 Cases")
     print("=" * 60)
     print(f"Script directory: {SCRIPT_DIR}")
     print("Plots will be saved into each case subdirectory.\n")
