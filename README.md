@@ -4,7 +4,7 @@
 >
 > This repo **does not include the MOOSE source codes**. Instead, it supplements the original
 > repository with **comprehensive documentation and worked examples** designed to help new users
-> learn the framework from scratch. The 21 progressive quickstart cases are fully explained — from
+> learn the framework from scratch. The 29 progressive quickstart cases are fully explained — from
 > the physics and governing equations, through the input file structure, to interpreting the
 > simulation results — so that users can learn how to set up their own simulations and understand
 > the output without any external help.
@@ -75,7 +75,7 @@ immediately available to every application that enables that module.
 This repository focuses on **learning materials** for the MOOSE framework:
 
 - **Comprehensive documentation** covering architecture, developer workflows, input-file syntax, and all 29 physics modules
-- **21 progressive quickstart examples** (`quickstart-runs/`) — each with a complete input file, detailed README explaining the physics, and matplotlib visualization of the results
+- **29 progressive quickstart examples** (`quickstart-runs/`) — each with a complete input file, detailed README explaining the physics, and matplotlib visualization of the results
 - **An 8-week study plan** for self-learners going from zero to productive MOOSE developer
 - **Docker instructions** for running MOOSE on Windows without compiling from source
 
@@ -90,7 +90,7 @@ To actually build and run MOOSE simulations, you need the framework itself from 
 | [docs/architecture.md](docs/architecture.md) | System architecture with subsystem diagrams covering the Framework → Modules → Applications hierarchy |
 | [docs/developer-guide.md](docs/developer-guide.md) | Step-by-step C++ developer tutorial: writing Kernels, BCs, Materials, and custom objects |
 | [docs/user-guide.md](docs/user-guide.md) | Simulation user reference covering input-file syntax, all major blocks, and solver options |
-| [docs/quick-start.md](docs/quick-start.md) | 21 worked examples progressing from simple diffusion through transient multiphysics |
+| [docs/quick-start.md](docs/quick-start.md) | 29 worked examples progressing from simple diffusion through transient multiphysics |
 | [docs/zero-to-hero.md](docs/zero-to-hero.md) | 8-week structured study plan for new MOOSE developers |
 | [docs/modules-reference.md](docs/modules-reference.md) | Physics module reference with API summaries and example input files |
 | [docs/docker-guide.md](docs/docker-guide.md) | Running MOOSE on Windows with Docker — installation, volume mounts, MPI |
@@ -101,7 +101,7 @@ The official online documentation lives at **https://mooseframework.inl.gov**.
 
 ## Quickstart Examples
 
-The `quickstart-runs/` directory contains **21 fully worked examples**, each in its own subdirectory with:
+The `quickstart-runs/` directory contains **29 fully worked examples**, each in its own subdirectory with:
 
 - **Input file** (`.i`) — ready to run with `moose_test-opt` or `combined-opt`
 - **Detailed README** — explains the physics, walks through every input-file block, describes the output files, and shows how to interpret the results
@@ -223,6 +223,21 @@ These cases use MOOSE physics modules (`heat_transfer`, `solid_mechanics`, `navi
 </td>
 </tr>
 </table>
+
+### Cases 22-29: Electromagnetic and Electrokinetic Multi-Physics
+
+These cases cover charge transport, magnetic diffusion, induction heating, electrohydrodynamics, and magnetohydrodynamics using the `electromagnetics` and `navier_stokes` modules.
+
+| Case | Title | Physics |
+|---|---|---|
+| [Case 22](quickstart-runs/case22-charge-relaxation) | Charge Relaxation in an Ohmic Medium | Free charge decay in a lossy dielectric |
+| [Case 23](quickstart-runs/case23-magnetic-diffusion) | Magnetic Diffusion into a Conducting Slab | Magnetic field diffusion, eddy currents |
+| [Case 24](quickstart-runs/case24-charge-drift-diffusion) | Charge Drift-Diffusion Between Parallel Plates | Drift-diffusion-recombination, space charge |
+| [Case 25](quickstart-runs/case25-induction-heating) | Induction Heating (Magnetic Diffusion + Heat) | Coupled EM + thermal, Joule heat source |
+| [Case 26](quickstart-runs/case26-ehd-pumping) | EHD Pumping — Coulomb Force Drives Fluid Flow | Electrohydrodynamic body force on fluid |
+| [Case 27](quickstart-runs/case27-mhd-hartmann) | MHD Hartmann Flow — Magnetic Braking | Lorentz force opposing channel flow |
+| [Case 28](quickstart-runs/case28-two-way-joule-heating) | Two-Way Joule Heating (T-Dependent Conductivity) | Fully coupled EM + heat with nonlinear material |
+| [Case 29](quickstart-runs/case29-electroconvection) | Electroconvection — EHD-Enhanced Natural Convection | Charge transport coupled to buoyancy-driven flow |
 
 See [quickstart-runs/README.md](quickstart-runs/README.md) for a comprehensive overview.
 

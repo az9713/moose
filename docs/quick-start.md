@@ -1,8 +1,8 @@
-# MOOSE Quick-Start Guide: 21 Working Examples
+# MOOSE Quick-Start Guide: 29 Working Examples
 
-This guide walks a complete beginner through 21 self-contained MOOSE input files,
+This guide walks a complete beginner through 29 self-contained MOOSE input files,
 from the simplest possible diffusion problem to genuine multi-physics simulations
-using MOOSE's physics modules. Cases 01-13 use only the framework. Cases 14-21
+using MOOSE's physics modules. Cases 01-13 use only the framework. Cases 14-29
 use physics modules (heat_transfer, solid_mechanics, navier_stokes, phase_field,
 porous_flow, electromagnetics) and require `combined-opt`. Read them in order.
 
@@ -2122,9 +2122,9 @@ the adaptive timestep on a log scale.
 
 ---
 
-## Cases 14-21: Advanced Multi-Physics (Module-Based)
+## Cases 14-29: Advanced Multi-Physics (Module-Based)
 
-Cases 14-21 use MOOSE's physics modules and require `combined-opt` (which includes
+Cases 14-29 use MOOSE's physics modules and require `combined-opt` (which includes
 all 25+ modules). If you are on Windows, run them with Docker:
 
 ```bash
@@ -3518,6 +3518,452 @@ disp_x, disp_y, vonmises_stress, stress_xx, stress_yy), `case21_bimetallic_strip
 
 ---
 
+## Case 22: Charge Relaxation in an Ohmic Medium
+
+### Physics
+
+When free electric charge is deposited inside a conducting medium it does not stay
+there — conduction currents sweep it to the surfaces on a characteristic time scale
+called the **charge relaxation time** tau_e = epsilon / sigma (Melcher,
+*Continuum Electromechanics*, MIT Press 1981, §5.9). For a good conductor this time
+is nanoseconds; for a resistive dielectric liquid it can be milliseconds to seconds.
+
+Two coupled equations govern the field problem:
+
+```
+dρ_e/dt + (σ/ε)·ρ_e = 0        (charge relaxation ODE at every point)
+-div(ε·grad(φ))      = ρ_e     (Poisson's equation for the potential)
+```
+
+The first equation has the exact solution rho_e(x,y,t) = rho_e(x,y,0)·exp(−t/tau_e).
+Every spatial point decays at the same rate, so the Gaussian blob initial condition
+simply shrinks in amplitude without changing shape.
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `ADTimeDerivative` | drho_e/dt term in the relaxation equation |
+| `ADReaction` | +(sigma/epsilon)·rho_e linear volumetric decay |
+| `ADHeatConduction` | Repurposed as −div(epsilon·grad(phi)) for Poisson |
+| `ADCoupledForce` | Injects rho_e as source on the RHS of Poisson's equation |
+| `ADGenericConstantMaterial` | Permittivity property read by ADHeatConduction |
+| `SMP full = true` | Builds the full coupled Jacobian (rho_e–phi off-diagonal blocks) |
+
+The HIT top-level variable `sigma_over_eps = 10.0` sets the decay rate in a single
+place. The natural (zero-flux Neumann) condition on rho_e is applied automatically
+when no BC block is provided — the physically correct choice for charge that decays
+in place by Ohmic conduction.
+
+### What Makes This Case Interesting
+
+This case shows that `ADHeatConduction` is a general Laplacian operator, not just a
+"heat" kernel. Mapping `thermal_conductivity -> permittivity` repurposes it for
+Poisson's equation with no new code. It also introduces `ADReaction` as the standard
+pattern for any linear volumetric sink or source term, and demonstrates one-way
+coupling via `ADCoupledForce`.
+
+### Expected Results
+
+Running on a 30x30 mesh from t = 0 to t = 0.5 s (five relaxation times) with
+dt = 0.01 s, the `max_rho_e` postprocessor follows exp(−10·t) precisely. A log-linear
+plot of max_rho_e vs. time is a perfect straight line with slope −10 s⁻¹. The
+electric potential phi mirrors the charge decay at the same exponential rate.
+
+---
+
+## Case 23: Magnetic Diffusion into a Conducting Slab
+
+### Physics
+
+When a magnetic field is suddenly applied to the surface of a conductor, eddy currents
+near the surface shield the interior. The field penetrates progressively deeper over
+time — a process called **magnetic diffusion** (Melcher §6.2–6.3). The governing
+equation is:
+
+```
+∂B/∂t = D_m · ∂²B/∂x²        D_m = 1/(μ₀·σ)   [magnetic diffusivity]
+```
+
+This is mathematically identical to the heat equation. With D_m = 1/(μ₀σ) playing
+the role of thermal diffusivity, the MOOSE setup is a direct reuse of the transient
+diffusion pattern from Cases 3–4. The exact solution for a step-applied surface field
+on a semi-infinite slab is B(x,t) = erfc(x / (2√(D_m·t))), and the penetration
+depth scales as delta ~ 2√(D_m·t).
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `ADTimeDerivative` | ∂B/∂t (magnetic flux density time rate) |
+| `ADMatDiffusion` | D_m·∇²B with diffusivity read from material |
+| `ADGenericConstantMaterial` | Provides `diffusivity = D_m` (AD-compatible) |
+| BoomerAMG preconditioner | Efficient AMG solver for scalar diffusion |
+
+The HIT top-level variable `D_m = 0.01` is referenced by the material block so that
+changing the magnetic diffusivity requires editing one line. A 50x2 mesh on a
+1 m × 0.04 m strip makes the domain quasi-1D while remaining formally 2D.
+
+### What Makes This Case Interesting
+
+The analogy between magnetic diffusion and heat conduction is one of the most useful
+conceptual tools in continuum electromechanics. This case makes the analogy concrete:
+the same MOOSE kernel (`ADMatDiffusion`), the same material (`ADGenericConstantMaterial`),
+and the same boundary conditions produce the correct magnetic field penetration profile.
+The skin-effect physics — exponential penetration with depth — is visible directly in
+the Exodus output.
+
+### Expected Results
+
+The B field advances from the left boundary (B = 1) toward the right (B = 0) following
+the erfc profile. The `avg_B` postprocessor increases from 0 toward the steady-state
+value of 0.5 as flux fills the slab. At t = 5 the analytical average is approximately
+0.108; MOOSE gives approximately 0.107, with the slight underestimate due to backward
+Euler temporal smoothing.
+
+---
+
+## Case 24: Charge Drift-Diffusion Between Parallel Plates
+
+### Physics
+
+Positive ions are injected at the left electrode of a parallel-plate gap and drift
+rightward under an applied electric field while also spreading by Fickian diffusion
+(Melcher §5.5–5.7). The drift-dominated transport at Peclet number Pe = 100 creates a
+near-step charge front that advances at the drift speed v = mu_i·E:
+
+```
+∂ρ_e/∂t + div(v·ρ_e) = D_i·∇²ρ_e        (drift-diffusion, conservative form)
+-div(ε·grad(φ))       = ρ_e              (Poisson's equation)
+```
+
+As charge accumulates it distorts the electric potential away from the linear Laplace
+solution, with a parabolic correction at steady state.
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `ConservativeAdvection` | Conservative div(v·rho_e) with full upwinding |
+| `ADMatDiffusion` | Fickian diffusion D_i·∇²rho_e |
+| `ADHeatConduction` | Poisson equation for the electric potential |
+| `ADCoupledForce` | Charge density as source on Poisson RHS |
+| `GenericConstantVectorMaterial` | Prescribed constant drift velocity vector |
+| `SMP full = true` | Coupled rho_e–phi Jacobian |
+
+Full upwinding (`upwinding_type = full`) is essential at Pe = 100 to prevent spurious
+oscillations at the sharp charge front. The `GenericConstantVectorMaterial` (non-AD)
+supplies the constant velocity vector to the non-AD `ConservativeAdvection` kernel.
+
+### What Makes This Case Interesting
+
+This is the prototype for all self-consistent field transport problems in
+electromechanics, plasma physics, and electrochemistry. Solving Poisson and the
+transport equation simultaneously in one Newton iteration is more robust than operator
+splitting. The case also demonstrates the important distinction between
+drift-dominated and diffusion-dominated regimes through the Peclet number, and
+introduces upwinding as the stabilization strategy for hyperbolic transport.
+
+### Expected Results
+
+The charge front advances at approximately v = 1 m/s, reaching the cathode (x = 1)
+at t ~ 1 s. The `avg_rho` postprocessor rises from 0 toward approximately 0.5 as the
+gap fills. The `phi` field bends away from the linear Laplace solution as space charge
+accumulates; the midpoint potential exceeds the linear-interpolated value by
+approximately 0.125 V at steady state (the parabolic space-charge correction).
+
+---
+
+## Case 25: Induction Heating — Magnetic Diffusion Generates Heat
+
+### Physics
+
+An alternating magnetic field applied to the surface of a conducting slab drives eddy
+currents in the skin-depth layer, and those currents dissipate Joule heat
+(Melcher §6.7–6.8). The two coupled equations are:
+
+```
+∂B/∂t = D_m · ∂²B/∂x²                    (magnetic diffusion)
+ρcp·∂T/∂t = k·∂²T/∂x² + Q_coeff·(∂B/∂x)²  (heat equation with eddy source)
+```
+
+The heating power density Q ~ (∂B/∂x)² is exponentially concentrated within one skin
+depth delta = sqrt(2·D_m/omega) of the surface. With D_m = 0.005 and oscillation
+period tau = 0.5 s, the skin depth is approximately 0.028 m, so interior regions
+(x > 0.1 m) see negligible heating.
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `ADTimeDerivative` + `ADMatDiffusion` | Magnetic diffusion equation for B |
+| `ADHeatConductionTimeDerivative` + `ADHeatConduction` | Transient heat equation for T |
+| `VariableGradientComponent` (AuxKernel) | Extracts ∂B/∂x into a CONSTANT MONOMIAL AuxVariable |
+| `ParsedAux` | Computes Q_coeff·(dBdx)² from the gradient AuxVariable |
+| `CoupledForce` | Injects the eddy heat AuxVariable as a source in the T equation |
+| `ADFunctionDirichletBC` | Oscillating BC: B = sin(2*pi*t/tau) at the left surface |
+
+The AuxVariable pair (`dBdx`, `eddy_heat`) implements the coupling with a one-timestep
+lag: the gradient is extracted and squared at TIMESTEP_END, then used as a forcing
+term at the next step. This lagged pattern avoids a strongly nonlinear system at the
+cost of first-order accuracy in the coupling, which is acceptable for slowly varying
+heating.
+
+### What Makes This Case Interesting
+
+This case introduces the `VariableGradientComponent` + `ParsedAux` pattern for
+extracting derived quantities from primary variable gradients. It also demonstrates
+how two previously independent physics — magnetic diffusion (Case 23) and heat
+conduction (Case 17) — are composed into a genuine multi-physics problem by bridging
+them with AuxVariables, without writing any new C++ code.
+
+### Expected Results
+
+The B field oscillates at the surface with unit amplitude and decays exponentially
+with depth. The eddy_heat AuxVariable oscillates at twice the field frequency
+(it goes as sin²). Temperature at the left surface rises by approximately 1–2 K per
+oscillation period; the interior stays near 300 K. After 10 periods (t = 5 s) the
+peak temperature is approximately 314 K.
+
+---
+
+## Case 26: EHD Pumping — Coulomb Force Drives Fluid Flow
+
+### Physics
+
+In an EHD pump, a prescribed Coulomb body force f = rho_e·E acts on a dielectric
+liquid, driving recirculating flow without any moving parts (Melcher §9.11–9.12).
+This case prescribes the force analytically:
+
+```
+f_x(x, y) = A·(1 − x)·sin(π·y)        A = 500
+f_y = 0
+```
+
+The factor (1−x) represents the charge density decaying from the injection electrode
+(x = 0) to the collecting electrode (x = 1). The sin(pi·y) variation ensures zero
+force at the no-slip walls and maximum force at mid-height. This drives a single
+large recirculating loop: rightward in the interior, returning along the walls.
+
+The governing equations are the incompressible Navier-Stokes equations plus the body
+force:
+
+```
+rho·(v · grad)v = −grad p + mu·lap(v) + f_Coulomb(x, y)
+div(v) = 0
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `[Modules/NavierStokesFV]` action | Creates all FV NS variables and kernels automatically |
+| `INSFVBodyForce` | Adds the Coulomb body force to the x-momentum FV equation |
+| `ADParsedFunctorMaterial` | Defines the analytical force expression f_x = A(1-x)sin(pi*y) |
+| `ADGenericFunctorMaterial` | Supplies constant fluid properties rho and mu |
+| `pin_pressure = true` | Removes pressure null space in the closed cavity |
+
+The `rhie_chow_user_object` parameter of `INSFVBodyForce` must reference the Rhie-Chow
+interpolation object created by the action (`ins_rhie_chow_interpolator`). Omitting
+this causes pressure-velocity decoupling and incorrect results.
+
+### What Makes This Case Interesting
+
+EHD pumping is the electromagnetic analog of natural convection: a body force that
+depends on a field quantity drives recirculating flow in a closed cavity. This case
+demonstrates the pattern for adding any custom body force to an action-based NS setup
+— a pattern that applies equally to Lorentz forces, dielectrophoretic forces, and
+other electromechanical body forces. The prescribed-force approach separates the
+fluid-mechanics coupling from the charge-transport problem.
+
+### Expected Results
+
+The converged steady solution shows a single clockwise recirculation loop with the
+strongest rightward flow in the interior (near x = 0) and return flow along the walls.
+The peak x-velocity is in the range 1–10 (dimensionless), much less than the Stokes
+estimate because inertia limits the driven velocity. The pressure is higher near the
+right wall (where the body force pushes fluid into the wall) and lower near the
+left wall.
+
+---
+
+## Case 27: MHD Hartmann Flow — Magnetic Braking of Channel Flow
+
+### Physics
+
+An electrically conducting fluid flows through a channel under a uniform transverse
+magnetic field B0. The fluid motion generates induced currents j = sigma*(v x B0),
+and the resulting Lorentz force j x B0 opposes the flow (Melcher §9.9–9.10). This
+braking redistributes momentum and flattens the velocity profile from the parabolic
+Poiseuille shape into the characteristic flat-topped **Hartmann profile**:
+
+```
+0 = −dp/dx + mu·d²v_x/dy² − sigma·B0²·v_x
+```
+
+The Hartmann number Ha = B0·L·sqrt(sigma/mu) characterises the ratio of
+electromagnetic to viscous forces. At Ha = 5 (used here, Ha² = 25), the flat core
+and thin boundary layers (thickness ~ L/Ha = 0.2) are clearly visible.
+
+The key implementation insight is the Darcy-Lorentz equivalence: the Lorentz drag
+−sigma·B0²·v is mathematically identical to Darcy friction −(mu/(rho·K))·v when
+K = mu/(rho·sigma·B0²) = 1/Ha². Setting the Darcy coefficient to Ha² in the
+`NavierStokesFV` porous medium treatment models MHD braking with no custom kernels.
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `[Modules/NavierStokesFV]` with `porous_medium_treatment = true` | Activates Darcy friction term |
+| `friction_types = 'darcy'` | Selects linear drag model (Lorentz equivalent) |
+| `ADGenericVectorFunctorMaterial` | Supplies isotropic Darcy coefficient vector [Ha², Ha², Ha²] |
+| `ADGenericFunctorMaterial` | Fluid properties rho and mu; porosity = 1.0 |
+| Inlet/outlet BCs | Fixed velocity inlet (v_x = 1), fixed pressure outlet (p = 0) |
+
+The HIT variable `Ha2 = 25.0` appears in a single place and propagates to the Darcy
+coefficient. The positive Ha² diagonal contribution to the Jacobian improves
+conditioning, so Newton typically converges in just 2 iterations.
+
+### What Makes This Case Interesting
+
+This case demonstrates that the porous-medium friction mechanism in MOOSE is a general
+linear drag model, not restricted to porous-medium physics. By mapping Lorentz drag
+onto Darcy friction, the same action handles MHD channel flow without any custom code.
+The Hartmann profile is a canonical benchmark for low-magnetic-Reynolds-number MHD
+solvers, and the case introduces open-channel (inlet-outlet) boundary conditions in
+contrast to the closed-cavity setups of Cases 15–16.
+
+### Expected Results
+
+In the developed flow region (downstream from the inlet development length) the
+cross-section velocity profile shows no-slip at the Hartmann walls, thin boundary
+layers of thickness ~0.2, and a flat core at approximately 1.38 — higher than the
+mean inlet velocity of 1.0 because mass conservation requires the core to accelerate
+to compensate for the slow near-wall fluid. The `max_vel_x` postprocessor is
+approximately 1.378; `avg_vel_x` is approximately 1.0 (mass conservation).
+
+---
+
+## Case 28: Two-Way Joule Heating — Temperature-Dependent Conductivity
+
+### Physics
+
+This case extends Case 17 (Joule Heating) by making the electrical conductivity
+sigma a function of temperature, creating **two-way coupling**:
+
+```
+T changes → σ(T) changes → V distribution changes → Q changes → T changes → ...
+```
+
+The metallic conductivity model is sigma(T) = sigma_0 / (1 + alpha·(T − T_ref)),
+where alpha = 0.004 /K. As temperature rises, conductivity decreases (phonon
+scattering), which reduces Joule heating — a **negative feedback** that self-limits
+the temperature rise. This contrasts with semiconductors (dσ/dT > 0), where positive
+feedback can lead to thermal runaway (Melcher §10.1–10.3).
+
+The two coupled PDEs are:
+
+```
+−div(σ(T)·grad(V)) = 0                              (current conservation)
+ρ·cp·∂T/∂t = div(k·grad(T)) + σ(T)·|grad(V)|²     (heat equation with Joule source)
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `ADPiecewiseLinearInterpolationMaterial` | Tabulated sigma(T) — AD-compatible, no JIT dependency |
+| `ADHeatConduction` | Both the V equation (with sigma as conductivity) and T diffusion |
+| `ADJouleHeatingSource` | sigma(T)·|grad(V)|² heat source in the T equation |
+| `ADHeatConductionTimeDerivative` | rho·cp·dT/dt |
+| `SMP full = true` | Full Jacobian including dR_V/dT and dR_T/dV off-diagonal blocks |
+
+`ADPiecewiseLinearInterpolationMaterial` is used instead of `ADParsedMaterial` because
+the Docker MOOSE image lacks the JIT compilation toolchain that parsed materials
+require at runtime. The tabulated interpolation is fully AD-compatible — the slope of
+each linear segment provides dσ/dT automatically to the Jacobian. The only structural
+change from Case 17 is the `[Materials]` block.
+
+### What Makes This Case Interesting
+
+Two-way coupling means all four Jacobian blocks (dR_V/dV, dR_V/dT, dR_T/dV, dR_T/dT)
+are nonzero. This case shows how MOOSE handles strong multi-field coupling through the
+AD chain: the derivative of sigma(T) with respect to T propagates automatically from
+the material to both the V and T residuals, with no hand-coded cross-terms. The
+metallic negative-feedback result is visible as a slower temperature rise and lower
+peak temperature compared to Case 17.
+
+### Expected Results
+
+At t = 5 s the peak temperature is approximately 334 K, a 34 K rise above the 300 K
+electrode BCs. At that temperature the conductivity has dropped to approximately
+0.88·sigma_0 — a 12% reduction. The avg_T rises approximately linearly with time
+(the overall Joule power changes little over this modest temperature range). The V
+field develops a slight spatial non-uniformity as current routes around the
+more-resistive hot spot in the centre.
+
+---
+
+## Case 29: Electroconvection — EHD-Enhanced Natural Convection
+
+### Physics
+
+This case extends the differentially heated square cavity of Case 16 (natural
+convection) with an additional electrohydrodynamic body force. In a dielectric liquid
+whose permittivity depends on temperature, a non-uniform electric field exerts a
+dielectrophoretic force on the fluid (Melcher §9.12, §10.4). The leading-order model
+reduces to:
+
+```
+f_EHD_y = Fe·(T − T_ref)
+```
+
+Because this has exactly the same form as the Boussinesq buoyancy force
+f_y = alpha·(T − T_ref), the two forces combine into one effective coefficient:
+
+```
+f_total_y = (alpha + Fe)·(T − 0.5) = alpha_eff·(T − 0.5)
+```
+
+With the default Fe = 5 and alpha = 1, alpha_eff = 6.0. No additional kernels are
+needed — the entire EHD contribution is absorbed into the `thermal_expansion`
+property consumed by the built-in Boussinesq mechanism of the `NavierStokesFV`
+action.
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `[Modules/NavierStokesFV]` with `boussinesq_approximation = true` | Built-in buoyancy mechanism handles both forces |
+| `ADGenericFunctorMaterial` with `alpha = alpha_eff` | Combines buoyancy and EHD into one coefficient |
+| `add_energy_equation = true` | Activates the coupled thermal transport equation |
+| `pin_pressure = true` (average type) | Removes pressure null space in the closed cavity |
+
+The HIT top-level variable `alpha_eff = 6.0` is the only change from Case 16. To
+explore different EHD strengths, change the second term: alpha_eff = 1.0 + Fe.
+Command-line HIT overrides (`-i case29... alpha_eff=0.5`) allow parameter sweeps
+without editing the file.
+
+### What Makes This Case Interesting
+
+The mathematical equivalence between the dielectrophoretic force and Boussinesq
+buoyancy means the entire new physics is captured by changing a single number. This
+is the payoff of recognising structural analogies between different fields of physics.
+The case also demonstrates EHD as a practical control mechanism for convective heat
+transfer: increasing alpha_eff strengthens circulation and heat transfer;
+decreasing it (Fe < 0) suppresses convection. The EHD forcing number Fe therefore
+acts as a parameter that tunes the heat transfer coefficient (Nusselt number).
+
+### Expected Results
+
+With Fe = 5 (alpha_eff = 6.0) the flow is a single counter-clockwise recirculation
+cell, qualitatively identical to Case 16 but driven with effectively six times the
+buoyancy force. The postprocessors report max_vel_x ~ 0.409, max_vel_y ~ 0.613, and
+avg_T = 0.5 (preserved by the (T − 0.5) symmetry of the forcing). Setting
+alpha_eff = 1.0 reproduces the Case 16 pure natural-convection result exactly.
+
+---
+
 ## Troubleshooting Common Errors
 
 **Error: `Object 'Diffusion' was not registered`**
@@ -3548,7 +3994,7 @@ variable name (e.g., `u` or `T`) using the dropdown in the toolbar.
 
 ## Next Steps
 
-After completing these 21 cases:
+After completing these 29 cases:
 
 1. **Read the MOOSE documentation** at https://mooseframework.inl.gov for
    complete reference documentation on every object type.
@@ -3560,6 +4006,6 @@ After completing these 21 cases:
 3. **Write your own application**: Use `moose/scripts/stork.py` to scaffold
    a new MOOSE application with custom kernels, materials, and BCs.
 
-4. **Explore more module features**: Cases 14-21 introduce the major physics
+4. **Explore more module features**: Cases 14-29 introduce the major physics
    modules. Each module has many more capabilities — consult the
    [Modules Reference](modules-reference.md) for full details.

@@ -1,13 +1,13 @@
 # MOOSE Quickstart Tutorial Cases: Complete Reference
 
-This directory contains 21 self-contained simulation cases for learning MOOSE from zero.
+This directory contains 29 self-contained simulation cases for learning MOOSE from zero.
 Each case has its own subdirectory with an input file (`.i`) and pre-run output files.
 You do not need to build or install anything to study the input files, understand the physics,
 and read the results. If you want to run the simulations yourself, see Section 5.
 
 This document is designed so that someone who has never used MOOSE, never written a finite
 element simulation, and is not familiar with scientific computing file formats can read it
-from top to bottom and understand everything in these 21 cases.
+from top to bottom and understand everything in these 29 cases.
 
 Read every section. Do not skip ahead. The later cases build directly on concepts introduced
 in the earlier ones.
@@ -21,7 +21,7 @@ in the earlier ones.
 3. [Understanding Output Files](#3-understanding-output-files)
 4. [How MOOSE Solves Problems](#4-how-moose-solves-problems-conceptual)
 5. [Running Simulations](#5-running-simulations)
-6. [The 21 Cases at a Glance](#6-the-21-cases-at-a-glance)
+6. [The 29 Cases at a Glance](#6-the-21-cases-at-a-glance)
 7. [Creating Your Own Simulations](#7-creating-your-own-simulations)
 8. [Glossary](#8-glossary)
 
@@ -105,7 +105,7 @@ MOOSE also handles:
 - **Nonlinear problems**: handles problems where material properties depend on the solution
   itself (like a material that gets stiffer as it heats up)
 
-### What are the 21 cases in this directory?
+### What are the 29 cases in this directory?
 
 These cases form a progressive tutorial starting from the simplest possible problem
 (1D steady-state diffusion with an exact solution of u = x) and building up to
@@ -246,7 +246,7 @@ L = 1.0
 
 ### All Standard Block Types Explained
 
-The following sections explain every block type you will encounter in the 21 cases.
+The following sections explain every block type you will encounter in the 29 cases.
 Each explanation defines what the block does, what parameters mean, and gives a
 realistic example.
 
@@ -1347,12 +1347,14 @@ To override: add `file_base = my_custom_name` to the `[Outputs]` block.
 
 ---
 
-## 6. The 21 Cases at a Glance
+## 6. The 29 Cases at a Glance
 
 The cases are ordered from simplest to most complex. Cases 01-13 use only the MOOSE
 framework (Diffusion, BodyForce, MatDiffusion, etc.). Cases 14-21 use physics **modules**
-(heat_transfer, solid_mechanics, navier_stokes, phase_field, porous_flow, electromagnetics)
-and demonstrate genuine multi-physics coupling. Study them in order.
+(heat_transfer, solid_mechanics, navier_stokes, phase_field, porous_flow) and demonstrate
+genuine multi-physics coupling. Cases 22-29 cover continuum electromechanics — charge
+transport, magnetic diffusion, electrohydrodynamic flows, and MHD — inspired by Melcher's
+*Continuum Electromechanics* (MIT, 1981). Study them in order.
 
 | Case | Subdirectory | Title | Physics | Key Concepts Introduced | Difficulty |
 |------|--------------|-------|---------|-------------------------|------------|
@@ -1377,6 +1379,14 @@ and demonstrate genuine multi-physics coupling. Study them in order.
 | 19 | `case19-porous-flow/` | Darcy Flow + Heat in Porous Media | Single-phase saturated thermo-hydro flow, thermal plume advection | PorousFlowBasicTHM action, SimpleFluidProperties, PorousFlowPermeabilityConst, variable scaling | Advanced |
 | 20 | `case20-elastic-wave/` | Elastic Wave Propagation | Dynamic solid mechanics — stress wave in a bar with Newmark-beta | Physics/SolidMechanics/Dynamic action, NewmarkBeta, InertialForce, Pressure BC, wave reflection | Advanced |
 | 21 | `case21-bimetallic-strip/` | Bimetallic Strip Bending | Two metals with different thermal expansion heated uniformly → bending | Multi-material (block-restricted), ComputeThermalExpansionEigenstrain, SubdomainBoundingBoxGenerator | Advanced |
+| 22 | `case22-charge-relaxation/` | Charge Relaxation in Ohmic Medium | Free charge decays as exp(-t/tau), tau=eps/sigma; Poisson for potential | ADReaction (linear decay), ADCoupledForce (Poisson source), charge relaxation time | Intermediate |
+| 23 | `case23-magnetic-diffusion/` | Magnetic Diffusion into Conductor | Step-applied B-field penetrates diffusively: erfc profile, skin depth | ADMatDiffusion reused for magnetic diffusion (D_m = 1/(mu0*sigma)), analytical verification | Intermediate |
+| 24 | `case24-drift-diffusion/` | Charge Drift-Diffusion | Unipolar ion injection: drift under E-field + diffusion, self-consistent Poisson coupling | ConservativeAdvection with velocity_as_variable_gradient, upwinding, SMP preconditioning | Advanced |
+| 25 | `case25-induction-heating/` | Induction Heating | Oscillating B → eddy currents → Joule heating at skin depth | VariableGradientComponent AuxKernel, ParsedAux for Q=D_m*(dB/dx)^2, CoupledForce source | Advanced |
+| 26 | `case26-ehd-pumping/` | EHD Pumping — Coulomb Force | Prescribed Coulomb body force drives recirculating cavity flow | INSFVBodyForce, ParsedFunctorMaterial, body-force-driven FV Navier-Stokes | Advanced |
+| 27 | `case27-hartmann-flow/` | MHD Hartmann Flow | Lorentz drag flattens channel flow profile; Darcy friction as MHD analog | porous_medium_treatment, Darcy friction = Lorentz drag, Hartmann profile verification | Advanced |
+| 28 | `case28-twoway-joule-heating/` | Two-Way Joule Heating | Extends Case 17: sigma(T) decreases with T (metallic negative feedback) | ADPiecewiseLinearInterpolationMaterial, tabulated T-dependent conductivity, two-way coupling | Advanced |
+| 29 | `case29-electroconvection/` | Electroconvection — EHD-Enhanced Convection | Natural convection + EHD body force via effective thermal expansion | Boussinesq + EHD combined as alpha_eff, parameter study (Fe controls enhancement/suppression) | Advanced |
 
 ### What each case produces
 
@@ -1403,16 +1413,24 @@ and demonstrate genuine multi-physics coupling. Study them in order.
 | 19 | `case19_porous_flow_out.e`, `case19_porous_flow_out.csv` |
 | 20 | `case20_elastic_wave_exodus.e`, `case20_elastic_wave_out.csv` |
 | 21 | `case21_bimetallic_strip_out.e`, `case21_bimetallic_strip_out.csv` |
+| 22 | `case22_charge_relaxation_out.e`, `case22_charge_relaxation_out.csv` |
+| 23 | `case23_magnetic_diffusion_out.e`, `case23_magnetic_diffusion_out.csv` |
+| 24 | `case24_drift_diffusion_out.e`, `case24_drift_diffusion_out.csv` |
+| 25 | `case25_induction_heating_out.e`, `case25_induction_heating_out.csv` |
+| 26 | `case26_ehd_pumping_out.e`, `case26_ehd_pumping_out.csv` |
+| 27 | `case27_hartmann_flow_out.e`, `case27_hartmann_flow_out.csv` |
+| 28 | `case28_twoway_joule_heating_out.e`, `case28_twoway_joule_heating_out.csv` |
+| 29 | `case29_electroconvection_out.e`, `case29_electroconvection_out.csv` |
 
 All pre-run output files for cases 01-13 are included in this directory so you can
-examine them without running anything. Cases 14-21 require `combined-opt` (all modules)
+examine them without running anything. Cases 14-29 require `combined-opt` (all modules)
 to run — see each case's README for Docker instructions.
 
 ---
 
 ## 7. Creating Your Own Simulations
 
-Once you understand the 21 cases, you will want to adapt them or build new simulations
+Once you understand the 29 cases, you will want to adapt them or build new simulations
 from scratch. This section walks through the process systematically.
 
 ### Step 1: Define Your Physics

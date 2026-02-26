@@ -1,5 +1,5 @@
 """
-MOOSE Quick-Start: Visualization Script for All 21 Cases
+MOOSE Quick-Start: Visualization Script for All 29 Cases
 =========================================================
 Generates 2-3 plots per case and saves each PNG into that case's own directory.
 For example, Case 01's plot is written to case01-1d-steady-diffusion/case01_diffusion_1d.png.
@@ -90,6 +90,14 @@ CASE_DIRS = {
     "19": "case19-porous-flow",
     "20": "case20-elastic-wave",
     "21": "case21-bimetallic-strip",
+    "22": "case22-charge-relaxation",
+    "23": "case23-magnetic-diffusion",
+    "24": "case24-drift-diffusion",
+    "25": "case25-induction-heating",
+    "26": "case26-ehd-pumping",
+    "27": "case27-hartmann-flow",
+    "28": "case28-twoway-joule-heating",
+    "29": "case29-electroconvection",
 }
 
 
@@ -1389,6 +1397,502 @@ def plot_case21():
     save_fig(fig, "21", "case21_bimetallic_strip.png")
 
 
+def plot_case22():
+    """Case 22: Charge Relaxation — exponential decay of free charge"""
+    print("Case 22: Charge Relaxation in an Ohmic Medium")
+    efile = case_path("22", "case22_charge_relaxation_out.e")
+    cfile = case_path("22", "case22_charge_relaxation_out.csv")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case22")
+        return
+
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    names = get_nod_var_names(ds)
+    times = get_times(ds)
+
+    rho_idx = names.index("rho_e") + 1
+    phi_idx = names.index("phi") + 1
+
+    # Plot 1: rho_e snapshots at 4 times
+    n_steps = len(times)
+    target_frac = [0.0, 0.1, 0.3, 1.0]
+    snap_indices = [max(0, min(n_steps - 1, int(f * (n_steps - 1)))) for f in target_frac]
+
+    fig, axes = plt.subplots(2, 2, figsize=(10, 9))
+    fig.suptitle("Case 22: Charge Relaxation — Charge Density", fontsize=FONT_TITLE)
+    for panel, idx in enumerate(snap_indices):
+        row, col = divmod(panel, 2)
+        rho = get_nod_var(ds, rho_idx, timestep=idx)
+        tcf = axes[row, col].tricontourf(x, y, rho, levels=20, cmap="YlOrRd")
+        plt.colorbar(tcf, ax=axes[row, col], label=r"$\rho_e$")
+        axes[row, col].set_title(f"t = {times[idx]:.3f}")
+        axes[row, col].set_xlabel("x")
+        axes[row, col].set_ylabel("y")
+        axes[row, col].set_aspect("equal")
+    ds.close()
+    fig.tight_layout()
+    save_fig(fig, "22", "case22_charge_relaxation.png")
+
+    # Plot 2: time history from CSV
+    if file_exists(cfile):
+        data = read_csv(cfile)
+        t_csv = data["time"]
+        max_rho = data.get("max_rho_e", data.get("max_rho", []))
+        avg_rho = data.get("avg_rho_e", data.get("avg_rho", []))
+
+        if max_rho and avg_rho:
+            fig, ax = plt.subplots(figsize=FIGSIZE_SINGLE)
+            ax.plot(t_csv, max_rho, "r-o", markersize=3, label="max rho_e")
+            ax.plot(t_csv, avg_rho, "b-s", markersize=3, label="avg rho_e")
+            # Analytical: exponential decay with tau = eps/sigma = 0.1
+            t_an = np.linspace(0, max(t_csv), 200)
+            ax.plot(t_an, np.exp(-t_an / 0.1), "k--", linewidth=1,
+                    label=r"Analytical: $e^{-t/\tau}$, $\tau$=0.1")
+            ax.set_xlabel("Time (s)")
+            ax.set_ylabel(r"Charge density $\rho_e$")
+            ax.set_title("Case 22: Charge Decay — Exponential Relaxation")
+            ax.legend()
+            ax.grid(True, alpha=0.4)
+            fig.tight_layout()
+            save_fig(fig, "22", "case22_charge_history.png")
+
+
+def plot_case23():
+    """Case 23: Magnetic Diffusion — erfc profile penetration"""
+    print("Case 23: Magnetic Diffusion into a Conducting Slab")
+    efile = case_path("23", "case23_magnetic_diffusion_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case23")
+        return
+
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    names = get_nod_var_names(ds)
+    times = get_times(ds)
+
+    B_idx = names.index("B") + 1
+
+    # Plot 1: B(x) profiles at several times (quasi-1D, pick centerline)
+    y_mid = (y.max() + y.min()) / 2.0
+    center = nodes_near_y(y, y_mid, tol=0.04)
+    x_center = x[center]
+    order = np.argsort(x_center)
+    x_sorted = x_center[order]
+
+    # Select ~5 snapshots across the simulation
+    n_steps = len(times)
+    snap_fracs = [0.05, 0.15, 0.3, 0.6, 1.0]
+    snap_idx = [max(0, min(n_steps - 1, int(f * (n_steps - 1)))) for f in snap_fracs]
+
+    fig, ax = plt.subplots(figsize=FIGSIZE_SINGLE)
+    from scipy.special import erfc as _erfc
+    D_m = 0.01
+    for idx in snap_idx:
+        B_snap = get_nod_var(ds, B_idx, timestep=idx)
+        B_line = B_snap[center][order]
+        t_val = times[idx]
+        ax.plot(x_sorted, B_line, "-o", markersize=2, label=f"MOOSE t={t_val:.1f}")
+        # Analytical erfc profile
+        if t_val > 0:
+            x_an = np.linspace(0, x_sorted.max(), 200)
+            B_an = _erfc(x_an / (2.0 * np.sqrt(D_m * t_val)))
+            ax.plot(x_an, B_an, "k--", linewidth=0.8, alpha=0.5)
+    ax.set_xlabel("x (m)")
+    ax.set_ylabel("B (T)")
+    ax.set_title("Case 23: Magnetic Field Diffusion Profiles")
+    ax.legend(fontsize=9, loc="upper right")
+    ax.grid(True, alpha=0.4)
+    ds.close()
+    fig.tight_layout()
+    save_fig(fig, "23", "case23_magnetic_diffusion.png")
+
+
+def plot_case24():
+    """Case 24: Drift-Diffusion — charge front propagation"""
+    print("Case 24: Charge Drift-Diffusion Between Parallel Plates")
+    efile = case_path("24", "case24_drift_diffusion_out.e")
+    cfile = case_path("24", "case24_drift_diffusion_out.csv")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case24")
+        return
+
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    names = get_nod_var_names(ds)
+    times = get_times(ds)
+
+    rho_idx = names.index("rho_e") + 1
+    phi_idx = names.index("phi") + 1
+
+    # Plot 1: rho_e(x) profiles at several times (quasi-1D centerline)
+    y_mid = (y.max() + y.min()) / 2.0
+    center = nodes_near_y(y, y_mid, tol=0.02)
+    x_center = x[center]
+    order = np.argsort(x_center)
+    x_sorted = x_center[order]
+
+    n_steps = len(times)
+    snap_fracs = [0.05, 0.15, 0.3, 0.5, 0.8, 1.0]
+    snap_idx = [max(0, min(n_steps - 1, int(f * (n_steps - 1)))) for f in snap_fracs]
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    fig.suptitle("Case 24: Charge Drift-Diffusion", fontsize=FONT_TITLE)
+
+    for idx in snap_idx:
+        rho = get_nod_var(ds, rho_idx, timestep=idx)
+        axes[0].plot(x_sorted, rho[center][order], "-", linewidth=1.5,
+                     label=f"t={times[idx]:.2f}")
+
+    axes[0].set_xlabel("x (m)")
+    axes[0].set_ylabel(r"$\rho_e$ (C/m$^3$)")
+    axes[0].set_title("Charge Density Profiles")
+    axes[0].legend(fontsize=8)
+    axes[0].grid(True, alpha=0.4)
+
+    # Right panel: phi(x) at same times
+    for idx in snap_idx:
+        phi = get_nod_var(ds, phi_idx, timestep=idx)
+        axes[1].plot(x_sorted, phi[center][order], "-", linewidth=1.5,
+                     label=f"t={times[idx]:.2f}")
+
+    axes[1].set_xlabel("x (m)")
+    axes[1].set_ylabel(r"$\phi$ (V)")
+    axes[1].set_title("Electric Potential")
+    axes[1].legend(fontsize=8)
+    axes[1].grid(True, alpha=0.4)
+    ds.close()
+    fig.tight_layout()
+    save_fig(fig, "24", "case24_drift_diffusion.png")
+
+    # Plot 2: time history from CSV
+    if file_exists(cfile):
+        data = read_csv(cfile)
+        t_csv = data["time"]
+        avg_rho = data.get("avg_rho", [])
+        max_rho = data.get("max_rho", [])
+
+        if avg_rho and max_rho:
+            fig, ax = plt.subplots(figsize=FIGSIZE_SINGLE)
+            ax.plot(t_csv, avg_rho, "b-s", markersize=3, label="avg rho_e")
+            ax.plot(t_csv, max_rho, "r-o", markersize=3, label="max rho_e")
+            ax.set_xlabel("Time (s)")
+            ax.set_ylabel(r"$\rho_e$")
+            ax.set_title("Case 24: Charge Density vs Time")
+            ax.legend()
+            ax.grid(True, alpha=0.4)
+            fig.tight_layout()
+            save_fig(fig, "24", "case24_charge_history.png")
+
+
+def plot_case25():
+    """Case 25: Induction Heating — skin-depth heating"""
+    print("Case 25: Induction Heating (Magnetic Diffusion + Heat)")
+    efile = case_path("25", "case25_induction_heating_out.e")
+    cfile = case_path("25", "case25_induction_heating_out.csv")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case25")
+        return
+
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    names = get_nod_var_names(ds)
+    times = get_times(ds)
+
+    B_idx = names.index("B") + 1
+    T_idx = names.index("T") + 1
+
+    # Plot 1: side-by-side B and T at final time (quasi-1D centerline)
+    y_mid = (y.max() + y.min()) / 2.0
+    center = nodes_near_y(y, y_mid, tol=0.04)
+    x_center = x[center]
+    order = np.argsort(x_center)
+    x_sorted = x_center[order]
+
+    B_final = get_nod_var(ds, B_idx, timestep=-1)[center][order]
+    T_final = get_nod_var(ds, T_idx, timestep=-1)[center][order]
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    fig.suptitle("Case 25: Induction Heating — Final State", fontsize=FONT_TITLE)
+
+    axes[0].plot(x_sorted, B_final, "b-o", markersize=2)
+    axes[0].set_xlabel("x (m)")
+    axes[0].set_ylabel("B (T)")
+    axes[0].set_title("Magnetic Field (skin depth)")
+    axes[0].grid(True, alpha=0.4)
+
+    axes[1].plot(x_sorted, T_final, "r-o", markersize=2)
+    axes[1].set_xlabel("x (m)")
+    axes[1].set_ylabel("T (K)")
+    axes[1].set_title("Temperature (surface heating)")
+    axes[1].grid(True, alpha=0.4)
+    ds.close()
+    fig.tight_layout()
+    save_fig(fig, "25", "case25_induction_heating.png")
+
+    # Plot 2: temperature history from CSV
+    if file_exists(cfile):
+        data = read_csv(cfile)
+        t_csv = data["time"]
+        max_T = data.get("max_T", [])
+        avg_T = data.get("avg_T", [])
+
+        if max_T and avg_T:
+            fig, ax = plt.subplots(figsize=FIGSIZE_SINGLE)
+            ax.plot(t_csv, max_T, "r-o", markersize=3, label="max T")
+            ax.plot(t_csv, avg_T, "b-s", markersize=3, label="avg T")
+            ax.set_xlabel("Time (s)")
+            ax.set_ylabel("Temperature (K)")
+            ax.set_title("Case 25: Temperature History — Induction Heating")
+            ax.legend()
+            ax.grid(True, alpha=0.4)
+            fig.tight_layout()
+            save_fig(fig, "25", "case25_temperature_history.png")
+
+
+def plot_case26():
+    """Case 26: EHD Pumping — Coulomb force driven recirculation"""
+    print("Case 26: EHD Pumping")
+    efile = case_path("26", "case26_ehd_pumping_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case26")
+        return
+
+    ds = open_exodus(efile)
+    cx, cy = get_elem_centroids_2d(ds)
+    names = get_elem_var_names(ds)
+
+    vel_x_name = "vel_x" if "vel_x" in names else "superficial_vel_x"
+    vel_y_name = "vel_y" if "vel_y" in names else "superficial_vel_y"
+    p_name = "pressure"
+
+    vx_idx = names.index(vel_x_name) + 1
+    vy_idx = names.index(vel_y_name) + 1
+    p_idx = names.index(p_name) + 1
+
+    vx = get_elem_var(ds, vx_idx, timestep=-1)
+    vy = get_elem_var(ds, vy_idx, timestep=-1)
+    p = get_elem_var(ds, p_idx, timestep=-1)
+    ds.close()
+
+    vel_mag = np.sqrt(vx ** 2 + vy ** 2)
+
+    # Plot 1: velocity magnitude + vectors
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    fig.suptitle("Case 26: EHD Pumping — Coulomb-Force-Driven Flow", fontsize=FONT_TITLE)
+
+    tcf = axes[0].tricontourf(cx, cy, vel_mag, levels=20, cmap="plasma")
+    plt.colorbar(tcf, ax=axes[0], label="|velocity|")
+    n = len(cx)
+    step = max(1, n // 300)
+    axes[0].quiver(cx[::step], cy[::step], vx[::step], vy[::step],
+                   color="white", scale=max(vel_mag) * 8, width=0.003, alpha=0.8)
+    axes[0].set_xlabel("x")
+    axes[0].set_ylabel("y")
+    axes[0].set_aspect("equal")
+    axes[0].set_title("Velocity Magnitude + Vectors")
+
+    tcf2 = axes[1].tricontourf(cx, cy, p, levels=20, cmap="RdBu_r")
+    plt.colorbar(tcf2, ax=axes[1], label="Pressure")
+    axes[1].set_xlabel("x")
+    axes[1].set_ylabel("y")
+    axes[1].set_aspect("equal")
+    axes[1].set_title("Pressure Field")
+
+    fig.tight_layout()
+    save_fig(fig, "26", "case26_ehd_pumping.png")
+
+
+def plot_case27():
+    """Case 27: Hartmann Flow — Lorentz-braked channel flow"""
+    print("Case 27: MHD Hartmann Flow")
+    efile = case_path("27", "case27_hartmann_flow_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case27")
+        return
+
+    ds = open_exodus(efile)
+    cx, cy = get_elem_centroids_2d(ds)
+    names = get_elem_var_names(ds)
+
+    vel_x_name = "vel_x" if "vel_x" in names else "superficial_vel_x"
+    vel_y_name = "vel_y" if "vel_y" in names else "superficial_vel_y"
+    p_name = "pressure"
+
+    vx_idx = names.index(vel_x_name) + 1
+    vy_idx = names.index(vel_y_name) + 1
+    p_idx = names.index(p_name) + 1
+
+    vx = get_elem_var(ds, vx_idx, timestep=-1)
+    vy = get_elem_var(ds, vy_idx, timestep=-1)
+    p = get_elem_var(ds, p_idx, timestep=-1)
+    ds.close()
+
+    # Plot 1: vel_x(y) profile at the channel midpoint (x ~ 2.5)
+    # Extract a vertical slice at x ~ 2.5
+    x_mid = 2.5
+    tol_x = 0.15
+    mid_mask = np.abs(cx - x_mid) < tol_x
+    cy_mid = cy[mid_mask]
+    vx_mid = vx[mid_mask]
+    order = np.argsort(cy_mid)
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    fig.suptitle("Case 27: MHD Hartmann Flow (Ha = 5)", fontsize=FONT_TITLE)
+
+    axes[0].plot(cy_mid[order], vx_mid[order], "b-o", markersize=3, label="MOOSE")
+    # Analytical Hartmann profile
+    Ha = 5.0
+    y_an = np.linspace(0, 1, 200)
+    # The actual profile shape depends on the pressure gradient that
+    # develops; we normalise to match the MOOSE peak.
+    v_max_moose = vx_mid.max()
+    v_shape = 1.0 - np.cosh(Ha * (y_an - 0.5)) / np.cosh(Ha / 2.0)
+    v_shape_max = v_shape.max()
+    if v_shape_max > 0:
+        v_analytical = v_max_moose * v_shape / v_shape_max
+        axes[0].plot(y_an, v_analytical, "r--", linewidth=1.5, label="Hartmann (analytical)")
+    axes[0].set_xlabel("y (channel width)")
+    axes[0].set_ylabel("v_x")
+    axes[0].set_title("Velocity Profile (mid-channel)")
+    axes[0].legend()
+    axes[0].grid(True, alpha=0.4)
+
+    # Right panel: 2D velocity field
+    vel_mag = np.sqrt(vx ** 2 + vy ** 2)
+    tcf = axes[1].tricontourf(cx, cy, vel_mag, levels=20, cmap="plasma")
+    plt.colorbar(tcf, ax=axes[1], label="|velocity|")
+    axes[1].set_xlabel("x")
+    axes[1].set_ylabel("y")
+    axes[1].set_title("Velocity Magnitude (full domain)")
+
+    fig.tight_layout()
+    save_fig(fig, "27", "case27_hartmann_flow.png")
+
+
+def plot_case28():
+    """Case 28: Two-Way Joule Heating — T-dependent sigma"""
+    print("Case 28: Two-Way Joule Heating")
+    efile = case_path("28", "case28_twoway_joule_heating_out.e")
+    cfile = case_path("28", "case28_twoway_joule_heating_out.csv")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case28")
+        return
+
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    names = get_nod_var_names(ds)
+
+    V_idx = names.index("V") + 1
+    T_idx = names.index("T") + 1
+
+    V = get_nod_var(ds, V_idx, timestep=-1)
+    T_final = get_nod_var(ds, T_idx, timestep=-1)
+
+    # Plot 1: side-by-side V and T at final time
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    fig.suptitle("Case 28: Two-Way Joule Heating — Final State", fontsize=FONT_TITLE)
+
+    tcf1 = axes[0].tricontourf(x, y, V, levels=20, cmap="RdYlBu_r")
+    plt.colorbar(tcf1, ax=axes[0], label="V (Volts)")
+    axes[0].set_title("Electric Potential V")
+    axes[0].set_xlabel("x")
+    axes[0].set_ylabel("y")
+    axes[0].set_aspect("equal")
+
+    tcf2 = axes[1].tricontourf(x, y, T_final, levels=20, cmap=CMAP_TEMP)
+    plt.colorbar(tcf2, ax=axes[1], label="T (K)")
+    axes[1].set_title("Temperature T")
+    axes[1].set_xlabel("x")
+    axes[1].set_ylabel("y")
+    axes[1].set_aspect("equal")
+
+    ds.close()
+    fig.tight_layout()
+    save_fig(fig, "28", "case28_twoway_joule_heating.png")
+
+    # Plot 2: temperature history from CSV
+    if file_exists(cfile):
+        data = read_csv(cfile)
+        t_csv = data["time"]
+        max_T = data.get("max_T", [])
+        avg_T = data.get("avg_T", [])
+
+        if max_T and avg_T:
+            fig, ax = plt.subplots(figsize=FIGSIZE_SINGLE)
+            ax.plot(t_csv, max_T, "r-o", markersize=3, label="max T")
+            ax.plot(t_csv, avg_T, "b-s", markersize=3, label="avg T")
+            ax.set_xlabel("Time (s)")
+            ax.set_ylabel("Temperature (K)")
+            ax.set_title("Case 28: Temperature Rise — T-Dependent Conductivity")
+            ax.legend()
+            ax.grid(True, alpha=0.4)
+            fig.tight_layout()
+            save_fig(fig, "28", "case28_temperature_history.png")
+
+
+def plot_case29():
+    """Case 29: Electroconvection — EHD-enhanced natural convection"""
+    print("Case 29: Electroconvection")
+    efile = case_path("29", "case29_electroconvection_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case29")
+        return
+
+    ds = open_exodus(efile)
+    cx, cy = get_elem_centroids_2d(ds)
+    names = get_elem_var_names(ds)
+
+    vel_x_name = "vel_x" if "vel_x" in names else "superficial_vel_x"
+    vel_y_name = "vel_y" if "vel_y" in names else "superficial_vel_y"
+    T_name = "T_fluid"
+    p_name = "pressure"
+
+    vx_idx = names.index(vel_x_name) + 1
+    vy_idx = names.index(vel_y_name) + 1
+    T_idx = names.index(T_name) + 1
+
+    vx = get_elem_var(ds, vx_idx, timestep=-1)
+    vy = get_elem_var(ds, vy_idx, timestep=-1)
+    T = get_elem_var(ds, T_idx, timestep=-1)
+    ds.close()
+
+    vel_mag = np.sqrt(vx ** 2 + vy ** 2)
+
+    # Plot: temperature + velocity vectors, and velocity magnitude
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    fig.suptitle("Case 29: Electroconvection — EHD-Enhanced (Fe=5)", fontsize=FONT_TITLE)
+
+    tcf1 = axes[0].tricontourf(cx, cy, T, levels=20, cmap=CMAP_TEMP)
+    plt.colorbar(tcf1, ax=axes[0], label="T_fluid")
+    n = len(cx)
+    step = max(1, n // 300)
+    axes[0].quiver(cx[::step], cy[::step], vx[::step], vy[::step],
+                   color="black", scale=max(vel_mag) * 8, width=0.003, alpha=0.6)
+    axes[0].set_xlabel("x")
+    axes[0].set_ylabel("y")
+    axes[0].set_aspect("equal")
+    axes[0].set_title("Temperature + Velocity Vectors")
+
+    tcf2 = axes[1].tricontourf(cx, cy, vel_mag, levels=20, cmap="plasma")
+    plt.colorbar(tcf2, ax=axes[1], label="|velocity|")
+    axes[1].set_xlabel("x")
+    axes[1].set_ylabel("y")
+    axes[1].set_aspect("equal")
+    axes[1].set_title("Velocity Magnitude")
+
+    fig.tight_layout()
+    save_fig(fig, "29", "case29_electroconvection.png")
+
+
 # ---------------------------------------------------------------------------
 # Main driver
 # ---------------------------------------------------------------------------
@@ -1415,12 +1919,20 @@ CASE_FUNCTIONS = [
     ("19", plot_case19),
     ("20", plot_case20),
     ("21", plot_case21),
+    ("22", plot_case22),
+    ("23", plot_case23),
+    ("24", plot_case24),
+    ("25", plot_case25),
+    ("26", plot_case26),
+    ("27", plot_case27),
+    ("28", plot_case28),
+    ("29", plot_case29),
 ]
 
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("MOOSE Quick-Start Visualization — All 21 Cases")
+    print("MOOSE Quick-Start Visualization — All 29 Cases")
     print("=" * 60)
     print(f"Script directory: {SCRIPT_DIR}")
     print("Plots will be saved into each case subdirectory.\n")

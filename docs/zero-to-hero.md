@@ -340,7 +340,7 @@ Write new input files from scratch.
 
 **Primary resources:**
 - `docs/user-guide.md` — full input file syntax reference
-- `docs/quick-start.md` — 21 worked examples
+- `docs/quick-start.md` — 29 worked examples
 - `test/tests/kernels/` — real input files for every kernel type
 
 ---
@@ -2187,5 +2187,5 @@ docs/
   architecture.md        Class hierarchy, Factory, Action system, solve loop
   developer-guide.md     Step-by-step developer tutorial with code examples
   user-guide.md          Input file syntax reference
-  quick-start.md         21 worked simulation examples
+  quick-start.md         29 worked simulation examples
 ```
