@@ -1,8 +1,8 @@
-# MOOSE Quick-Start Guide: 36 Working Examples
+# MOOSE Quick-Start Guide: 44 Working Examples
 
-This guide walks a complete beginner through 36 self-contained MOOSE input files,
+This guide walks a complete beginner through 44 self-contained MOOSE input files,
 from the simplest possible diffusion problem to genuine multi-physics simulations
-using MOOSE's physics modules. Cases 01-13 use only the framework. Cases 14-36
+using MOOSE's physics modules. Cases 01-13 use only the framework. Cases 14-44
 use physics modules (heat_transfer, solid_mechanics, navier_stokes, phase_field,
 porous_flow, electromagnetics) and require `combined-opt`. Read them in order.
 

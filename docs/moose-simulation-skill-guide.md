@@ -26,7 +26,7 @@ will then follow the skill's 9-section checklist systematically.
 
 ## What Was Actually Built
 
-Over two sessions the skill guided creation of **36 quickstart cases**
+Over multiple sessions the skill guided creation of **44 quickstart cases**
 covering 8 MOOSE physics modules:
 
 | Batch | Cases | Source Textbook | Physics |
@@ -34,6 +34,7 @@ covering 8 MOOSE physics modules:
 | Original | 01–21 | Various | Diffusion, heat transfer, solid mechanics, Navier-Stokes, phase field, porous flow, electromagnetics |
 | Melcher | 22–29 | Melcher, *Continuum Electromechanics* | Charge relaxation, EHD, MHD, ferrofluid, electroquasistatics |
 | Haus | 30–36 | Professor Herman A. Haus, *Electromagnetic Noise and Quantum Optical Measurements* (Springer, 2000) — classical chapters only (Chs 1-5, 10); the quantum chapters (Chs 6-9, 11-13) describe photon operators, squeezed states, and quantum noise that have no classical PDE representation | Waveguide eigenvalues, driven cavities, dielectric slabs, coupled resonators, thermal noise, dispersive pulses, solitons |
+| Rieutord | 37–44 | Michel Rieutord, *Fluid Dynamics: An Introduction* (Springer, 2015) — Chapters 4-10 | Rayleigh-Benard convection, KH instability, Blasius boundary layer, k-epsilon turbulence, RT instability, Sod shock tube, Ekman spiral, Alfven wave |
 
 Every case converges in Docker with `combined-opt` in under 2 minutes and
 produces both Exodus (`.e`) and CSV output files.
@@ -278,7 +279,7 @@ debugging:
    prevents 30 minutes of debugging silent Docker failures.
 
 3. **Read existing cases as templates.** Before writing a new `.i` file,
-   find the closest existing case and adapt it. The 36 quickstart cases
+   find the closest existing case and adapt it. The 44 quickstart cases
    cover most MOOSE object types.
 
 4. **Trust the failure catalog first.** When a run fails, check Section 7
