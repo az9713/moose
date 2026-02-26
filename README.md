@@ -224,20 +224,56 @@ These cases use MOOSE physics modules (`heat_transfer`, `solid_mechanics`, `navi
 </tr>
 </table>
 
-### Cases 22-29: Electromagnetic and Electrokinetic Multi-Physics
+### Cases 22-29: Continuum Electromechanics (Melcher-Inspired)
 
-These cases cover charge transport, magnetic diffusion, induction heating, electrohydrodynamics, and magnetohydrodynamics using the `electromagnetics` and `navier_stokes` modules.
+These cases cover charge transport, magnetic diffusion, induction heating, electrohydrodynamics, and magnetohydrodynamics — inspired by Melcher's *Continuum Electromechanics* (MIT, 1981). They require `combined-opt` via Docker.
 
-| Case | Title | Physics |
-|---|---|---|
-| [Case 22](quickstart-runs/case22-charge-relaxation) | Charge Relaxation in an Ohmic Medium | Free charge decay in a lossy dielectric |
-| [Case 23](quickstart-runs/case23-magnetic-diffusion) | Magnetic Diffusion into a Conducting Slab | Magnetic field diffusion, eddy currents |
-| [Case 24](quickstart-runs/case24-charge-drift-diffusion) | Charge Drift-Diffusion Between Parallel Plates | Drift-diffusion-recombination, space charge |
-| [Case 25](quickstart-runs/case25-induction-heating) | Induction Heating (Magnetic Diffusion + Heat) | Coupled EM + thermal, Joule heat source |
-| [Case 26](quickstart-runs/case26-ehd-pumping) | EHD Pumping — Coulomb Force Drives Fluid Flow | Electrohydrodynamic body force on fluid |
-| [Case 27](quickstart-runs/case27-mhd-hartmann) | MHD Hartmann Flow — Magnetic Braking | Lorentz force opposing channel flow |
-| [Case 28](quickstart-runs/case28-two-way-joule-heating) | Two-Way Joule Heating (T-Dependent Conductivity) | Fully coupled EM + heat with nonlinear material |
-| [Case 29](quickstart-runs/case29-electroconvection) | Electroconvection — EHD-Enhanced Natural Convection | Charge transport coupled to buoyancy-driven flow |
+<table>
+<tr>
+<td align="center" width="25%">
+<a href="quickstart-runs/case22-charge-relaxation"><img src="quickstart-runs/case22-charge-relaxation/case22_charge_relaxation.png" width="100%"/></a><br/>
+<b>Case 22</b>: Charge Relaxation<br/>
+<sub>Exponential Decay (tau=eps/sigma)</sub>
+</td>
+<td align="center" width="25%">
+<a href="quickstart-runs/case23-magnetic-diffusion"><img src="quickstart-runs/case23-magnetic-diffusion/case23_magnetic_diffusion.png" width="100%"/></a><br/>
+<b>Case 23</b>: Magnetic Diffusion<br/>
+<sub>erfc Profile Verification</sub>
+</td>
+<td align="center" width="25%">
+<a href="quickstart-runs/case24-drift-diffusion"><img src="quickstart-runs/case24-drift-diffusion/case24_drift_diffusion.png" width="100%"/></a><br/>
+<b>Case 24</b>: Drift-Diffusion<br/>
+<sub>Charge Transport + Poisson</sub>
+</td>
+<td align="center" width="25%">
+<a href="quickstart-runs/case25-induction-heating"><img src="quickstart-runs/case25-induction-heating/case25_induction_heating.png" width="100%"/></a><br/>
+<b>Case 25</b>: Induction Heating<br/>
+<sub>Eddy Currents + Joule Heat</sub>
+</td>
+</tr>
+<tr>
+<td align="center">
+<a href="quickstart-runs/case26-ehd-pumping"><img src="quickstart-runs/case26-ehd-pumping/case26_ehd_pumping.png" width="100%"/></a><br/>
+<b>Case 26</b>: EHD Pumping<br/>
+<sub>Coulomb-Force-Driven Flow</sub>
+</td>
+<td align="center">
+<a href="quickstart-runs/case27-hartmann-flow"><img src="quickstart-runs/case27-hartmann-flow/case27_hartmann_flow.png" width="100%"/></a><br/>
+<b>Case 27</b>: Hartmann Flow<br/>
+<sub>MHD Channel (Ha=5)</sub>
+</td>
+<td align="center">
+<a href="quickstart-runs/case28-twoway-joule-heating"><img src="quickstart-runs/case28-twoway-joule-heating/case28_twoway_joule_heating.png" width="100%"/></a><br/>
+<b>Case 28</b>: Two-Way Joule Heating<br/>
+<sub>T-Dependent Conductivity</sub>
+</td>
+<td align="center">
+<a href="quickstart-runs/case29-electroconvection"><img src="quickstart-runs/case29-electroconvection/case29_electroconvection.png" width="100%"/></a><br/>
+<b>Case 29</b>: Electroconvection<br/>
+<sub>EHD-Enhanced Buoyancy</sub>
+</td>
+</tr>
+</table>
 
 See [quickstart-runs/README.md](quickstart-runs/README.md) for a comprehensive overview.
 
