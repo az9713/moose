@@ -224,9 +224,16 @@ These cases use MOOSE physics modules (`heat_transfer`, `solid_mechanics`, `navi
 </tr>
 </table>
 
-### Cases 22-29: Continuum Electromechanics (Melcher-Inspired)
+### Cases 22-29: Continuum Electromechanics
 
-These cases cover charge transport, magnetic diffusion, induction heating, electrohydrodynamics, and magnetohydrodynamics — inspired by Melcher's *Continuum Electromechanics* (MIT, 1981). They require `combined-opt` via Docker.
+> Inspired by **Professor James R. Melcher**'s landmark textbook
+> [*Continuum Electromechanics*](https://ocw.mit.edu/courses/6-641-electromagnetic-fields-forces-and-motion-spring-2005/pages/textbook-contents/) (MIT Press, 1981) —
+> the definitive treatment of electrohydrodynamics, magnetohydrodynamics,
+> and electromechanical wave interactions. Melcher taught at MIT for over
+> 25 years and his work laid the foundations for modern electrokinetic and
+> EHD research.
+
+These cases cover charge transport, magnetic diffusion, induction heating, electrohydrodynamics, and magnetohydrodynamics. Each case references the specific chapter and section of Melcher's text. They require `combined-opt` via Docker.
 
 <table>
 <tr>
