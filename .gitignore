@@ -234,7 +234,10 @@ python/MooseDocs/test/output
 !python/MooseDocs/test/gold/**/*.tex
 .ruby-version
 
-# Quickstart visualization plots
+# Quickstart output files and visualization plots
+!quickstart-runs/**/*.e
+!quickstart-runs/**/*.e-s*
+!quickstart-runs/**/*.csv
 !quickstart-runs/**/*.png
 
 # Chigger
