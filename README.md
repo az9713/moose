@@ -4,7 +4,7 @@
 >
 > This repo **does not include the MOOSE source codes**. Instead, it supplements the original
 > repository with **comprehensive documentation and worked examples** designed to help new users
-> learn the framework from scratch. The 73 progressive quickstart cases are fully explained — from
+> learn the framework from scratch. The 83 progressive quickstart cases are fully explained — from
 > the physics and governing equations, through the input file structure, to interpreting the
 > simulation results — so that users can learn how to set up their own simulations and understand
 > the output without any external help.
@@ -17,7 +17,7 @@
 > Git Bash / MINGW on Windows — preventing silent path mangling, volume-mount failures, and flag
 > conversion issues that would otherwise break every `docker run` command. Together, these two
 > skills enabled [Claude Code](https://claude.ai/claude-code) to autonomously generate 25 of
-> the 73 quickstart cases (Batches A-E, cases 49-73) from a single user prompt, with no manual
+> 25 of the quickstart cases (Batches A-E, cases 49-73) from a single user prompt, with no manual
 > intervention required.
 >
 > **Original repository:** https://github.com/idaholab/moose
@@ -86,7 +86,7 @@ immediately available to every application that enables that module.
 This repository focuses on **learning materials** for the MOOSE framework:
 
 - **Comprehensive documentation** covering architecture, developer workflows, input-file syntax, and all 29 physics modules
-- **73 progressive quickstart examples** (`quickstart-runs/`) — each with a complete input file, detailed README explaining the physics, and matplotlib visualization of the results
+- **83 progressive quickstart examples** (`quickstart-runs/`) — each with a complete input file, detailed README explaining the physics, and matplotlib visualization of the results
 - **An 8-week study plan** for self-learners going from zero to productive MOOSE developer
 - **Docker instructions** for running MOOSE on Windows without compiling from source
 
@@ -101,7 +101,7 @@ To actually build and run MOOSE simulations, you need the framework itself from 
 | [docs/architecture.md](docs/architecture.md) | System architecture with subsystem diagrams covering the Framework → Modules → Applications hierarchy |
 | [docs/developer-guide.md](docs/developer-guide.md) | Step-by-step C++ developer tutorial: writing Kernels, BCs, Materials, and custom objects |
 | [docs/user-guide.md](docs/user-guide.md) | Simulation user reference covering input-file syntax, all major blocks, and solver options |
-| [docs/quick-start.md](docs/quick-start.md) | 73 worked examples progressing from simple diffusion through chemical reactions, geochemistry, mortar contact, XFEM, THM pipe flow, and level-set interface tracking |
+| [docs/quick-start.md](docs/quick-start.md) | 83 worked examples progressing from simple diffusion through chemical reactions, mortar contact, XFEM, THM pipe flow, level-set interface tracking, and advanced electromagnetism |
 | [docs/zero-to-hero.md](docs/zero-to-hero.md) | 8-week structured study plan for new MOOSE developers |
 | [docs/modules-reference.md](docs/modules-reference.md) | Physics module reference with API summaries and example input files |
 | [docs/docker-guide.md](docs/docker-guide.md) | Running MOOSE on Windows with Docker — installation, volume mounts, MPI |
@@ -112,7 +112,7 @@ The official online documentation lives at **https://mooseframework.inl.gov**.
 
 ## Quickstart Examples
 
-The `quickstart-runs/` directory contains **73 fully worked examples**, each in its own subdirectory with:
+The `quickstart-runs/` directory contains **83 fully worked examples**, each in its own subdirectory with:
 
 - **Input file** (`.i`) — ready to run with `moose_test-opt` or `combined-opt`
 - **Detailed README** — explains the physics, walks through every input-file block, describes the output files, and shows how to interpret the results
@@ -546,6 +546,80 @@ These cases introduce four additional MOOSE modules and deepen MultiApp coupling
 <tr>
 <td align="center"><img src="quickstart-runs/case73-level-set-advection/case73_level_set_advection.png" width="220"/><br/><sub>Case 73: Level Set Bubble Advection</sub></td>
 <td colspan="3"></td>
+</tr>
+</table>
+
+### Cases 74-83: Advanced Electromagnetism
+
+> Inspired by **Professor Jin Au Kong**'s graduate course
+> [MIT 6.635 *Advanced Electromagnetism*](https://ocw.mit.edu/courses/6-635-advanced-electromagnetism-spring-2003/pages/lecture-notes/) (Spring 2003) —
+> covering left-handed materials, negative refraction, Green's functions for
+> layered media, integral equations, Method of Moments, and photonic crystals.
+> Kong was a professor of electrical engineering at MIT for over 35 years and
+> the author of [*Electromagnetic Wave Theory*](https://ceta.mit.edu/kong/) (Wiley, 1986; EMW Publishing, 2008),
+> a graduate-level treatise that unified classical and modern electromagnetic
+> theory. His research spanned subsurface remote sensing, metamaterials,
+> and electromagnetic wave propagation in complex media.
+
+These cases use the MOOSE `electromagnetics` module to visualize the physics from Kong's 10 lecture notes. Topics include left-handed materials with reversed phase velocity, Drude-model skin depth, 3D waveguide mode propagation with NEDELEC_ONE edge elements, dielectric cylinder scattering, time-domain pulse reflection, Snell's law via scattered-field formulation, Bragg mirror stopbands, photonic crystal eigenvalues, 3D cavity resonance, and Veselago flat-lens focusing. All require `combined-opt` via Docker.
+
+<table>
+<tr>
+<td align="center" width="25%">
+<a href="quickstart-runs/case74-left-handed-material"><img src="quickstart-runs/case74-left-handed-material/case74_left_handed_material.png" width="100%"/></a><br/>
+<b>Case 74</b>: Left-Handed Material<br/>
+<sub>Reversed Phase Velocity (n = -1.5)</sub>
+</td>
+<td align="center" width="25%">
+<a href="quickstart-runs/case75-drude-slab"><img src="quickstart-runs/case75-drude-slab/case75_drude_slab.png" width="100%"/></a><br/>
+<b>Case 75</b>: Drude Metal Slab<br/>
+<sub>Skin Depth and Attenuation</sub>
+</td>
+<td align="center" width="25%">
+<a href="quickstart-runs/case76-3d-waveguide"><img src="quickstart-runs/case76-3d-waveguide/case76_3d_waveguide.png" width="100%"/></a><br/>
+<b>Case 76</b>: 3D Waveguide TE10<br/>
+<sub>NEDELEC_ONE on HEX20</sub>
+</td>
+<td align="center" width="25%">
+<a href="quickstart-runs/case77-cylinder-scattering"><img src="quickstart-runs/case77-cylinder-scattering/case77_cylinder_scattering.png" width="100%"/></a><br/>
+<b>Case 77</b>: Cylinder Scattering<br/>
+<sub>Diffraction and Shadow</sub>
+</td>
+</tr>
+<tr>
+<td align="center">
+<a href="quickstart-runs/case78-pulse-reflection"><img src="quickstart-runs/case78-pulse-reflection/case78_pulse_reflection.png" width="100%"/></a><br/>
+<b>Case 78</b>: Pulse Reflection<br/>
+<sub>Time-Domain NewmarkBeta</sub>
+</td>
+<td align="center">
+<a href="quickstart-runs/case79-snell-law-tir"><img src="quickstart-runs/case79-snell-law-tir/case79_snell_law_tir.png" width="100%"/></a><br/>
+<b>Case 79</b>: Snell's Law<br/>
+<sub>Oblique Incidence (20 deg)</sub>
+</td>
+<td align="center">
+<a href="quickstart-runs/case80-bragg-mirror"><img src="quickstart-runs/case80-bragg-mirror/case80_bragg_mirror.png" width="100%"/></a><br/>
+<b>Case 80</b>: Bragg Mirror<br/>
+<sub>|R|^2 = 1 Stopband</sub>
+</td>
+<td align="center">
+<a href="quickstart-runs/case81-photonic-crystal"><img src="quickstart-runs/case81-photonic-crystal/case81_photonic_crystal.png" width="100%"/></a><br/>
+<b>Case 81</b>: Photonic Crystal<br/>
+<sub>Band Gap Eigenvalue</sub>
+</td>
+</tr>
+<tr>
+<td align="center">
+<a href="quickstart-runs/case82-3d-cavity-resonance"><img src="quickstart-runs/case82-3d-cavity-resonance/case82_3d_cavity_resonance.png" width="100%"/></a><br/>
+<b>Case 82</b>: 3D Cavity Resonance<br/>
+<sub>TM Eigenvalues on HEX8</sub>
+</td>
+<td align="center">
+<a href="quickstart-runs/case83-veselago-lens"><img src="quickstart-runs/case83-veselago-lens/case83_veselago_lens.png" width="100%"/></a><br/>
+<b>Case 83</b>: Veselago Flat Lens<br/>
+<sub>Point Source Focusing (n = -1)</sub>
+</td>
+<td colspan="2"></td>
 </tr>
 </table>
 

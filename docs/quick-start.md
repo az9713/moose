@@ -1,8 +1,8 @@
-# MOOSE Quick-Start Guide: 73 Working Examples
+# MOOSE Quick-Start Guide: 83 Working Examples
 
-This guide walks a complete beginner through 73 self-contained MOOSE input files,
+This guide walks a complete beginner through 83 self-contained MOOSE input files,
 from the simplest possible diffusion problem to genuine multi-physics simulations
-using MOOSE's physics modules. Cases 01-13 use only the framework. Cases 14-73
+using MOOSE's physics modules. Cases 01-13 use only the framework. Cases 14-83
 use physics modules (heat_transfer, solid_mechanics, navier_stokes, phase_field,
 porous_flow, electromagnetics, chemical_reactions, geochemistry, contact, xfem,
 thermal_hydraulics, level_set) and require `combined-opt`. Read them in order.
@@ -5961,7 +5961,7 @@ variable name (e.g., `u` or `T`) using the dropdown in the toolbar.
 
 ## Next Steps
 
-After completing these 73 cases:
+After completing these 83 cases:
 
 1. **Read the MOOSE documentation** at https://mooseframework.inl.gov for
    complete reference documentation on every object type.
@@ -5973,11 +5973,12 @@ After completing these 73 cases:
 3. **Write your own application**: Use `moose/scripts/stork.py` to scaffold
    a new MOOSE application with custom kernels, materials, and BCs.
 
-4. **Explore more module features**: Cases 14-73 introduce the major physics
+4. **Explore more module features**: Cases 14-83 introduce the major physics
    modules — from solid mechanics and heat transfer through Navier-Stokes,
    electrodynamics, MHD, nonlinear solid mechanics, nuclear reactor physics,
    geomechanics / porous flow, reactive-transport geochemistry, MultiApp
    coupling, mortar contact, XFEM crack modeling, 1D thermal-hydraulics,
-   and level-set interface tracking.
+   level-set interface tracking, and advanced electromagnetism (left-handed
+   materials, photonic crystals, Bragg mirrors, Veselago lensing).
    Each module has many more capabilities — consult the [Modules Reference](modules-reference.md)
    for full details.
