@@ -1,5 +1,5 @@
 """
-MOOSE Quick-Start: Visualization Script for All 48 Cases
+MOOSE Quick-Start: Visualization Script for All 53 Cases
 =========================================================
 Generates 2-3 plots per case and saves each PNG into that case's own directory.
 For example, Case 01's plot is written to case01-1d-steady-diffusion/case01_diffusion_1d.png.
@@ -117,6 +117,11 @@ CASE_DIRS = {
     "46": "case46-polynomial-chaos",
     "47": "case47-heat-source-inversion",
     "48": "case48-parameter-study",
+    "49": "case49-j2-plasticity",
+    "50": "case50-finite-strain",
+    "51": "case51-power-law-creep",
+    "52": "case52-phase-field-fracture",
+    "53": "case53-pressure-vessel",
 }
 
 
@@ -2961,6 +2966,269 @@ def plot_case48():
 
 
 # ---------------------------------------------------------------------------
+# Cases 49-53: Nonlinear Solid Mechanics (Batch A)
+# ---------------------------------------------------------------------------
+
+
+def plot_case49():
+    """Case 49: J2 Plasticity — stress-strain curve with yielding."""
+    csv_file = case_path("49", "case49_j2_plasticity_out.csv")
+    if not file_exists(csv_file):
+        skipped_cases.append("case49 (missing CSV)")
+        return
+    print("  Case 49: J2 Plasticity")
+    d = read_csv(csv_file)
+    total_strain = [e + p for e, p in zip(d["avg_elastic_strain_yy"], d["avg_plastic_strain_yy"])]
+
+    fig, axes = plt.subplots(1, 3, figsize=(14, 4))
+
+    # Panel 1: Stress-strain curve (bilinear)
+    ax = axes[0]
+    ax.plot([s * 100 for s in total_strain], d["avg_stress_yy"], "b-", linewidth=2)
+    ax.axhline(y=250, color="r", linestyle="--", alpha=0.7, label="$\\sigma_y$ = 250 MPa")
+    ax.set_xlabel("Total Strain (%)")
+    ax.set_ylabel("Axial Stress $\\sigma_{yy}$ (MPa)")
+    ax.set_title("Stress–Strain Curve")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    # Panel 2: Plastic strain vs time
+    ax = axes[1]
+    ax.plot(d["time"], [p * 100 for p in d["avg_plastic_strain_yy"]], "r-", linewidth=2)
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Plastic Strain (%)")
+    ax.set_title("Plastic Strain Accumulation")
+    ax.grid(True, alpha=0.3)
+
+    # Panel 3: Von Mises stress vs time
+    ax = axes[2]
+    ax.plot(d["time"], d["max_vonmises"], "g-", linewidth=2)
+    ax.axhline(y=250, color="r", linestyle="--", alpha=0.7, label="$\\sigma_y$")
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Max von Mises Stress (MPa)")
+    ax.set_title("Von Mises Stress")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    fig.suptitle("Case 49: J2 Plasticity — Uniaxial Tension with Hardening", fontsize=14)
+    fig.tight_layout()
+    save_fig(fig, "49", "case49_j2_plasticity.png")
+
+
+def plot_case50():
+    """Case 50: Finite Strain — large deformation compression."""
+    csv_file = case_path("50", "case50_finite_strain_out.csv")
+    if not file_exists(csv_file):
+        skipped_cases.append("case50 (missing CSV)")
+        return
+    print("  Case 50: Finite Strain Compression")
+    d = read_csv(csv_file)
+    # Engineering strain = disp/L0 where L0 = 1
+    eng_strain = [abs(dy) * 100 for dy in d["top_disp_y"]]
+
+    fig, axes = plt.subplots(1, 3, figsize=(14, 4))
+
+    # Panel 1: Stress vs engineering strain (nonlinear due to finite strain)
+    ax = axes[0]
+    ax.plot(eng_strain, [abs(s) for s in d["avg_stress_yy"]], "b-", linewidth=2)
+    # Linear reference
+    E = 10.0  # MPa
+    lin_strain = np.linspace(0, max(eng_strain), 50)
+    ax.plot(lin_strain, E * lin_strain / 100, "r--", alpha=0.6, label="Linear ($E\\epsilon$)")
+    ax.set_xlabel("Engineering Strain (%)")
+    ax.set_ylabel("|Avg Stress $\\sigma_{yy}$| (MPa)")
+    ax.set_title("Stress vs Strain")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    # Panel 2: Lateral expansion (Poisson effect)
+    ax = axes[1]
+    ax.plot(eng_strain, [dx * 100 for dx in d["max_disp_x"]], "m-", linewidth=2)
+    ax.set_xlabel("Compressive Strain (%)")
+    ax.set_ylabel("Max Lateral Displacement (%)")
+    ax.set_title("Lateral Expansion (Poisson Effect)")
+    ax.grid(True, alpha=0.3)
+
+    # Panel 3: Von Mises stress vs time
+    ax = axes[2]
+    ax.plot(d["time"], d["max_vonmises"], "g-", linewidth=2)
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Max von Mises Stress (MPa)")
+    ax.set_title("Von Mises Stress")
+    ax.grid(True, alpha=0.3)
+
+    fig.suptitle("Case 50: Finite Strain — 30% Compression of Rubber Block", fontsize=14)
+    fig.tight_layout()
+    save_fig(fig, "50", "case50_finite_strain.png")
+
+
+def plot_case51():
+    """Case 51: Power-Law Creep — time-dependent deformation."""
+    csv_file = case_path("51", "case51_power_law_creep_out.csv")
+    if not file_exists(csv_file):
+        skipped_cases.append("case51 (missing CSV)")
+        return
+    print("  Case 51: Power-Law Creep")
+    d = read_csv(csv_file)
+
+    fig, axes = plt.subplots(1, 3, figsize=(14, 4))
+
+    # Panel 1: Creep strain vs time
+    ax = axes[0]
+    ax.plot(d["time"], [abs(c) * 100 for c in d["avg_creep_strain_yy"]], "b-o",
+            linewidth=2, markersize=4)
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Creep Strain (%)")
+    ax.set_title("Creep Strain Accumulation")
+    ax.grid(True, alpha=0.3)
+
+    # Panel 2: Elastic vs creep strain comparison
+    ax = axes[1]
+    ax.plot(d["time"], [abs(e) * 100 for e in d["avg_elastic_strain_yy"]],
+            "g-s", linewidth=2, markersize=4, label="Elastic")
+    ax.plot(d["time"], [abs(c) * 100 for c in d["avg_creep_strain_yy"]],
+            "r-o", linewidth=2, markersize=4, label="Creep")
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Strain (%)")
+    ax.set_title("Elastic vs Creep Strain")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    # Panel 3: Von Mises stress relaxation
+    ax = axes[2]
+    ax.plot(d["time"], [v / 1e6 for v in d["max_vonmises"]], "m-", linewidth=2)
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Max von Mises Stress (MPa)")
+    ax.set_title("Stress Redistribution")
+    ax.grid(True, alpha=0.3)
+
+    fig.suptitle("Case 51: Power-Law Creep — Column Under Sustained Compression", fontsize=14)
+    fig.tight_layout()
+    save_fig(fig, "51", "case51_power_law_creep.png")
+
+
+def plot_case52():
+    """Case 52: Phase-Field Fracture — load-displacement with softening."""
+    csv_file = case_path("52", "case52_phase_field_fracture_out.csv")
+    if not file_exists(csv_file):
+        skipped_cases.append("case52 (missing CSV)")
+        return
+    print("  Case 52: Phase-Field Fracture")
+    d = read_csv(csv_file)
+
+    fig, axes = plt.subplots(1, 3, figsize=(14, 4))
+
+    # Panel 1: Load-displacement curve (shows peak then softening)
+    ax = axes[0]
+    disp_mm = [dy * 1000 for dy in d["top_disp_y"]]  # convert to mm
+    ax.plot(disp_mm, d["reaction_force_y"], "b-o", linewidth=2, markersize=5)
+    ax.set_xlabel("Displacement (×10$^{-3}$)")
+    ax.set_ylabel("Reaction Force")
+    ax.set_title("Load–Displacement (Softening)")
+    ax.grid(True, alpha=0.3)
+
+    # Panel 2: Damage evolution
+    ax = axes[1]
+    ax.plot(d["time"], d["max_damage"], "r-o", linewidth=2, markersize=5)
+    ax.axhline(y=1.0, color="k", linestyle="--", alpha=0.5, label="Fully cracked")
+    ax.set_xlabel("Time (load step)")
+    ax.set_ylabel("Max Damage $c$")
+    ax.set_title("Damage Evolution")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    # Panel 3: Reaction force vs damage
+    ax = axes[2]
+    ax.plot(d["max_damage"], d["reaction_force_y"], "g-o", linewidth=2, markersize=5)
+    ax.set_xlabel("Max Damage $c$")
+    ax.set_ylabel("Reaction Force")
+    ax.set_title("Force vs Damage")
+    ax.grid(True, alpha=0.3)
+
+    fig.suptitle("Case 52: Phase-Field Fracture — Notched Specimen Under Tension", fontsize=14)
+    fig.tight_layout()
+    save_fig(fig, "52", "case52_phase_field_fracture.png")
+
+
+def plot_case53():
+    """Case 53: Pressure Vessel — Lamé solution validation."""
+    csv_file = case_path("53", "case53_pressure_vessel_out.csv")
+    exo_file = case_path("53", "case53_pressure_vessel_out.e")
+    if not file_exists(csv_file, exo_file):
+        skipped_cases.append("case53 (missing files)")
+        return
+    print("  Case 53: Pressure Vessel (Lamé)")
+
+    # Read Exodus for spatial stress distribution
+    ds = open_exodus(exo_file)
+    x, y = get_coords_2d(ds)
+
+    # Get element variable names for stress
+    nev = ds.variables["name_elem_var"]
+    elem_names = []
+    for i in range(nev.shape[0]):
+        row = nev[i]
+        name = b"".join(row.compressed()).decode("utf-8", errors="ignore").strip()
+        elem_names.append(name)
+
+    # Find stress_xx (radial) and stress_zz (hoop) indices
+    idx_sr = elem_names.index("stress_xx") + 1 if "stress_xx" in elem_names else None
+    idx_st = elem_names.index("stress_zz") + 1 if "stress_zz" in elem_names else None
+
+    # Get element centroids
+    connect = ds.variables["connect1"]
+    conn = np.array(connect[:], dtype=int) - 1  # 0-based
+    cx = np.array([x[conn[e]].mean() for e in range(conn.shape[0])])
+    cy = np.array([y[conn[e]].mean() for e in range(conn.shape[0])])
+
+    fig, axes = plt.subplots(1, 3, figsize=(14, 4))
+
+    if idx_sr and idx_st:
+        sr = np.array(ds.variables[f"vals_elem_var{idx_sr}eb1"][-1, :], dtype=float)
+        st = np.array(ds.variables[f"vals_elem_var{idx_st}eb1"][-1, :], dtype=float)
+
+        # Panel 1: Radial stress vs r (with analytical)
+        ax = axes[0]
+        ax.scatter(cx, sr, c="b", s=10, alpha=0.6, label="MOOSE")
+        r_an = np.linspace(1.0, 2.0, 100)
+        sr_an = 33.3333 - 133.3333 / (r_an ** 2)
+        ax.plot(r_an, sr_an, "r-", linewidth=2, label="Lamé (exact)")
+        ax.set_xlabel("Radius $r$ (m)")
+        ax.set_ylabel("Radial Stress $\\sigma_r$ (MPa)")
+        ax.set_title("Radial Stress")
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+
+        # Panel 2: Hoop stress vs r (with analytical)
+        ax = axes[1]
+        ax.scatter(cx, st, c="g", s=10, alpha=0.6, label="MOOSE")
+        st_an = 33.3333 + 133.3333 / (r_an ** 2)
+        ax.plot(r_an, st_an, "r-", linewidth=2, label="Lamé (exact)")
+        ax.set_xlabel("Radius $r$ (m)")
+        ax.set_ylabel("Hoop Stress $\\sigma_\\theta$ (MPa)")
+        ax.set_title("Hoop Stress")
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+
+        # Panel 3: Von Mises contour on the RZ cross-section
+        ax = axes[2]
+        idx_vm = elem_names.index("vonmises_stress") + 1
+        vm = np.array(ds.variables[f"vals_elem_var{idx_vm}eb1"][-1, :], dtype=float)
+        sc = ax.scatter(cx, cy, c=vm, cmap=CMAP_SCALAR, s=20, alpha=0.8)
+        plt.colorbar(sc, ax=ax, label="Von Mises (MPa)")
+        ax.set_xlabel("Radius $r$ (m)")
+        ax.set_ylabel("Height $z$ (m)")
+        ax.set_title("Von Mises Stress")
+        ax.set_aspect("equal")
+
+    ds.close()
+
+    fig.suptitle("Case 53: Thick-Walled Pressure Vessel — Lamé Solution", fontsize=14)
+    fig.tight_layout()
+    save_fig(fig, "53", "case53_pressure_vessel.png")
+
+
+# ---------------------------------------------------------------------------
 # Main driver
 # ---------------------------------------------------------------------------
 
@@ -3013,12 +3281,17 @@ CASE_FUNCTIONS = [
     ("46", plot_case46),
     ("47", plot_case47),
     ("48", plot_case48),
+    ("49", plot_case49),
+    ("50", plot_case50),
+    ("51", plot_case51),
+    ("52", plot_case52),
+    ("53", plot_case53),
 ]
 
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("MOOSE Quick-Start Visualization — All 48 Cases")
+    print("MOOSE Quick-Start Visualization — All 53 Cases")
     print("=" * 60)
     print(f"Script directory: {SCRIPT_DIR}")
     print("Plots will be saved into each case subdirectory.\n")

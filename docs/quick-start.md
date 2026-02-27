@@ -1,8 +1,8 @@
-# MOOSE Quick-Start Guide: 48 Working Examples
+# MOOSE Quick-Start Guide: 53 Working Examples
 
-This guide walks a complete beginner through 48 self-contained MOOSE input files,
+This guide walks a complete beginner through 53 self-contained MOOSE input files,
 from the simplest possible diffusion problem to genuine multi-physics simulations
-using MOOSE's physics modules. Cases 01-13 use only the framework. Cases 14-48
+using MOOSE's physics modules. Cases 01-13 use only the framework. Cases 14-53
 use physics modules (heat_transfer, solid_mechanics, navier_stokes, phase_field,
 porous_flow, electromagnetics) and require `combined-opt`. Read them in order.
 
@@ -4790,6 +4790,93 @@ Contrast with Case 45's manual setup — the `[ParameterStudy]` action replaces 
 
 ---
 
+---
+
+## Case 49 — J2 Plasticity: Uniaxial Tension with Isotropic Hardening
+
+### Physics
+
+A 3D bar is pulled in uniaxial tension past the yield stress. The `solid_mechanics` module's `ComputeMultipleInelasticStress` object drives J2 (von Mises) plasticity with linear isotropic hardening: once the effective stress exceeds the initial yield stress, further straining accumulates plastic strain and hardens the material. The elastic-perfectly-plastic and hardening phases produce a bilinear stress-strain curve that is verified against the exact analytic result.
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `Physics/SolidMechanics/QuasiStatic` | Sets up displacement variables, strain, and stress computation |
+| `ComputeMultipleInelasticStress` | Integrates the constitutive update with inelastic return mapping |
+| `IsotropicPlasticityStressUpdate` | J2 return-mapping algorithm with isotropic hardening modulus |
+| `FunctionDirichletBC` | Ramps applied displacement linearly with time |
+
+---
+
+## Case 50 — Finite Strain: Large Deformation Compression
+
+### Physics
+
+A rubber-like block is compressed to 50% of its original height. Finite-strain kinematics (using the multiplicative decomposition F = Fe Fp) are required because small-strain assumptions break down above ~5% deformation. The `solid_mechanics` module's `ComputeFiniteStrainElasticStress` path tracks the deformed configuration, producing correct geometric stiffening and accurate Cauchy stresses even at large strains.
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `ComputeFiniteStrain` | Computes the deformation gradient and Green-Lagrange strain |
+| `ComputeFiniteStrainElasticStress` | Rotated Cauchy stress in the deformed configuration |
+| `PresetDisplacement` | Applies a prescribed displacement history to the top surface |
+| `RankTwoScalarAux` | Extracts scalar invariants (effective strain, volumetric strain) |
+
+---
+
+## Case 51 — Power-Law Creep: Column Under Sustained Compression
+
+### Physics
+
+A ceramic column carries a constant compressive load at elevated temperature. Over time, creep strain accumulates according to the power-law model: strain_rate = A * sigma^n * exp(-Q/RT). The `PowerLawCreepStressUpdate` object integrates this rate law implicitly at each timestep. Post-processing tracks the creep strain history and compares the mid-column strain evolution to the closed-form uniaxial solution.
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `PowerLawCreepStressUpdate` | Implicit return-mapping for steady-state power-law creep |
+| `ComputeMultipleInelasticStress` | Manages inelastic strain decomposition alongside creep |
+| `IterationAdaptiveDT` | Grows the timestep during slow creep, shrinks during rapid accumulation |
+| `ElementAverageValue` | Tracks average creep strain for comparison to analytic solution |
+
+---
+
+## Case 52 — Phase-Field Fracture: Notched Specimen Under Tension
+
+### Physics
+
+A pre-notched rectangular specimen is pulled in tension until a crack nucleates and propagates. The phase-field fracture model couples a damage variable d (0 = intact, 1 = fully broken) to the displacement field: energy is stored elastically until the local fracture energy criterion is met, at which point d grows and the stiffness degrades smoothly. This avoids mesh-dependent crack paths that arise with sharp-crack models.
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `PhaseFieldFractureMechanicsOffDiag` | Off-diagonal Jacobian coupling between damage and displacement |
+| `ComputeLinearElasticPFFractureStress` | Degraded stiffness tensor (1-d)^2 * C_e |
+| `ADPFFracture` | Residual for the Allen-Cahn-type damage evolution equation |
+| `SMP` | Full off-diagonal preconditioning for the coupled damage-mechanics system |
+
+---
+
+## Case 53 — Pressure Vessel: Thick-Walled Cylinder (Lame Solution)
+
+### Physics
+
+An internally pressurized thick-walled cylinder (inner radius a, outer radius b) under plane-strain conditions. The Lame analytic solution gives radial and hoop stresses as functions of r: sigma_r = A + B/r^2, sigma_theta = A - B/r^2, where A and B are determined by the boundary conditions. This case verifies that the `solid_mechanics` module reproduces the exact stress distribution to machine precision, making it an ideal regression test for the elastic kernel.
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `Physics/SolidMechanics/QuasiStatic` | Axisymmetric plane-strain formulation |
+| `ComputeIsotropicElasticityTensor` | Isotropic material with given Young's modulus and Poisson's ratio |
+| `ADComputeSmallStrain` | Small-strain assumption (valid for typical pressure vessel loading) |
+| `ElementL2Error` | Quantifies deviation of FEM stress from the Lame analytic solution |
+
+---
+
 ## Troubleshooting Common Errors
 
 **Error: `Object 'Diffusion' was not registered`**
@@ -4820,7 +4907,7 @@ variable name (e.g., `u` or `T`) using the dropdown in the toolbar.
 
 ## Next Steps
 
-After completing these 44 cases:
+After completing these 53 cases:
 
 1. **Read the MOOSE documentation** at https://mooseframework.inl.gov for
    complete reference documentation on every object type.
@@ -4832,7 +4919,8 @@ After completing these 44 cases:
 3. **Write your own application**: Use `moose/scripts/stork.py` to scaffold
    a new MOOSE application with custom kernels, materials, and BCs.
 
-4. **Explore more module features**: Cases 14-48 introduce the major physics
+4. **Explore more module features**: Cases 14-53 introduce the major physics
    modules — from solid mechanics and heat transfer through Navier-Stokes,
-   electrodynamics, and MHD. Each module has many more capabilities — consult
-   the [Modules Reference](modules-reference.md) for full details.
+   electrodynamics, MHD, and nonlinear solid mechanics. Each module has many
+   more capabilities — consult the [Modules Reference](modules-reference.md)
+   for full details.

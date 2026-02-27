@@ -1,13 +1,13 @@
 # MOOSE Quickstart Tutorial Cases: Complete Reference
 
-This directory contains 48 self-contained simulation cases for learning MOOSE from zero.
+This directory contains 53 self-contained simulation cases for learning MOOSE from zero.
 Each case has its own subdirectory with an input file (`.i`) and pre-run output files.
 You do not need to build or install anything to study the input files, understand the physics,
 and read the results. If you want to run the simulations yourself, see Section 5.
 
 This document is designed so that someone who has never used MOOSE, never written a finite
 element simulation, and is not familiar with scientific computing file formats can read it
-from top to bottom and understand everything in these 48 cases.
+from top to bottom and understand everything in these 53 cases.
 
 Read every section. Do not skip ahead. The later cases build directly on concepts introduced
 in the earlier ones.
@@ -21,7 +21,7 @@ in the earlier ones.
 3. [Understanding Output Files](#3-understanding-output-files)
 4. [How MOOSE Solves Problems](#4-how-moose-solves-problems-conceptual)
 5. [Running Simulations](#5-running-simulations)
-6. [The 48 Cases at a Glance](#6-the-48-cases-at-a-glance)
+6. [The 53 Cases at a Glance](#6-the-53-cases-at-a-glance)
 7. [Creating Your Own Simulations](#7-creating-your-own-simulations)
 8. [Glossary](#8-glossary)
 
@@ -105,7 +105,7 @@ MOOSE also handles:
 - **Nonlinear problems**: handles problems where material properties depend on the solution
   itself (like a material that gets stiffer as it heats up)
 
-### What are the 29 cases in this directory?
+### What are the 53 cases in this directory?
 
 These cases form a progressive tutorial starting from the simplest possible problem
 (1D steady-state diffusion with an exact solution of u = x) and building up to
@@ -246,7 +246,7 @@ L = 1.0
 
 ### All Standard Block Types Explained
 
-The following sections explain every block type you will encounter in the 29 cases.
+The following sections explain every block type you will encounter in the 53 cases.
 Each explanation defines what the block does, what parameters mean, and gives a
 realistic example.
 
@@ -1347,7 +1347,7 @@ To override: add `file_base = my_custom_name` to the `[Outputs]` block.
 
 ---
 
-## 6. The 48 Cases at a Glance
+## 6. The 53 Cases at a Glance
 
 The cases are ordered from simplest to most complex. Cases 01-13 use only the MOOSE
 framework (Diffusion, BodyForce, MatDiffusion, etc.). Cases 14-21 use physics **modules**
@@ -1360,7 +1360,9 @@ scattering, coupled modes, noise, and solitons — inspired by **Professor Herma
 classical chapters (Chs 1-5, 10) only. Cases 37-44 cover advanced fluid dynamics —
 instabilities, boundary layers, turbulence, compressible flow, rotating fluids, and MHD
 waves — inspired by **Michel Rieutord**'s *Fluid Dynamics: An Introduction* (Springer, 2015),
-spanning Chapters 4-10. Study them in order.
+spanning Chapters 4-10. Cases 49-53 cover nonlinear solid mechanics — J2 plasticity,
+finite-strain kinematics, power-law creep, phase-field fracture, and pressure-vessel
+verification. Study them in order.
 
 | Case | Subdirectory | Title | Physics | Key Concepts Introduced | Difficulty |
 |------|--------------|-------|---------|-------------------------|------------|
@@ -1412,6 +1414,11 @@ spanning Chapters 4-10. Study them in order.
 | 46 | `case46-polynomial-chaos/` | Polynomial Chaos | 1D diffusion-reaction surrogate, 36 training + 100 eval | `PolynomialChaosTrainer`, `EvaluateSurrogate` | Advanced |
 | 47 | `case47-heat-source-inversion/` | Heat Source Inversion | Adjoint-based recovery of unknown heat source | `Optimize`, `GeneralOptimization`, adjoint method | Expert |
 | 48 | `case48-parameter-study/` | Parameter Study | 3-parameter LHS with ParameterStudy action | `[ParameterStudy]` action, `LatinHypercube` | Advanced |
+| 49 | `case49-j2-plasticity/` | J2 Plasticity — Uniaxial Tension | Elastic-plastic uniaxial tension with isotropic hardening; bilinear stress-strain | `ComputeMultipleInelasticStress`, `IsotropicPlasticityStressUpdate`, J2 return mapping | Advanced |
+| 50 | `case50-finite-strain-compression/` | Finite Strain — Large Deformation Compression | Multiplicative F = Fe Fp kinematics; 50% compressive strain, correct Cauchy stress | `ComputeFiniteStrain`, `ComputeFiniteStrainElasticStress`, `RankTwoScalarAux` | Advanced |
+| 51 | `case51-power-law-creep/` | Power-Law Creep — Column Under Sustained Load | Steady-state power-law creep rate = A*sigma^n*exp(-Q/RT); implicit time integration | `PowerLawCreepStressUpdate`, `ComputeMultipleInelasticStress`, `IterationAdaptiveDT` | Advanced |
+| 52 | `case52-phase-field-fracture/` | Phase-Field Fracture — Notched Specimen | Coupled damage-mechanics: (1-d)^2 stiffness degradation, crack nucleation and propagation | `ADPFFracture`, `ComputeLinearElasticPFFractureStress`, `PhaseFieldFractureMechanicsOffDiag` | Expert |
+| 53 | `case53-pressure-vessel/` | Pressure Vessel — Thick-Walled Cylinder | Lame analytic solution: sigma_r and sigma_theta verified to machine precision | `Physics/SolidMechanics/QuasiStatic` (axisymmetric), `ADComputeSmallStrain`, `ElementL2Error` | Intermediate |
 
 ### What each case produces
 
@@ -1465,16 +1472,21 @@ spanning Chapters 4-10. Study them in order.
 | 46 | `case46_polynomial_chaos_out_eval_0002.csv` | 100 PCE surrogate predictions |
 | 47 | `case47_main_out.csv`, `case47_main_out_OptimizationReporter_0001.csv` | Objective convergence and recovered parameter |
 | 48 | `case48_parameter_study_csv_study_results_0001.csv` | 50 LHS parameter samples and QoI values |
+| 49 | `case49_j2_plasticity_out.e`, `case49_j2_plasticity_out.csv` |
+| 50 | `case50_finite_strain_compression_out.e`, `case50_finite_strain_compression_out.csv` |
+| 51 | `case51_power_law_creep_out.e`, `case51_power_law_creep_out.csv` |
+| 52 | `case52_phase_field_fracture_out.e`, `case52_phase_field_fracture_out.csv` |
+| 53 | `case53_pressure_vessel_out.e`, `case53_pressure_vessel_out.csv` |
 
 All pre-run output files for cases 01-13 are included in this directory so you can
-examine them without running anything. Cases 14-44 require `combined-opt` (all modules)
+examine them without running anything. Cases 14-53 require `combined-opt` (all modules)
 to run — see each case's README for Docker instructions.
 
 ---
 
 ## 7. Creating Your Own Simulations
 
-Once you understand the 48 cases, you will want to adapt them or build new simulations
+Once you understand the 53 cases, you will want to adapt them or build new simulations
 from scratch. This section walks through the process systematically.
 
 ### Step 1: Define Your Physics

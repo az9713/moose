@@ -4,7 +4,7 @@
 >
 > This repo **does not include the MOOSE source codes**. Instead, it supplements the original
 > repository with **comprehensive documentation and worked examples** designed to help new users
-> learn the framework from scratch. The 48 progressive quickstart cases are fully explained — from
+> learn the framework from scratch. The 53 progressive quickstart cases are fully explained — from
 > the physics and governing equations, through the input file structure, to interpreting the
 > simulation results — so that users can learn how to set up their own simulations and understand
 > the output without any external help.
@@ -75,7 +75,7 @@ immediately available to every application that enables that module.
 This repository focuses on **learning materials** for the MOOSE framework:
 
 - **Comprehensive documentation** covering architecture, developer workflows, input-file syntax, and all 29 physics modules
-- **48 progressive quickstart examples** (`quickstart-runs/`) — each with a complete input file, detailed README explaining the physics, and matplotlib visualization of the results
+- **53 progressive quickstart examples** (`quickstart-runs/`) — each with a complete input file, detailed README explaining the physics, and matplotlib visualization of the results
 - **An 8-week study plan** for self-learners going from zero to productive MOOSE developer
 - **Docker instructions** for running MOOSE on Windows without compiling from source
 
@@ -90,7 +90,7 @@ To actually build and run MOOSE simulations, you need the framework itself from 
 | [docs/architecture.md](docs/architecture.md) | System architecture with subsystem diagrams covering the Framework → Modules → Applications hierarchy |
 | [docs/developer-guide.md](docs/developer-guide.md) | Step-by-step C++ developer tutorial: writing Kernels, BCs, Materials, and custom objects |
 | [docs/user-guide.md](docs/user-guide.md) | Simulation user reference covering input-file syntax, all major blocks, and solver options |
-| [docs/quick-start.md](docs/quick-start.md) | 48 worked examples progressing from simple diffusion through stochastic tools and optimization |
+| [docs/quick-start.md](docs/quick-start.md) | 53 worked examples progressing from simple diffusion through stochastic tools and optimization |
 | [docs/zero-to-hero.md](docs/zero-to-hero.md) | 8-week structured study plan for new MOOSE developers |
 | [docs/modules-reference.md](docs/modules-reference.md) | Physics module reference with API summaries and example input files |
 | [docs/docker-guide.md](docs/docker-guide.md) | Running MOOSE on Windows with Docker — installation, volume mounts, MPI |
@@ -101,7 +101,7 @@ The official online documentation lives at **https://mooseframework.inl.gov**.
 
 ## Quickstart Examples
 
-The `quickstart-runs/` directory contains **48 fully worked examples**, each in its own subdirectory with:
+The `quickstart-runs/` directory contains **53 fully worked examples**, each in its own subdirectory with:
 
 - **Input file** (`.i`) — ready to run with `moose_test-opt` or `combined-opt`
 - **Detailed README** — explains the physics, walks through every input-file block, describes the output files, and shows how to interpret the results
@@ -421,6 +421,23 @@ Drawn from Smith, *Uncertainty Quantification* (SIAM, 2014). These cases introdu
 <td align="center"><img src="quickstart-runs/case46-polynomial-chaos/case46_polynomial_chaos.png" width="220"/><br/><sub>Case 46: Polynomial Chaos</sub></td>
 <td align="center"><img src="quickstart-runs/case47-heat-source-inversion/case47_heat_source_inversion.png" width="220"/><br/><sub>Case 47: Heat Source Inversion</sub></td>
 <td align="center"><img src="quickstart-runs/case48-parameter-study/case48_parameter_study.png" width="220"/><br/><sub>Case 48: Parameter Study</sub></td>
+</tr>
+</table>
+
+### Cases 49-53: Nonlinear Solid Mechanics (Batch A)
+
+Drawn from the MOOSE `solid_mechanics` module. These cases cover plasticity, finite-strain kinematics, creep, phase-field fracture, and pressure-vessel analytical solutions — the core toolkit for structural integrity and manufacturing simulation.
+
+<table>
+<tr>
+<td align="center"><img src="quickstart-runs/case49-j2-plasticity/case49_j2_plasticity.png" width="220"/><br/><sub>Case 49: J2 Plasticity</sub></td>
+<td align="center"><img src="quickstart-runs/case50-finite-strain-compression/case50_finite_strain_compression.png" width="220"/><br/><sub>Case 50: Finite Strain Compression</sub></td>
+<td align="center"><img src="quickstart-runs/case51-power-law-creep/case51_power_law_creep.png" width="220"/><br/><sub>Case 51: Power-Law Creep</sub></td>
+<td align="center"><img src="quickstart-runs/case52-phase-field-fracture/case52_phase_field_fracture.png" width="220"/><br/><sub>Case 52: Phase-Field Fracture</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="quickstart-runs/case53-pressure-vessel/case53_pressure_vessel.png" width="220"/><br/><sub>Case 53: Pressure Vessel</sub></td>
+<td colspan="3"></td>
 </tr>
 </table>
 
