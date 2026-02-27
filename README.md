@@ -9,6 +9,17 @@
 > simulation results — so that users can learn how to set up their own simulations and understand
 > the output without any external help.
 >
+> This repository also includes two **Claude Code skills** that automate the entire simulation
+> workflow. The **`moose-simulation`** skill is a structured 9-step checklist that governs the
+> complete lifecycle of a MOOSE simulation — from prerequisite checks and input-file authoring
+> through Docker execution, output validation, matplotlib visualization, and README documentation.
+> The **`docker-windows`** skill handles the notoriously tricky details of running Docker from
+> Git Bash / MINGW on Windows — preventing silent path mangling, volume-mount failures, and flag
+> conversion issues that would otherwise break every `docker run` command. Together, these two
+> skills enabled [Claude Code](https://claude.ai/claude-code) to autonomously generate 25 of
+> the 73 quickstart cases (Batches A-E, cases 49-73) from a single user prompt, with no manual
+> intervention required.
+>
 > **Original repository:** https://github.com/idaholab/moose
 > **Official documentation:** https://mooseframework.inl.gov
 
