@@ -26,8 +26,8 @@ will then follow the skill's 9-section checklist systematically.
 
 ## What Was Actually Built
 
-Over multiple sessions the skill guided creation of **58 quickstart cases**
-covering 9 MOOSE physics modules:
+Over multiple sessions the skill guided creation of **63 quickstart cases**
+covering 10 MOOSE physics modules:
 
 | Batch | Cases | Source Textbook | Physics |
 |-------|-------|-----------------|---------|
@@ -38,6 +38,7 @@ covering 9 MOOSE physics modules:
 | Smith | 45–48 | Smith, *Uncertainty Quantification* (SIAM, 2014) | Monte Carlo UQ, polynomial chaos expansion, heat source inversion (adjoint optimization), Latin Hypercube parameter study |
 | Nonlinear Solid Mechanics (Batch A) | 49–53 | MOOSE solid_mechanics module | J2 plasticity, finite-strain compression, power-law creep, phase-field fracture, Lame pressure vessel solution |
 | Nuclear Reactor Physics | 54–58 | Nuclear engineering fundamentals (diffusion theory, reactor kinetics) | 1-group and 2-group neutron diffusion eigenvalue, fuel-pin RZ heat transfer, xenon-135 poisoning transient, control rod worth |
+| Geomechanics & Porous Flow (Batch C) | 59–63 | Geomechanics and groundwater fundamentals | Terzaghi consolidation, wellbore drawdown (Theis), unsaturated Richards' equation, Biot poroelasticity, gravity dam structural analysis |
 
 Every case converges in Docker with `combined-opt` in under 2 minutes and
 produces both Exodus (`.e`) and CSV output files.
@@ -282,7 +283,7 @@ debugging:
    prevents 30 minutes of debugging silent Docker failures.
 
 3. **Read existing cases as templates.** Before writing a new `.i` file,
-   find the closest existing case and adapt it. The 44 quickstart cases
+   find the closest existing case and adapt it. The 63 quickstart cases
    cover most MOOSE object types.
 
 4. **Trust the failure catalog first.** When a run fails, check Section 7

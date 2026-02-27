@@ -1,13 +1,13 @@
 # MOOSE Quickstart Tutorial Cases: Complete Reference
 
-This directory contains 58 self-contained simulation cases for learning MOOSE from zero.
+This directory contains 63 self-contained simulation cases for learning MOOSE from zero.
 Each case has its own subdirectory with an input file (`.i`) and pre-run output files.
 You do not need to build or install anything to study the input files, understand the physics,
 and read the results. If you want to run the simulations yourself, see Section 5.
 
 This document is designed so that someone who has never used MOOSE, never written a finite
 element simulation, and is not familiar with scientific computing file formats can read it
-from top to bottom and understand everything in these 58 cases.
+from top to bottom and understand everything in these 63 cases.
 
 Read every section. Do not skip ahead. The later cases build directly on concepts introduced
 in the earlier ones.
@@ -21,7 +21,7 @@ in the earlier ones.
 3. [Understanding Output Files](#3-understanding-output-files)
 4. [How MOOSE Solves Problems](#4-how-moose-solves-problems-conceptual)
 5. [Running Simulations](#5-running-simulations)
-6. [The 58 Cases at a Glance](#6-the-58-cases-at-a-glance)
+6. [The 63 Cases at a Glance](#6-the-63-cases-at-a-glance)
 7. [Creating Your Own Simulations](#7-creating-your-own-simulations)
 8. [Glossary](#8-glossary)
 
@@ -105,7 +105,7 @@ MOOSE also handles:
 - **Nonlinear problems**: handles problems where material properties depend on the solution
   itself (like a material that gets stiffer as it heats up)
 
-### What are the 58 cases in this directory?
+### What are the 63 cases in this directory?
 
 These cases form a progressive tutorial starting from the simplest possible problem
 (1D steady-state diffusion with an exact solution of u = x) and building up to
@@ -246,7 +246,7 @@ L = 1.0
 
 ### All Standard Block Types Explained
 
-The following sections explain every block type you will encounter in the 58 cases.
+The following sections explain every block type you will encounter in the 63 cases.
 Each explanation defines what the block does, what parameters mean, and gives a
 realistic example.
 
@@ -1347,7 +1347,7 @@ To override: add `file_base = my_custom_name` to the `[Outputs]` block.
 
 ---
 
-## 6. The 58 Cases at a Glance
+## 6. The 63 Cases at a Glance
 
 The cases are ordered from simplest to most complex. Cases 01-13 use only the MOOSE
 framework (Diffusion, BodyForce, MatDiffusion, etc.). Cases 14-21 use physics **modules**
@@ -1364,7 +1364,9 @@ spanning Chapters 4-10. Cases 49-53 cover nonlinear solid mechanics — J2 plast
 finite-strain kinematics, power-law creep, phase-field fracture, and pressure-vessel
 verification. Cases 54-58 cover nuclear reactor physics — neutron diffusion eigenvalue
 problems, fuel-pin heat transfer, xenon poisoning transients, and control-rod worth
-calculations. Study them in order.
+calculations. Cases 59-63 cover geomechanics and porous flow — Terzaghi consolidation,
+wellbore drawdown, unsaturated Richards' equation, Biot poroelasticity, and gravity dam
+structural analysis. Study them in order.
 
 | Case | Subdirectory | Title | Physics | Key Concepts Introduced | Difficulty |
 |------|--------------|-------|---------|-------------------------|------------|
@@ -1426,6 +1428,11 @@ calculations. Study them in order.
 | 56 | `case56-fuel-pin-heat-transfer/` | Fuel Pin Heat Transfer — Radial Temperature Profile | Steady axisymmetric (RZ) heat conduction in fuel + cladding with volumetric source, contact resistance, and convective outer BC; T_center ~ 1200 °C | `GeneratedMesh` (coord_type = RZ), `HeatConduction`, `HeatSource`, `ConvectiveHeatFluxBC`, two subdomains | Intermediate |
 | 57 | `case57-xenon-poisoning/` | Xenon-135 Poisoning Transient — Reactor Flux Decay | Coupled I-135/Xe-135/flux ODEs over 24 h; xenon peak at ~7 h suppresses flux by ~50% before recovery | `TimeDerivative` (×3), `CoupledForce` (iodine→xenon decay and xenon absorption), `IterationAdaptiveDT`, `ParsedMaterial` | Advanced |
 | 58 | `case58-control-rod-worth/` | Control Rod Worth — Eigenvalue Shift from Absorber | Spatially varying Sigma_a in rod subdomain; Delta_k = k_unrodded - k_rodded quantifies rod worth; flux depression near rod tip | `SubdomainBoundingBoxGenerator` (rod region), block-restricted `GenericConstantMaterial`, `Eigenvalue` executioner, `ElementIntegral` | Advanced |
+| 59 | `case59-terzaghi-consolidation/` | Terzaghi 1D Consolidation | Saturated soil column loaded at top; excess pore pressure dissipates upward; pore-pressure profile verified against Fourier-series analytic solution | `PorousFlowBasicTHM` action, `SimpleFluidProperties`, `PorousFlowPermeabilityConst`, `SideAverageValue`, `PointValue` (settlement) | Intermediate |
+| 60 | `case60-wellbore-drawdown/` | Wellbore Drawdown — Theis Solution in RZ | Radial flow toward pumping well in RZ geometry; drawdown profile verified against Theis well function W(u) at t = 1, 10, 100 hours | `GeneratedMesh` (coord_type = RZ), `PorousFlowBasicTHM` (hydro only), `NeumannBC` (pump flux), `IterationAdaptiveDT`, `PointValue` | Intermediate |
+| 61 | `case61-unsaturated-flow/` | Unsaturated Flow — Richards' Equation with van Genuchten | 1D infiltration into initially dry soil; nonlinear wetting front via van Genuchten retention and Mualem relative permeability | `PorousFlowUnsaturated` action, `PorousFlowCapillaryPressureVG`, `PorousFlowRelativePermeabilityVG`, `IterationAdaptiveDT` | Advanced |
+| 62 | `case62-biot-poroelasticity/` | Biot Poroelasticity — Explicit Coupling | Full Biot THM using explicit PorousFlow + SolidMechanics kernels; fluid-solid coupling terms visible in input; 2D plane-strain block verified against 1D Terzaghi | `Physics/SolidMechanics/QuasiStatic`, `PorousFlowFullySaturated`, `PorousFlowEffectiveFluidPressure`, `PorousFlowVolumetricStrain`, `ElementL2Error` | Advanced |
+| 63 | `case63-gravity-dam/` | Gravity Dam — Multi-Material Structural Analysis | Plain concrete dam + rock foundation under self-weight and hydrostatic load; von Mises stress, principal stress, and heel tensile stress design check | `SubdomainBoundingBoxGenerator`, block-restricted `ADComputeIsotropicElasticityTensor`, `Gravity`, `Pressure` BC (hydrostatic), `ADRankTwoScalarAux`, `NodalExtremeValue` | Advanced |
 
 ### What each case produces
 
@@ -1489,16 +1496,21 @@ calculations. Study them in order.
 | 56 | `case56_fuel_pin_heat_transfer_out.e`, `case56_fuel_pin_heat_transfer_out.csv` |
 | 57 | `case57_xenon_poisoning_out.e`, `case57_xenon_poisoning_out.csv` |
 | 58 | `case58_control_rod_worth_out.e`, `case58_control_rod_worth_out.csv` |
+| 59 | `case59_terzaghi_consolidation_out.e`, `case59_terzaghi_consolidation_out.csv` |
+| 60 | `case60_wellbore_drawdown_out.e`, `case60_wellbore_drawdown_out.csv` |
+| 61 | `case61_unsaturated_flow_out.e`, `case61_unsaturated_flow_out.csv` |
+| 62 | `case62_biot_poroelasticity_out.e`, `case62_biot_poroelasticity_out.csv` |
+| 63 | `case63_gravity_dam_out.e`, `case63_gravity_dam_out.csv` |
 
 All pre-run output files for cases 01-13 are included in this directory so you can
-examine them without running anything. Cases 14-58 require `combined-opt` (all modules)
+examine them without running anything. Cases 14-63 require `combined-opt` (all modules)
 to run — see each case's README for Docker instructions.
 
 ---
 
 ## 7. Creating Your Own Simulations
 
-Once you understand the 58 cases, you will want to adapt them or build new simulations
+Once you understand the 63 cases, you will want to adapt them or build new simulations
 from scratch. This section walks through the process systematically.
 
 ### Step 1: Define Your Physics

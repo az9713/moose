@@ -4,7 +4,7 @@
 >
 > This repo **does not include the MOOSE source codes**. Instead, it supplements the original
 > repository with **comprehensive documentation and worked examples** designed to help new users
-> learn the framework from scratch. The 58 progressive quickstart cases are fully explained — from
+> learn the framework from scratch. The 63 progressive quickstart cases are fully explained — from
 > the physics and governing equations, through the input file structure, to interpreting the
 > simulation results — so that users can learn how to set up their own simulations and understand
 > the output without any external help.
@@ -75,7 +75,7 @@ immediately available to every application that enables that module.
 This repository focuses on **learning materials** for the MOOSE framework:
 
 - **Comprehensive documentation** covering architecture, developer workflows, input-file syntax, and all 29 physics modules
-- **58 progressive quickstart examples** (`quickstart-runs/`) — each with a complete input file, detailed README explaining the physics, and matplotlib visualization of the results
+- **63 progressive quickstart examples** (`quickstart-runs/`) — each with a complete input file, detailed README explaining the physics, and matplotlib visualization of the results
 - **An 8-week study plan** for self-learners going from zero to productive MOOSE developer
 - **Docker instructions** for running MOOSE on Windows without compiling from source
 
@@ -90,7 +90,7 @@ To actually build and run MOOSE simulations, you need the framework itself from 
 | [docs/architecture.md](docs/architecture.md) | System architecture with subsystem diagrams covering the Framework → Modules → Applications hierarchy |
 | [docs/developer-guide.md](docs/developer-guide.md) | Step-by-step C++ developer tutorial: writing Kernels, BCs, Materials, and custom objects |
 | [docs/user-guide.md](docs/user-guide.md) | Simulation user reference covering input-file syntax, all major blocks, and solver options |
-| [docs/quick-start.md](docs/quick-start.md) | 58 worked examples progressing from simple diffusion through nuclear reactor physics |
+| [docs/quick-start.md](docs/quick-start.md) | 63 worked examples progressing from simple diffusion through geomechanics and porous flow |
 | [docs/zero-to-hero.md](docs/zero-to-hero.md) | 8-week structured study plan for new MOOSE developers |
 | [docs/modules-reference.md](docs/modules-reference.md) | Physics module reference with API summaries and example input files |
 | [docs/docker-guide.md](docs/docker-guide.md) | Running MOOSE on Windows with Docker — installation, volume mounts, MPI |
@@ -101,7 +101,7 @@ The official online documentation lives at **https://mooseframework.inl.gov**.
 
 ## Quickstart Examples
 
-The `quickstart-runs/` directory contains **58 fully worked examples**, each in its own subdirectory with:
+The `quickstart-runs/` directory contains **63 fully worked examples**, each in its own subdirectory with:
 
 - **Input file** (`.i`) — ready to run with `moose_test-opt` or `combined-opt`
 - **Detailed README** — explains the physics, walks through every input-file block, describes the output files, and shows how to interpret the results
@@ -454,6 +454,23 @@ These cases introduce the neutronics and reactor-physics kernels built into the 
 </tr>
 <tr>
 <td align="center"><img src="quickstart-runs/case58-control-rod-worth/case58_control_rod_worth.png" width="220"/><br/><sub>Case 58: Control Rod Worth</sub></td>
+<td colspan="3"></td>
+</tr>
+</table>
+
+### Cases 59-63: Geomechanics & Porous Flow (Batch C)
+
+These cases cover coupled hydro-mechanical behavior in porous and geologic media. Topics include classical consolidation benchmarks (Terzaghi, Theis), variably-saturated groundwater flow via Richards' equation, full Biot poroelasticity with explicit kernel coupling, and multi-material structural analysis of a gravity dam. All require `combined-opt` via Docker.
+
+<table>
+<tr>
+<td align="center"><img src="quickstart-runs/case59-terzaghi-consolidation/case59_terzaghi_consolidation.png" width="220"/><br/><sub>Case 59: Terzaghi Consolidation</sub></td>
+<td align="center"><img src="quickstart-runs/case60-wellbore-drawdown/case60_wellbore_drawdown.png" width="220"/><br/><sub>Case 60: Wellbore Drawdown (Theis)</sub></td>
+<td align="center"><img src="quickstart-runs/case61-unsaturated-flow/case61_unsaturated_flow.png" width="220"/><br/><sub>Case 61: Unsaturated Flow (Richards)</sub></td>
+<td align="center"><img src="quickstart-runs/case62-biot-poroelasticity/case62_biot_poroelasticity.png" width="220"/><br/><sub>Case 62: Biot Poroelasticity</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="quickstart-runs/case63-gravity-dam/case63_gravity_dam.png" width="220"/><br/><sub>Case 63: Gravity Dam</sub></td>
 <td colspan="3"></td>
 </tr>
 </table>

@@ -127,6 +127,11 @@ CASE_DIRS = {
     "56": "case56-fuel-pin-heat",
     "57": "case57-xenon-transient",
     "58": "case58-control-rod-worth",
+    "59": "case59-terzaghi-consolidation",
+    "60": "case60-wellbore-drawdown",
+    "61": "case61-unsaturated-flow",
+    "62": "case62-biot-poroelasticity",
+    "63": "case63-gravity-dam",
 }
 
 
@@ -3532,6 +3537,315 @@ def plot_case58():
     save_fig(fig, "58", "case58_control_rod_worth.png")
 
 
+def plot_case59():
+    print("Case 59: Terzaghi 1D Consolidation")
+
+    csv_file = case_path("59", "case59_terzaghi_consolidation_out.csv")
+    exo_file = case_path("59", "case59_terzaghi_consolidation_out.e")
+    if not file_exists(csv_file, exo_file):
+        print("    SKIP: output files not found")
+        skipped_cases.append("case59")
+        return
+
+    data = read_csv(csv_file)
+    t = np.array(data["time"])
+    p_base = np.array(data["p_base"])
+    p_mid = np.array(data["p_mid"])
+    p_avg = np.array(data["p_avg"])
+
+    ds = open_exodus(exo_file)
+    times = get_times(ds)
+    x, y_coord = get_coords_2d(ds)
+    nod_names = get_nod_var_names(ds)
+    pp_idx = nod_names.index("porepressure") + 1
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    # Panel 1: Pore pressure vs time at different depths
+    ax = axes[0]
+    mask = t > 0
+    ax.plot(t[mask], p_base[mask] / 1e3, "b-", linewidth=2, label="Base (z=0)")
+    ax.plot(t[mask], p_mid[mask] / 1e3, "r--", linewidth=2, label="Mid (z=5 m)")
+    ax.plot(t[mask], p_avg[mask] / 1e3, "g:", linewidth=2, label="Average")
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Pore Pressure (kPa)")
+    ax.set_title("Excess Pore Pressure Dissipation")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    # Panel 2: Pressure profile at different times
+    ax = axes[1]
+    # Extract vertical profiles along x~0.25
+    center_mask = np.abs(x - 0.25) < 0.15
+    snap_times = [100, 1000, 2500, 5000]
+    colors = ["b", "r", "g", "m"]
+    for st, col in zip(snap_times, colors):
+        ti = find_closest_timestep(times, st)
+        pp = get_nod_var(ds, pp_idx, ti)
+        ax.plot(pp[center_mask] / 1e3, y_coord[center_mask], f"{col}-",
+                linewidth=1.5, label=f"t={st}s")
+    ax.set_xlabel("Pore Pressure (kPa)")
+    ax.set_ylabel("Height z (m)")
+    ax.set_title("Pressure Profile at Different Times")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    ds.close()
+    fig.suptitle("Case 59: Terzaghi 1D Consolidation", fontsize=14)
+    fig.tight_layout()
+    save_fig(fig, "59", "case59_terzaghi_consolidation.png")
+
+
+def plot_case60():
+    print("Case 60: Wellbore Drawdown")
+
+    csv_file = case_path("60", "case60_wellbore_drawdown_out.csv")
+    exo_file = case_path("60", "case60_wellbore_drawdown_out.e")
+    if not file_exists(csv_file, exo_file):
+        print("    SKIP: output files not found")
+        skipped_cases.append("case60")
+        return
+
+    data = read_csv(csv_file)
+    t = np.array(data["time"])
+    p_well = np.array(data["p_well"])
+    p_1m = np.array(data["p_1m"])
+    p_10m = np.array(data["p_10m"])
+    p_50m = np.array(data["p_50m"])
+
+    ds = open_exodus(exo_file)
+    times = get_times(ds)
+    x, y_coord = get_coords_2d(ds)
+    nod_names = get_nod_var_names(ds)
+    pp_idx = nod_names.index("porepressure") + 1
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    # Panel 1: Pressure at different radii vs time
+    ax = axes[0]
+    mask = t > 0
+    ax.plot(t[mask], p_well[mask] / 1e6, "b-", linewidth=2, label="Well (r=0.1m)")
+    ax.plot(t[mask], p_1m[mask] / 1e6, "r--", linewidth=2, label="r=1 m")
+    ax.plot(t[mask], p_10m[mask] / 1e6, "g:", linewidth=2, label="r=10 m")
+    ax.plot(t[mask], p_50m[mask] / 1e6, "m-.", linewidth=2, label="r=50 m")
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Pressure (MPa)")
+    ax.set_title("Pressure Evolution at Different Radii")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    # Panel 2: Radial pressure profile at final time (log-r scale)
+    ax = axes[1]
+    # Get nodes along y~0.5 (mid-height of the unit-thickness domain)
+    mid_mask = np.abs(y_coord - 0.5) < 0.3
+    pp_final = get_nod_var(ds, pp_idx, -1)
+    r_vals = x[mid_mask]
+    p_vals = pp_final[mid_mask]
+    sort_idx = np.argsort(r_vals)
+    ax.semilogx(r_vals[sort_idx], p_vals[sort_idx] / 1e6, "b-", linewidth=2)
+    ax.set_xlabel("Radial Distance r (m)")
+    ax.set_ylabel("Pressure (MPa)")
+    ax.set_title("Steady-State Drawdown Cone")
+    ax.grid(True, alpha=0.3, which="both")
+    ax.set_xlim(0.1, 100)
+
+    ds.close()
+    fig.suptitle("Case 60: Wellbore Drawdown — Radial Flow", fontsize=14)
+    fig.tight_layout()
+    save_fig(fig, "60", "case60_wellbore_drawdown.png")
+
+
+def plot_case61():
+    print("Case 61: Unsaturated Flow — Wetting Front")
+
+    csv_file = case_path("61", "case61_unsaturated_flow_out.csv")
+    exo_file = case_path("61", "case61_unsaturated_flow_out.e")
+    if not file_exists(csv_file, exo_file):
+        print("    SKIP: output files not found")
+        skipped_cases.append("case61")
+        return
+
+    data = read_csv(csv_file)
+    t = np.array(data["time"])
+    p_base = np.array(data["p_base"])
+    p_0p5m = np.array(data["p_0p5m"])
+    p_1p0m = np.array(data["p_1p0m"])
+    p_1p5m = np.array(data["p_1p5m"])
+    p_avg = np.array(data["p_avg"])
+
+    ds = open_exodus(exo_file)
+    times = get_times(ds)
+    x, y_coord = get_coords_2d(ds)
+    nod_names = get_nod_var_names(ds)
+    pp_idx = nod_names.index("porepressure") + 1
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    # Panel 1: Pore pressure at different heights vs time
+    ax = axes[0]
+    mask = t > 0
+    ax.plot(t[mask] / 60, p_1p5m[mask] / 1e3, "b-", linewidth=2, label="z=1.5 m")
+    ax.plot(t[mask] / 60, p_1p0m[mask] / 1e3, "r--", linewidth=2, label="z=1.0 m")
+    ax.plot(t[mask] / 60, p_0p5m[mask] / 1e3, "g:", linewidth=2, label="z=0.5 m")
+    ax.plot(t[mask] / 60, p_base[mask] / 1e3, "m-.", linewidth=2, label="z=0 (base)")
+    ax.set_xlabel("Time (minutes)")
+    ax.set_ylabel("Pore Pressure (kPa)")
+    ax.set_title("Wetting Front Arrival at Different Depths")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    ax.axhline(y=0, color="k", linewidth=0.5, linestyle="-")
+
+    # Panel 2: Pressure profiles at different times
+    ax = axes[1]
+    center_mask = np.abs(x - 0.25) < 0.15
+    snap_times = [300, 900, 1800, 3600]
+    colors = ["b", "r", "g", "m"]
+    labels = ["5 min", "15 min", "30 min", "60 min"]
+    for st, col, lab in zip(snap_times, colors, labels):
+        ti = find_closest_timestep(times, st)
+        pp = get_nod_var(ds, pp_idx, ti)
+        ax.plot(pp[center_mask] / 1e3, y_coord[center_mask], f"{col}-",
+                linewidth=1.5, label=lab)
+    ax.set_xlabel("Pore Pressure (kPa)")
+    ax.set_ylabel("Height z (m)")
+    ax.set_title("Wetting Front Progression")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    ax.axvline(x=0, color="k", linewidth=0.5, linestyle="-")
+
+    ds.close()
+    fig.suptitle("Case 61: Unsaturated Flow — Richards' Equation", fontsize=14)
+    fig.tight_layout()
+    save_fig(fig, "61", "case61_unsaturated_flow.png")
+
+
+def plot_case62():
+    print("Case 62: Biot Poroelasticity")
+
+    csv_file = case_path("62", "case62_biot_poroelasticity_out.csv")
+    exo_file = case_path("62", "case62_biot_poroelasticity_out.e")
+    if not file_exists(csv_file, exo_file):
+        print("    SKIP: output files not found")
+        skipped_cases.append("case62")
+        return
+
+    data = read_csv(csv_file)
+    t = np.array(data["time"])
+    p_base = np.array(data["p_base"])
+    p_mid = np.array(data["p_mid"])
+    p_avg = np.array(data["p_avg"])
+    disp_y_top = np.array(data["disp_y_top"])
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    # Panel 1: Pore pressure dissipation
+    ax = axes[0]
+    mask = t > 0
+    ax.plot(t[mask] / 1e6, p_base[mask], "b-", linewidth=2, label="Base (z=0)")
+    ax.plot(t[mask] / 1e6, p_mid[mask], "r--", linewidth=2, label="Mid (z=5 m)")
+    ax.plot(t[mask] / 1e6, p_avg[mask], "g:", linewidth=2, label="Average")
+    ax.set_xlabel(r"Time ($\times 10^6$ s)")
+    ax.set_ylabel("Pore Pressure (Pa)")
+    ax.set_title("Excess Pore Pressure Dissipation")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    # Panel 2: Surface settlement
+    ax = axes[1]
+    ax.plot(t[mask] / 1e6, disp_y_top[mask] * 1e3, "b-", linewidth=2)
+    ax.set_xlabel(r"Time ($\times 10^6$ s)")
+    ax.set_ylabel("Settlement (mm)")
+    ax.set_title("Top Surface Settlement")
+    ax.grid(True, alpha=0.3)
+    # Analytical final settlement: sigma/E_oedometric * H
+    # E_oed = E*(1-nu)/((1+nu)*(1-2*nu)) = 1e8*0.75/(1.25*0.5) = 120 MPa
+    # settlement = 10000/120e6 * 10 = 8.33e-4 m
+    ax.axhline(y=-0.833, color="r", linewidth=1, linestyle="--",
+               label=r"Analytical: $\sigma H / E_{oed}$")
+    ax.legend()
+
+    fig.suptitle("Case 62: Biot Poroelasticity — Coupled Consolidation", fontsize=14)
+    fig.tight_layout()
+    save_fig(fig, "62", "case62_biot_poroelasticity.png")
+
+
+def plot_case63():
+    print("Case 63: Gravity Dam")
+
+    csv_file = case_path("63", "case63_gravity_dam_out.csv")
+    exo_file = case_path("63", "case63_gravity_dam_out.e")
+    if not file_exists(csv_file, exo_file):
+        print("    SKIP: output files not found")
+        skipped_cases.append("case63")
+        return
+
+    ds = open_exodus(exo_file)
+    x, y_coord = get_coords_2d(ds)
+
+    # Get element variables (stress is element-based)
+    elem_names = get_elem_var_names(ds)
+    # Find vonmises_stress index
+    vm_idx = elem_names.index("vonmises_stress") + 1
+    syy_idx = elem_names.index("stress_yy") + 1
+
+    # Collect data from all element blocks
+    all_cx, all_cy, all_vm, all_syy = [], [], [], []
+    for blk in [1, 2]:
+        try:
+            cx, cy = get_elem_centroids_2d(ds, blk)
+            vm = get_elem_var(ds, vm_idx, blk, -1)
+            syy = get_elem_var(ds, syy_idx, blk, -1)
+            all_cx.append(cx)
+            all_cy.append(cy)
+            all_vm.append(vm)
+            all_syy.append(syy)
+        except KeyError:
+            pass
+
+    cx = np.concatenate(all_cx)
+    cy = np.concatenate(all_cy)
+    vm = np.concatenate(all_vm)
+    syy = np.concatenate(all_syy)
+
+    # Get displacements (nodal)
+    nod_names = get_nod_var_names(ds)
+    dx_idx = nod_names.index("disp_x") + 1
+    dy_idx = nod_names.index("disp_y") + 1
+    disp_x = get_nod_var(ds, dx_idx, -1)
+    disp_y = get_nod_var(ds, dy_idx, -1)
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    # Panel 1: Von Mises stress contour
+    ax = axes[0]
+    sc = ax.tricontourf(cx, cy, vm / 1e3, levels=20, cmap="YlOrRd")
+    fig.colorbar(sc, ax=ax, label="Von Mises Stress (kPa)")
+    # Outline dam and foundation
+    ax.plot([6, 14, 14, 6, 6], [0, 0, 10, 10, 0], "k-", linewidth=1.5)
+    ax.plot([0, 20, 20, 0, 0], [-10, -10, 0, 0, -10], "k--", linewidth=1)
+    ax.set_xlabel("x (m)")
+    ax.set_ylabel("y (m)")
+    ax.set_title("Von Mises Stress")
+    ax.set_aspect("equal")
+
+    # Panel 2: Vertical stress (sigma_yy) contour
+    ax = axes[1]
+    sc = ax.tricontourf(cx, cy, syy / 1e3, levels=20, cmap="RdBu_r")
+    fig.colorbar(sc, ax=ax, label=r"$\sigma_{yy}$ (kPa)")
+    ax.plot([6, 14, 14, 6, 6], [0, 0, 10, 10, 0], "k-", linewidth=1.5)
+    ax.plot([0, 20, 20, 0, 0], [-10, -10, 0, 0, -10], "k--", linewidth=1)
+    ax.set_xlabel("x (m)")
+    ax.set_ylabel("y (m)")
+    ax.set_title(r"Vertical Stress $\sigma_{yy}$")
+    ax.set_aspect("equal")
+
+    ds.close()
+
+    fig.suptitle("Case 63: Gravity Dam — Self-Weight Loading", fontsize=14)
+    fig.tight_layout()
+    save_fig(fig, "63", "case63_gravity_dam.png")
+
+
 # ---------------------------------------------------------------------------
 # Main driver
 # ---------------------------------------------------------------------------
@@ -3595,12 +3909,17 @@ CASE_FUNCTIONS = [
     ("56", plot_case56),
     ("57", plot_case57),
     ("58", plot_case58),
+    ("59", plot_case59),
+    ("60", plot_case60),
+    ("61", plot_case61),
+    ("62", plot_case62),
+    ("63", plot_case63),
 ]
 
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("MOOSE Quick-Start Visualization — All 58 Cases")
+    print("MOOSE Quick-Start Visualization — All 63 Cases")
     print("=" * 60)
     print(f"Script directory: {SCRIPT_DIR}")
     print("Plots will be saved into each case subdirectory.\n")

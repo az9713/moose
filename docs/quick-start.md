@@ -1,8 +1,8 @@
-# MOOSE Quick-Start Guide: 58 Working Examples
+# MOOSE Quick-Start Guide: 63 Working Examples
 
-This guide walks a complete beginner through 58 self-contained MOOSE input files,
+This guide walks a complete beginner through 63 self-contained MOOSE input files,
 from the simplest possible diffusion problem to genuine multi-physics simulations
-using MOOSE's physics modules. Cases 01-13 use only the framework. Cases 14-58
+using MOOSE's physics modules. Cases 01-13 use only the framework. Cases 14-63
 use physics modules (heat_transfer, solid_mechanics, navier_stokes, phase_field,
 porous_flow, electromagnetics) and require `combined-opt`. Read them in order.
 
@@ -5093,6 +5093,257 @@ MSYS_NO_PATHCONV=1 docker run --rm \
 
 ---
 
+## Case 59 — Terzaghi 1D Consolidation
+
+### Physics
+
+The Terzaghi consolidation problem is the canonical benchmark for coupled hydro-mechanical
+behavior in saturated porous media. A soil column of height H is loaded at the top surface
+by a sudden surcharge stress sigma_0 at time t = 0. Before drainage can occur, the load is
+carried entirely by the pore water (undrained response). The excess pore pressure then
+dissipates upward through the free-draining top surface while the solid skeleton gradually
+takes on the load. The governing equation is the 1D consolidation equation:
+
+```
+c_v * d²p/dz² = dp/dt
+```
+
+where p is the excess pore pressure, z is the depth coordinate (positive upward), and c_v
+is the coefficient of consolidation c_v = k / (mu * (alpha² / K_dr + S)), with k the
+permeability, mu the fluid viscosity, alpha the Biot coefficient, K_dr the drained bulk
+modulus, and S the storage coefficient. The analytic solution is a Fourier series:
+
+```
+p(z, t) / sigma_0 = (4/pi) * sum_{n=0}^{inf} [(-1)^n / (2n+1)] * cos((2n+1)*pi*z/(2H)) * exp(-(2n+1)^2 * pi^2 * T_v / 4)
+```
+
+where T_v = c_v * t / H² is the dimensionless time factor. This case uses
+`PorousFlowBasicTHM` with a single fluid phase and verifies the pore-pressure profile at
+T_v = 0.1, 0.3, and 1.0 against the Fourier series. The settlement of the top surface is
+also tracked as a postprocessor and compared to the analytic consolidation curve.
+
+```bash
+cd quickstart-runs/case59-terzaghi-consolidation
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case59-terzaghi-consolidation \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case59_terzaghi_consolidation.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `PorousFlowBasicTHM` action | Sets up the coupled THM system with a single saturated fluid phase |
+| `SimpleFluidProperties` | Constant-property water (mu, rho, bulk modulus) |
+| `PorousFlowPermeabilityConst` | Isotropic permeability k applied to the soil column |
+| `PorousFlowPorosityConst` | Constant porosity phi |
+| `Transient` executioner | Marches in time with adaptive dt to capture the fast early transient |
+| `SideAverageValue` | Tracks pore pressure at the base and midpoint for comparison with the Fourier series |
+| `PointValue` | Reports top-surface settlement (vertical displacement) versus time |
+
+---
+
+## Case 60 — Wellbore Drawdown
+
+### Physics
+
+Radial flow toward a pumping well is the prototype problem in groundwater hydrology and
+petroleum reservoir engineering. In axisymmetric (RZ) geometry, the governing equation for
+the transient hydraulic head h in a confined aquifer of thickness b, transmissivity T = k*b,
+and storativity S is:
+
+```
+S * dh/dt = T * (1/r) * d/dr (r * dh/dr)
+```
+
+For a well of radius r_w pumping at constant rate Q starting at t = 0 in an initially
+uniform aquifer (h = h_0), the Theis solution gives the drawdown s = h_0 - h as:
+
+```
+s(r, t) = Q / (4*pi*T) * W(u),   u = r^2 * S / (4*T*t)
+```
+
+where W(u) is the exponential integral (Theis well function). This case models a 200 m
+radius domain with r_w = 0.1 m, pumping rate Q = 0.01 m³/s, T = 1e-3 m²/s, and
+S = 1e-4. The MOOSE RZ mesh captures radial coordinates naturally; the well boundary
+condition is a Neumann flux BC setting the total radial flow at r = r_w. The computed
+drawdown profile at t = 1, 10, and 100 hours is compared against the Theis solution
+evaluated with the exponential integral.
+
+```bash
+cd quickstart-runs/case60-wellbore-drawdown
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case60-wellbore-drawdown \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case60_wellbore_drawdown.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `GeneratedMesh` (coord_type = RZ) | 1D radial mesh in axisymmetric coordinates; r spans r_w to r_max |
+| `PorousFlowBasicTHM` action | Single-phase hydro-only (THM with mechanics disabled) |
+| `NeumannBC` at r_w | Prescribes the radial Darcy flux corresponding to the pumping rate Q |
+| `DirichletBC` at r_max | Far-field constant head h = h_0 (no-disturbance boundary) |
+| `IterationAdaptiveDT` | Logarithmic time stepping to capture both early-time and late-time behavior |
+| `PointValue` | Drawdown at r = 1, 10, and 50 m for Theis comparison |
+
+---
+
+## Case 61 — Unsaturated Flow (Richards' Equation)
+
+### Physics
+
+When pore space is only partially filled with water, a suction (capillary) pressure develops
+that pulls water toward drier regions. The governing equation for the volumetric water content
+theta in a variably-saturated (vadose-zone) soil is Richards' equation:
+
+```
+d(rho * theta) / dt + div(-rho * k_r(theta) * K / mu * (grad p - rho*g*ez)) = 0
+```
+
+where k_r is the relative permeability (a nonlinear function of saturation), K is the
+absolute permeability tensor, p is the pore water pressure (negative in the unsaturated zone),
+and theta is related to p through the water retention curve. This case uses the van Genuchten
+model for the retention curve and the Mualem relative permeability:
+
+```
+Se = [1 + (alpha * |p|)^n]^(-m),   m = 1 - 1/n
+k_r = Se^(1/2) * [1 - (1 - Se^(1/m))^m]^2
+```
+
+with parameters alpha = 0.005 Pa⁻¹ and n = 1.5, representative of a sandy loam. The
+simulation models 1D infiltration from a wet top surface (p = 0, fully saturated) into an
+initially dry column (p = -1000 Pa), demonstrating the nonlinear wetting front that
+advances more slowly than linear diffusion would predict. The strong nonlinearity of k_r
+near low saturation tests MOOSE's Newton solver robustness.
+
+```bash
+cd quickstart-runs/case61-unsaturated-flow
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case61-unsaturated-flow \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case61_unsaturated_flow.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `PorousFlowUnsaturated` action | Configures the single-phase variably-saturated flow system |
+| `PorousFlowCapillaryPressureVG` | van Genuchten retention curve Se(p); parameters alpha, n, m |
+| `PorousFlowRelativePermeabilityVG` | Mualem relative permeability k_r(Se) |
+| `PorousFlowPermeabilityConst` | Absolute permeability K (isotropic) |
+| `DirichletBC` (top) | Saturated inlet p = 0 (atmospheric at the wet surface) |
+| `IterationAdaptiveDT` | Short initial timesteps to handle the stiff onset of infiltration |
+| `ElementAverageValue` | Average saturation and pore pressure vs time to visualize wetting front |
+
+---
+
+## Case 62 — Biot Poroelasticity
+
+### Physics
+
+Biot's theory of poroelasticity couples fluid flow in a porous solid to the elastic
+deformation of that solid. Fluid pressure supports part of any applied total stress, and
+changes in volumetric strain alter the pore pressure. The fully coupled system consists of
+the fluid mass balance:
+
+```
+(alpha / K_dr + phi / K_f) * dp/dt + alpha * d(div u)/dt = div(k/mu * grad p)
+```
+
+and the momentum balance for the solid skeleton:
+
+```
+div(sigma') - alpha * grad p + rho_b * g = 0,   sigma' = C : epsilon
+```
+
+where u is the solid displacement, p the pore pressure, alpha the Biot coefficient, K_dr
+the drained bulk modulus, phi the porosity, K_f the fluid bulk modulus, k the permeability,
+and C the drained stiffness tensor. This case implements the coupling explicitly using
+PorousFlow kernels alongside solid mechanics kernels, rather than relying on the high-level
+`PorousFlowBasicTHM` action, so that every coupling term is visible in the input file. The
+benchmark problem is a 2D plane-strain block loaded by a vertical stress on the top surface,
+drained on top and undrained on the sides and bottom, with an analytic 1D consolidation
+solution for the pore-pressure field.
+
+```bash
+cd quickstart-runs/case62-biot-poroelasticity
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case62-biot-poroelasticity \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case62_biot_poroelasticity.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `Physics/SolidMechanics/QuasiStatic` action | Sets up the solid-mechanics displacement solve |
+| `PorousFlowFullySaturated` action | Single-phase saturated flow kernels without the high-level THM wrapper |
+| `PorousFlowEffectiveFluidPressure` material | Computes Biot effective pressure alpha*p for the stress coupling |
+| `PorousFlowVolumetricStrain` material | Feeds volumetric strain back into the fluid mass balance |
+| `ADComputeIsotropicElasticityTensor` | Isotropic linear elasticity for the drained solid |
+| `Pressure` BC | Applies the total vertical stress at the top surface |
+| `ElementL2Error` postprocessor | Verifies the pore-pressure field against the Terzaghi analytic solution |
+
+---
+
+## Case 63 — Gravity Dam
+
+### Physics
+
+A gravity dam retains a reservoir on its upstream face. The dam is a plain concrete
+structure that relies on its own weight to resist overturning and sliding. The structural
+analysis involves two distinct material regions — the concrete dam body and the rock
+foundation — with very different stiffness and density. The loading comprises:
+
+- **Self-weight**: body force rho*g acting downward through both the dam and foundation
+- **Hydrostatic pressure**: linearly varying horizontal pressure p(y) = rho_water * g * (H - y)
+  applied to the upstream face from the base to the water surface at elevation H
+- **Zero-displacement conditions**: the foundation base is fully fixed; the foundation sides
+  are roller-supported (no normal displacement)
+
+The simulation computes the displacement, principal stress, and von Mises stress fields
+throughout the dam-foundation system. The critical design checks are the maximum tensile
+stress at the dam heel (upstream base corner, where overturning induces tension in concrete)
+and the compressive stress at the dam toe (downstream base corner). Plain concrete has very
+low tensile strength (~2-3 MPa), so the heel stress governs the stability of gravity dams.
+This case demonstrates MOOSE's handling of multi-material solid-mechanics problems with
+block-restricted materials and spatially varying body forces and boundary conditions.
+
+```bash
+cd quickstart-runs/case63-gravity-dam
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case63-gravity-dam \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case63_gravity_dam.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `FileMesh` or `GeneratedMesh` with `SubdomainBoundingBoxGenerator` | Creates dam body and rock foundation as separate subdomains |
+| `Physics/SolidMechanics/QuasiStatic` action | Configures the plane-strain quasi-static stress analysis |
+| `ADComputeIsotropicElasticityTensor` (×2, block-restricted) | Separate Young's modulus and Poisson's ratio for concrete and rock |
+| `ADComputeSmallStrain` | Linear (small-strain) kinematics appropriate for a rigid concrete structure |
+| `Gravity` | Applies rho*g body force; block-restricted to use the correct density in each material |
+| `Pressure` BC (upstream face) | Linearly varying hydrostatic load using a `ParsedFunction` of elevation |
+| `DirichletBC` / `PenaltyDirichletBC` | Foundation base fixed; side boundaries roller-supported |
+| `ADRankTwoScalarAux` | Extracts von Mises stress and principal stress components for visualization |
+| `NodalExtremeValue` | Reports maximum tensile stress at the dam heel (critical design criterion) |
+
+---
+
 ## Troubleshooting Common Errors
 
 **Error: `Object 'Diffusion' was not registered`**
@@ -5123,7 +5374,7 @@ variable name (e.g., `u` or `T`) using the dropdown in the toolbar.
 
 ## Next Steps
 
-After completing these 58 cases:
+After completing these 63 cases:
 
 1. **Read the MOOSE documentation** at https://mooseframework.inl.gov for
    complete reference documentation on every object type.
@@ -5135,8 +5386,9 @@ After completing these 58 cases:
 3. **Write your own application**: Use `moose/scripts/stork.py` to scaffold
    a new MOOSE application with custom kernels, materials, and BCs.
 
-4. **Explore more module features**: Cases 14-58 introduce the major physics
+4. **Explore more module features**: Cases 14-63 introduce the major physics
    modules — from solid mechanics and heat transfer through Navier-Stokes,
-   electrodynamics, MHD, nonlinear solid mechanics, and nuclear reactor physics.
+   electrodynamics, MHD, nonlinear solid mechanics, nuclear reactor physics,
+   and geomechanics / porous flow.
    Each module has many more capabilities — consult the [Modules Reference](modules-reference.md)
    for full details.
