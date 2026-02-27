@@ -1,13 +1,13 @@
 # MOOSE Quickstart Tutorial Cases: Complete Reference
 
-This directory contains 73 self-contained simulation cases for learning MOOSE from zero.
+This directory contains 83 self-contained simulation cases for learning MOOSE from zero.
 Each case has its own subdirectory with an input file (`.i`) and pre-run output files.
 You do not need to build or install anything to study the input files, understand the physics,
 and read the results. If you want to run the simulations yourself, see Section 5.
 
 This document is designed so that someone who has never used MOOSE, never written a finite
 element simulation, and is not familiar with scientific computing file formats can read it
-from top to bottom and understand everything in these 73 cases.
+from top to bottom and understand everything in these 83 cases.
 
 Read every section. Do not skip ahead. The later cases build directly on concepts introduced
 in the earlier ones.
@@ -21,7 +21,7 @@ in the earlier ones.
 3. [Understanding Output Files](#3-understanding-output-files)
 4. [How MOOSE Solves Problems](#4-how-moose-solves-problems-conceptual)
 5. [Running Simulations](#5-running-simulations)
-6. [The 73 Cases at a Glance](#6-the-73-cases-at-a-glance)
+6. [The 83 Cases at a Glance](#6-the-83-cases-at-a-glance)
 7. [Creating Your Own Simulations](#7-creating-your-own-simulations)
 8. [Glossary](#8-glossary)
 
@@ -105,7 +105,7 @@ MOOSE also handles:
 - **Nonlinear problems**: handles problems where material properties depend on the solution
   itself (like a material that gets stiffer as it heats up)
 
-### What are the 73 cases in this directory?
+### What are the 83 cases in this directory?
 
 These cases form a progressive tutorial starting from the simplest possible problem
 (1D steady-state diffusion with an exact solution of u = x) and building up to
@@ -246,7 +246,7 @@ L = 1.0
 
 ### All Standard Block Types Explained
 
-The following sections explain every block type you will encounter in the 73 cases.
+The following sections explain every block type you will encounter in the 83 cases.
 Each explanation defines what the block does, what parameters mean, and gives a
 realistic example.
 
@@ -1347,7 +1347,7 @@ To override: add `file_base = my_custom_name` to the `[Outputs]` block.
 
 ---
 
-## 6. The 73 Cases at a Glance
+## 6. The 83 Cases at a Glance
 
 The cases are ordered from simplest to most complex. Cases 01-13 use only the MOOSE
 framework (Diffusion, BodyForce, MatDiffusion, etc.). Cases 14-21 use physics **modules**
@@ -1389,7 +1389,20 @@ mineral precipitation via Arrhenius kinetics, aqueous equilibrium speciation wit
 and calcite dissolution combining equilibrium and kinetic reactions. Cases 69-73 cover advanced
 multiphysics — MultiApp Picard coupling, mortar contact mechanics, XFEM heat conduction with
 cracks, THM pipe flow using the Component DSL, and level-set bubble advection with SUPG
-stabilization. Study them in order.
+stabilization.
+
+**Cases 74-83 (Batch F — Advanced Electromagnetism)** cover topics from MIT 6.635 *Advanced
+Electromagnetism* (Spring 2003). Cases 74-75 demonstrate left-handed materials and Drude-model
+skin depth in 1D. Case 76 is a full 3D rectangular waveguide TE10 mode using NEDELEC_ONE
+(edge) elements on HEX20 mesh. Case 77 solves 2D EM scattering from a dielectric cylinder.
+Case 78 is a time-domain Gaussian pulse reflection using NewmarkBeta integration. Case 79
+demonstrates Snell's law and the scattered-field formulation for oblique incidence. Case 80
+models a 5-period Bragg mirror achieving |R|^2 = 1 at the design frequency. Case 81 computes
+photonic crystal eigenfrequencies at the Gamma point of a square lattice of alumina rods.
+Case 82 extends the 2D waveguide eigenvalue problem to a 3D PEC rectangular cavity. Case 83
+demonstrates Veselago flat-lens focusing of a point source through a negative-index slab.
+
+Study them in order.
 
 | Case | Subdirectory | Title | Physics | Key Concepts Introduced | Difficulty |
 |------|--------------|-------|---------|-------------------------|------------|
@@ -1466,6 +1479,16 @@ stabilization. Study them in order.
 | 71 | `case71-xfem-crack/` | XFEM Heat Conduction — Stationary Crack | Transient heat conduction with vertical edge crack as perfect insulator; XFEM enrichment without remeshing | `[XFEM]` block, `LineSegmentCutUserObject`, `qrule = volfrac`, enriched elements, no Constraints block needed | Advanced |
 | 72 | `case72-thm-pipe-flow/` | THM 1D Pipe Flow — Compressible Gas | 1D compressible ideal gas flow using THM Component DSL; temperature front propagation and pressure equilibration | `[Components]` DSL, `FlowChannel1Phase`, `InletMassFlowRateTemperature1Phase`, `Outlet1Phase`, `scaling_factor_1phase`, `IdealGasFluidProperties` | Advanced |
 | 73 | `case73-level-set-advection/` | Level Set Bubble Advection — SUPG | Smooth bubble in solid-body rotation; SUPG-stabilized advection; mass conservation monitoring | `LevelSetAdvection`, `LevelSetAdvectionSUPG`, `LevelSetTimeDerivativeSUPG`, `LAGRANGE_VEC`, `VectorFunctionIC`, BDF2 | Advanced |
+| 74 | `case74-left-handed-material/` | Left-Handed Material — Reversed Phase Velocity | 1D plane wave through vacuum/LHM/vacuum slab; phase reversal inside n = -1.5 material | `ADMatDiffusion` (1/mu_r weighted), `ADMatReaction`, `EMRobinBC` (port + absorbing), piecewise `ADGenericFunctionMaterial` | Advanced |
+| 75 | `case75-drude-slab/` | Lossy Drude Metal Slab — Skin Depth | 1D wave through Drude metal; coupled E_real/E_imag; exponential attenuation and skin depth | `ADMatCoupledForce` (Im(eps_r) cross-coupling), `ReflectionCoefficient`, complex Helmholtz splitting | Advanced |
+| 76 | `case76-3d-waveguide/` | 3D Rectangular Waveguide — TE10 Mode | Full 3D TE10 mode propagation in PEC waveguide; NEDELEC_ONE edge elements on HEX20 | `CurlCurlField`, `VectorFunctionReaction`, `VectorEMRobinBC`, `VectorCurlPenaltyDirichletBC`, NEDELEC_ONE/HEX20 | Expert |
+| 77 | `case77-cylinder-scattering/` | EM Scattering from a Dielectric Cylinder | 2D TE plane wave scatters from eps_r = 4 cylinder; diffraction pattern, shadow, forward lobe | Circular inhomogeneity via `if()` in ParsedFunction, `EMRobinBC` port injection, scattered-field | Advanced |
+| 78 | `case78-pulse-reflection/` | Time-Domain Pulse Reflection from a Slab | Gaussian EM pulse hits dielectric slab; splits into reflected + transmitted pulses | `VectorSecondTimeDerivative`, `VectorTransientAbsorbingBC`, `VectorFunctionIC`, NewmarkBeta, NEDELEC_ONE/QUAD9 | Expert |
+| 79 | `case79-snell-law-tir/` | Oblique Incidence — Snell's Law | 2D oblique plane wave at dielectric interface; scattered-field formulation; Fresnel verification | Scattered-field decomposition, oblique `BodyForce` source, `ParsedAux` with `use_xyzt = true` | Advanced |
+| 80 | `case80-bragg-mirror/` | Multilayer Dielectric Stack — Bragg Mirror | 5-period quarter-wave stack; |R|^2 = 1 at design frequency; stopband demonstration | Nested-if `ParsedFunction` for 10 layers, `ReflectionCoefficient`, transfer-matrix verification | Advanced |
+| 81 | `case81-photonic-crystal/` | 2D Photonic Crystal Band Gap — Gamma Point Eigenvalue | TM eigenfrequencies of square lattice alumina rods; eps_r-weighted mass matrix | `MatReaction` (non-AD) with `extra_vector_tags = 'eigen'`, `GenericFunctionMaterial`, Neumann (PMC) BCs | Expert |
+| 82 | `case82-3d-cavity-resonance/` | 3D Rectangular Cavity Resonance — TM Eigenvalues | PEC cavity eigenvalue problem on HEX8 mesh; analytical k^2(m,n,p) verification | 3D `GeneratedMesh` (dim=3), `EigenDirichletBC` + `DirichletBC`, `PotentialToFieldAux` (Ex, Ey, Ez), KRYLOVSCHUR | Expert |
+| 83 | `case83-veselago-lens/` | Veselago Flat Lens — Point Source Focusing | 2D point source through n = -1 LHM slab; three-peak focusing pattern at source, slab centre, image | `ADMatDiffusion` (negative diffusivity in slab), `BodyForce` (Gaussian source), loss regularisation, MUMPS LU | Expert |
 
 ### What each case produces
 
@@ -1544,16 +1567,26 @@ stabilization. Study them in order.
 | 71 | `case71_xfem_crack_out.e`, `case71_xfem_crack_out.csv` |
 | 72 | `case72_thm_pipe_flow_out.e`, `case72_thm_pipe_flow_out.csv` |
 | 73 | `case73_level_set_advection_out.e`, `case73_level_set_advection_out.csv` |
+| 74 | `case74_left_handed_material_out.e`, `case74_left_handed_material_out.csv` |
+| 75 | `case75_drude_slab_out.e`, `case75_drude_slab_out.csv` |
+| 76 | `case76_3d_waveguide_out.e`, `case76_3d_waveguide_out.csv` |
+| 77 | `case77_cylinder_scattering_out.e`, `case77_cylinder_scattering_out.csv` |
+| 78 | `case78_pulse_reflection_out.e` |
+| 79 | `case79_snell_law_tir_out.e`, `case79_snell_law_tir_out.csv` |
+| 80 | `case80_bragg_mirror_out.e`, `case80_bragg_mirror_out.csv` |
+| 81 | `case81_photonic_crystal_out.e`, `case81_photonic_crystal_out.csv`, `case81_photonic_crystal_out_eigenvalues_0002.csv` |
+| 82 | `case82_3d_cavity_resonance_out.e`, `case82_3d_cavity_resonance_out_eigenvalues_0002.csv` |
+| 83 | `case83_veselago_lens_out.e`, `case83_veselago_lens_out.csv` |
 
 All pre-run output files for cases 01-13 are included in this directory so you can
-examine them without running anything. Cases 14-73 require `combined-opt` (all modules)
+examine them without running anything. Cases 14-83 require `combined-opt` (all modules)
 to run — see each case's README for Docker instructions.
 
 ---
 
 ## 7. Creating Your Own Simulations
 
-Once you understand the 73 cases, you will want to adapt them or build new simulations
+Once you understand the 83 cases, you will want to adapt them or build new simulations
 from scratch. This section walks through the process systematically.
 
 ### Step 1: Define Your Physics
