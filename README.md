@@ -4,7 +4,7 @@
 >
 > This repo **does not include the MOOSE source codes**. Instead, it supplements the original
 > repository with **comprehensive documentation and worked examples** designed to help new users
-> learn the framework from scratch. The 53 progressive quickstart cases are fully explained — from
+> learn the framework from scratch. The 58 progressive quickstart cases are fully explained — from
 > the physics and governing equations, through the input file structure, to interpreting the
 > simulation results — so that users can learn how to set up their own simulations and understand
 > the output without any external help.
@@ -75,7 +75,7 @@ immediately available to every application that enables that module.
 This repository focuses on **learning materials** for the MOOSE framework:
 
 - **Comprehensive documentation** covering architecture, developer workflows, input-file syntax, and all 29 physics modules
-- **53 progressive quickstart examples** (`quickstart-runs/`) — each with a complete input file, detailed README explaining the physics, and matplotlib visualization of the results
+- **58 progressive quickstart examples** (`quickstart-runs/`) — each with a complete input file, detailed README explaining the physics, and matplotlib visualization of the results
 - **An 8-week study plan** for self-learners going from zero to productive MOOSE developer
 - **Docker instructions** for running MOOSE on Windows without compiling from source
 
@@ -90,7 +90,7 @@ To actually build and run MOOSE simulations, you need the framework itself from 
 | [docs/architecture.md](docs/architecture.md) | System architecture with subsystem diagrams covering the Framework → Modules → Applications hierarchy |
 | [docs/developer-guide.md](docs/developer-guide.md) | Step-by-step C++ developer tutorial: writing Kernels, BCs, Materials, and custom objects |
 | [docs/user-guide.md](docs/user-guide.md) | Simulation user reference covering input-file syntax, all major blocks, and solver options |
-| [docs/quick-start.md](docs/quick-start.md) | 53 worked examples progressing from simple diffusion through stochastic tools and optimization |
+| [docs/quick-start.md](docs/quick-start.md) | 58 worked examples progressing from simple diffusion through nuclear reactor physics |
 | [docs/zero-to-hero.md](docs/zero-to-hero.md) | 8-week structured study plan for new MOOSE developers |
 | [docs/modules-reference.md](docs/modules-reference.md) | Physics module reference with API summaries and example input files |
 | [docs/docker-guide.md](docs/docker-guide.md) | Running MOOSE on Windows with Docker — installation, volume mounts, MPI |
@@ -101,7 +101,7 @@ The official online documentation lives at **https://mooseframework.inl.gov**.
 
 ## Quickstart Examples
 
-The `quickstart-runs/` directory contains **53 fully worked examples**, each in its own subdirectory with:
+The `quickstart-runs/` directory contains **58 fully worked examples**, each in its own subdirectory with:
 
 - **Input file** (`.i`) — ready to run with `moose_test-opt` or `combined-opt`
 - **Detailed README** — explains the physics, walks through every input-file block, describes the output files, and shows how to interpret the results
@@ -437,6 +437,23 @@ Drawn from the MOOSE `solid_mechanics` module. These cases cover plasticity, fin
 </tr>
 <tr>
 <td align="center"><img src="quickstart-runs/case53-pressure-vessel/case53_pressure_vessel.png" width="220"/><br/><sub>Case 53: Pressure Vessel</sub></td>
+<td colspan="3"></td>
+</tr>
+</table>
+
+### Cases 54-58: Nuclear Reactor Physics
+
+These cases introduce the neutronics and reactor-physics kernels built into the MOOSE framework. They cover the neutron diffusion equation (1-group and 2-group eigenvalue problems), fuel-pin heat transfer in axisymmetric geometry, xenon poisoning transients, and control-rod worth calculations. All use only the MOOSE framework or the `heat_transfer` module and require `combined-opt` via Docker.
+
+<table>
+<tr>
+<td align="center"><img src="quickstart-runs/case54-neutron-diffusion-bare-slab/case54_neutron_diffusion_bare_slab.png" width="220"/><br/><sub>Case 54: 1-Group Neutron Diffusion</sub></td>
+<td align="center"><img src="quickstart-runs/case55-two-group-diffusion/case55_two_group_diffusion.png" width="220"/><br/><sub>Case 55: 2-Group Neutron Diffusion</sub></td>
+<td align="center"><img src="quickstart-runs/case56-fuel-pin-heat-transfer/case56_fuel_pin_heat_transfer.png" width="220"/><br/><sub>Case 56: Fuel Pin Heat Transfer</sub></td>
+<td align="center"><img src="quickstart-runs/case57-xenon-poisoning/case57_xenon_poisoning.png" width="220"/><br/><sub>Case 57: Xenon-135 Poisoning</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="quickstart-runs/case58-control-rod-worth/case58_control_rod_worth.png" width="220"/><br/><sub>Case 58: Control Rod Worth</sub></td>
 <td colspan="3"></td>
 </tr>
 </table>

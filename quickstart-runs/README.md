@@ -1,13 +1,13 @@
 # MOOSE Quickstart Tutorial Cases: Complete Reference
 
-This directory contains 53 self-contained simulation cases for learning MOOSE from zero.
+This directory contains 58 self-contained simulation cases for learning MOOSE from zero.
 Each case has its own subdirectory with an input file (`.i`) and pre-run output files.
 You do not need to build or install anything to study the input files, understand the physics,
 and read the results. If you want to run the simulations yourself, see Section 5.
 
 This document is designed so that someone who has never used MOOSE, never written a finite
 element simulation, and is not familiar with scientific computing file formats can read it
-from top to bottom and understand everything in these 53 cases.
+from top to bottom and understand everything in these 58 cases.
 
 Read every section. Do not skip ahead. The later cases build directly on concepts introduced
 in the earlier ones.
@@ -21,7 +21,7 @@ in the earlier ones.
 3. [Understanding Output Files](#3-understanding-output-files)
 4. [How MOOSE Solves Problems](#4-how-moose-solves-problems-conceptual)
 5. [Running Simulations](#5-running-simulations)
-6. [The 53 Cases at a Glance](#6-the-53-cases-at-a-glance)
+6. [The 58 Cases at a Glance](#6-the-58-cases-at-a-glance)
 7. [Creating Your Own Simulations](#7-creating-your-own-simulations)
 8. [Glossary](#8-glossary)
 
@@ -105,7 +105,7 @@ MOOSE also handles:
 - **Nonlinear problems**: handles problems where material properties depend on the solution
   itself (like a material that gets stiffer as it heats up)
 
-### What are the 53 cases in this directory?
+### What are the 58 cases in this directory?
 
 These cases form a progressive tutorial starting from the simplest possible problem
 (1D steady-state diffusion with an exact solution of u = x) and building up to
@@ -246,7 +246,7 @@ L = 1.0
 
 ### All Standard Block Types Explained
 
-The following sections explain every block type you will encounter in the 53 cases.
+The following sections explain every block type you will encounter in the 58 cases.
 Each explanation defines what the block does, what parameters mean, and gives a
 realistic example.
 
@@ -1347,7 +1347,7 @@ To override: add `file_base = my_custom_name` to the `[Outputs]` block.
 
 ---
 
-## 6. The 53 Cases at a Glance
+## 6. The 58 Cases at a Glance
 
 The cases are ordered from simplest to most complex. Cases 01-13 use only the MOOSE
 framework (Diffusion, BodyForce, MatDiffusion, etc.). Cases 14-21 use physics **modules**
@@ -1362,7 +1362,9 @@ instabilities, boundary layers, turbulence, compressible flow, rotating fluids, 
 waves — inspired by **Michel Rieutord**'s *Fluid Dynamics: An Introduction* (Springer, 2015),
 spanning Chapters 4-10. Cases 49-53 cover nonlinear solid mechanics — J2 plasticity,
 finite-strain kinematics, power-law creep, phase-field fracture, and pressure-vessel
-verification. Study them in order.
+verification. Cases 54-58 cover nuclear reactor physics — neutron diffusion eigenvalue
+problems, fuel-pin heat transfer, xenon poisoning transients, and control-rod worth
+calculations. Study them in order.
 
 | Case | Subdirectory | Title | Physics | Key Concepts Introduced | Difficulty |
 |------|--------------|-------|---------|-------------------------|------------|
@@ -1419,6 +1421,11 @@ verification. Study them in order.
 | 51 | `case51-power-law-creep/` | Power-Law Creep — Column Under Sustained Load | Steady-state power-law creep rate = A*sigma^n*exp(-Q/RT); implicit time integration | `PowerLawCreepStressUpdate`, `ComputeMultipleInelasticStress`, `IterationAdaptiveDT` | Advanced |
 | 52 | `case52-phase-field-fracture/` | Phase-Field Fracture — Notched Specimen | Coupled damage-mechanics: (1-d)^2 stiffness degradation, crack nucleation and propagation | `ADPFFracture`, `ComputeLinearElasticPFFractureStress`, `PhaseFieldFractureMechanicsOffDiag` | Expert |
 | 53 | `case53-pressure-vessel/` | Pressure Vessel — Thick-Walled Cylinder | Lame analytic solution: sigma_r and sigma_theta verified to machine precision | `Physics/SolidMechanics/QuasiStatic` (axisymmetric), `ADComputeSmallStrain`, `ElementL2Error` | Intermediate |
+| 54 | `case54-neutron-diffusion-bare-slab/` | 1-Group Neutron Diffusion — Bare Slab Criticality | One-group diffusion eigenvalue: -D*div(grad phi) + Sigma_a*phi = (nu*Sigma_f/k_eff)*phi; cosine flux shape; k_eff = 1.0000 | `Eigenvalue` executioner, `CoefReaction` (eigen tag), `EigenDirichletBC`, `Diffusion` | Intermediate |
+| 55 | `case55-two-group-diffusion/` | 2-Group Neutron Diffusion — Fast/Thermal with Fission | Two coupled flux variables (fast + thermal); down-scattering Sigma_12 couples groups; k_eff = 1.342 | `Eigenvalue` executioner, two-variable `CoupledForce` (down-scatter and fission source), `EigenDirichletBC` | Advanced |
+| 56 | `case56-fuel-pin-heat-transfer/` | Fuel Pin Heat Transfer — Radial Temperature Profile | Steady axisymmetric (RZ) heat conduction in fuel + cladding with volumetric source, contact resistance, and convective outer BC; T_center ~ 1200 °C | `GeneratedMesh` (coord_type = RZ), `HeatConduction`, `HeatSource`, `ConvectiveHeatFluxBC`, two subdomains | Intermediate |
+| 57 | `case57-xenon-poisoning/` | Xenon-135 Poisoning Transient — Reactor Flux Decay | Coupled I-135/Xe-135/flux ODEs over 24 h; xenon peak at ~7 h suppresses flux by ~50% before recovery | `TimeDerivative` (×3), `CoupledForce` (iodine→xenon decay and xenon absorption), `IterationAdaptiveDT`, `ParsedMaterial` | Advanced |
+| 58 | `case58-control-rod-worth/` | Control Rod Worth — Eigenvalue Shift from Absorber | Spatially varying Sigma_a in rod subdomain; Delta_k = k_unrodded - k_rodded quantifies rod worth; flux depression near rod tip | `SubdomainBoundingBoxGenerator` (rod region), block-restricted `GenericConstantMaterial`, `Eigenvalue` executioner, `ElementIntegral` | Advanced |
 
 ### What each case produces
 
@@ -1477,16 +1484,21 @@ verification. Study them in order.
 | 51 | `case51_power_law_creep_out.e`, `case51_power_law_creep_out.csv` |
 | 52 | `case52_phase_field_fracture_out.e`, `case52_phase_field_fracture_out.csv` |
 | 53 | `case53_pressure_vessel_out.e`, `case53_pressure_vessel_out.csv` |
+| 54 | `case54_neutron_diffusion_bare_slab_out.e`, `case54_neutron_diffusion_bare_slab_out.csv` |
+| 55 | `case55_two_group_diffusion_out.e`, `case55_two_group_diffusion_out.csv` |
+| 56 | `case56_fuel_pin_heat_transfer_out.e`, `case56_fuel_pin_heat_transfer_out.csv` |
+| 57 | `case57_xenon_poisoning_out.e`, `case57_xenon_poisoning_out.csv` |
+| 58 | `case58_control_rod_worth_out.e`, `case58_control_rod_worth_out.csv` |
 
 All pre-run output files for cases 01-13 are included in this directory so you can
-examine them without running anything. Cases 14-53 require `combined-opt` (all modules)
+examine them without running anything. Cases 14-58 require `combined-opt` (all modules)
 to run — see each case's README for Docker instructions.
 
 ---
 
 ## 7. Creating Your Own Simulations
 
-Once you understand the 53 cases, you will want to adapt them or build new simulations
+Once you understand the 58 cases, you will want to adapt them or build new simulations
 from scratch. This section walks through the process systematically.
 
 ### Step 1: Define Your Physics

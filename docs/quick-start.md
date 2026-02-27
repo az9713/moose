@@ -1,8 +1,8 @@
-# MOOSE Quick-Start Guide: 53 Working Examples
+# MOOSE Quick-Start Guide: 58 Working Examples
 
-This guide walks a complete beginner through 53 self-contained MOOSE input files,
+This guide walks a complete beginner through 58 self-contained MOOSE input files,
 from the simplest possible diffusion problem to genuine multi-physics simulations
-using MOOSE's physics modules. Cases 01-13 use only the framework. Cases 14-53
+using MOOSE's physics modules. Cases 01-13 use only the framework. Cases 14-58
 use physics modules (heat_transfer, solid_mechanics, navier_stokes, phase_field,
 porous_flow, electromagnetics) and require `combined-opt`. Read them in order.
 
@@ -4877,6 +4877,222 @@ An internally pressurized thick-walled cylinder (inner radius a, outer radius b)
 
 ---
 
+## Cases 54-58: Nuclear Reactor Physics
+
+These five cases introduce neutronics and reactor thermal-hydraulics. Cases 54-55 solve
+the neutron diffusion eigenvalue equation (1-group and 2-group). Case 56 couples the heat
+equation to a volumetric source in axisymmetric geometry. Case 57 adds xenon-135 kinetics
+to model flux depression after a power transient. Case 58 computes eigenvalue shift from a
+spatially varying control-rod absorber. All use `combined-opt` via Docker.
+
+---
+
+## Case 54 — 1-Group Neutron Diffusion: Bare Slab Criticality
+
+### Physics
+
+The one-group neutron diffusion equation on a bare slab of thickness L describes the
+neutron flux distribution at criticality. The governing eigenvalue problem is:
+
+```
+-D * d²phi/dx² + (Sigma_a - nu*Sigma_f/k_eff) * phi = 0
+```
+
+where D is the diffusion coefficient, Sigma_a is the macroscopic absorption cross section,
+nu*Sigma_f is the neutron production cross section, and k_eff is the effective multiplication
+factor. For a bare slab with zero-flux boundary conditions at the extrapolated boundaries,
+the critical buckling is B² = (pi/L)² and the analytic k_eff = nu*Sigma_f / (D*B² + Sigma_a).
+This case uses MOOSE's `Eigenvalue` executioner with `KRYLOVSCHUR` to recover k_eff = 1.0000
+and verify the cosine flux shape phi(x) = cos(pi*x/L).
+
+```bash
+cd quickstart-runs/case54-neutron-diffusion-bare-slab
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case54-neutron-diffusion-bare-slab \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case54_neutron_diffusion_bare_slab.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `Eigenvalue` executioner | Drives the generalized eigenvalue solve for k_eff |
+| `DiffusionKernel` / `Diffusion` | Implements `-D * div(grad phi)` neutron leakage term |
+| `CoefReaction` (absorption) | Implements `+Sigma_a * phi` loss term |
+| `CoefReaction` (fission, eigen tag) | Implements `nu*Sigma_f * phi` as the B-matrix for the eigenvalue |
+| `EigenDirichletBC` | Enforces zero flux on both slab faces in the eigen system |
+
+---
+
+## Case 55 — 2-Group Neutron Diffusion: Fast/Thermal Coupling with Fission
+
+### Physics
+
+The two-group diffusion model separates neutrons into a fast group (group 1, high energy)
+and a thermal group (group 2, low energy). Fast neutrons are produced by fission and
+slow down into the thermal group; thermal neutrons drive most of the fission. The coupled
+eigenvalue system is:
+
+```
+-D1*div(grad phi1) + (Sigma_a1 + Sigma_12)*phi1 = (nu*Sigma_f1*phi1 + nu*Sigma_f2*phi2) / k_eff
+-D2*div(grad phi2) + Sigma_a2*phi2               = Sigma_12*phi1
+```
+
+The down-scattering term Sigma_12 couples the two equations. With typical PWR-like cross
+sections this system has k_eff = 1.342, indicating a supercritical assembly that would
+require control rods or boron to reach criticality. The two-group formulation is the
+simplest model that captures the physics of fast-to-thermal neutron slowing-down and is
+the standard starting point for reactor core analysis.
+
+```bash
+cd quickstart-runs/case55-two-group-diffusion
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case55-two-group-diffusion \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case55_two_group_diffusion.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `Eigenvalue` executioner | Solves the two-variable generalized eigenvalue problem |
+| `Diffusion` (×2) | Neutron leakage for each group |
+| `CoefReaction` (removal, ×2) | Group removal cross sections (absorption + scatter-out) |
+| `CoupledForce` (down-scatter) | Sigma_12 * phi1 source term in group-2 equation |
+| `CoupledForce` (fission source, eigen tag) | nu*Sigma_f contribution from both groups to group 1 |
+| `EigenDirichletBC` | Zero flux at domain boundaries for both flux variables |
+
+---
+
+## Case 56 — Fuel Pin Heat Transfer: Radial Temperature Profile
+
+### Physics
+
+A cylindrical nuclear fuel pin generates heat uniformly at volumetric rate Q''' (W/m³).
+The steady-state heat equation in axisymmetric (RZ) cylindrical coordinates is:
+
+```
+-(1/r) * d/dr (r * k_fuel * dT/dr) = Q'''   in fuel (0 < r < r_fuel)
+-(1/r) * d/dr (r * k_clad * dT/dr) = 0      in cladding (r_fuel < r < r_clad)
+```
+
+with contact resistance at the fuel-clad interface and a convective boundary condition at
+the outer cladding surface (h, T_coolant). The exact solution is a parabolic temperature
+profile in the fuel and a logarithmic profile in the cladding. Typical PWR conditions
+(Q''' = 300 MW/m³, k_fuel = 2.5 W/m·K, k_clad = 16 W/m·K) give a centerline temperature
+of approximately 1200 °C with a coolant temperature of 300 °C — close to the UO₂ melting
+point, illustrating why fuel-pin thermal analysis is safety-critical.
+
+```bash
+cd quickstart-runs/case56-fuel-pin-heat-transfer
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case56-fuel-pin-heat-transfer \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case56_fuel_pin_heat_transfer.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `GeneratedMesh` (coord_type = RZ) | 1D radial mesh with axisymmetric (cylindrical) coordinates |
+| `HeatConduction` | Radial heat conduction `-div(k*grad T)` in cylindrical geometry |
+| `HeatSource` | Uniform volumetric source Q''' in the fuel subdomain |
+| `SubdomainBoundingBoxGenerator` | Splits mesh into fuel and cladding subdomains |
+| `ConvectiveHeatFluxBC` | Newton cooling `h*(T - T_coolant)` at the outer cladding surface |
+| `SideAverageValue` | Reports peak centerline and interface temperatures |
+
+---
+
+## Case 57 — Xenon-135 Poisoning Transient: Reactor Flux Decay
+
+### Physics
+
+After a reactor is shut down (or power is reduced), the neutron flux drops but iodine-135
+(which decays to xenon-135) continues to be produced from the decay of short-lived fission
+products. Xenon-135 has an enormous thermal neutron absorption cross section (2.65 × 10⁶ barns)
+and its buildup severely depresses the neutron flux — a phenomenon called xenon poisoning.
+The coupled ODE/PDE system governing this transient is:
+
+```
+dI/dt   = gamma_I * Sigma_f * phi - lambda_I * I
+dXe/dt  = gamma_Xe * Sigma_f * phi + lambda_I * I - (lambda_Xe + sigma_Xe * phi) * Xe
+dphi/dt = D*div(grad phi) - (Sigma_a + sigma_Xe*Xe)*phi + nu*Sigma_f*phi/k0 - phi/tau_prompt
+```
+
+where I is the iodine-135 concentration, Xe is the xenon-135 concentration, phi is the
+thermal neutron flux, gamma_I and gamma_Xe are fission yields, lambda_I and lambda_Xe are
+decay constants, and sigma_Xe is the xenon absorption cross section. After a step-down in
+power at t=0, xenon peaks at approximately 6-8 hours and recovers by 24 hours, producing
+the classic "xenon transient" that operators must manage to avoid iodine pit startup failures.
+This 24-hour transient simulation uses three coupled variables and demonstrates MOOSE's
+ability to handle stiff ODE/PDE systems with multiple timescales.
+
+```bash
+cd quickstart-runs/case57-xenon-poisoning
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case57-xenon-poisoning \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case57_xenon_poisoning.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `TimeDerivative` (×3) | Time-derivative terms for iodine, xenon, and flux variables |
+| `CoupledForce` | Cross-coupling terms (iodine decay into xenon, xenon absorption on flux) |
+| `ParsedMaterial` / `DerivativeParsedMaterial` | Spatially uniform nuclear data (cross sections, yields, decay constants) |
+| `IterationAdaptiveDT` | Adaptive timestep that shortens during the rapid xenon peak |
+| `ElementAverageValue` | Tracks spatially averaged I-135, Xe-135, and flux over 24 hours |
+
+---
+
+## Case 58 — Control Rod Worth: Eigenvalue Shift from Absorber
+
+### Physics
+
+A control rod is modeled as a spatially localized region of enhanced neutron absorption.
+Inserting the rod raises Sigma_a in the rod region, shifting the effective multiplication
+factor from the unrodded k_eff to a lower rodded k_eff. The difference
+
+```
+Delta_k = k_eff_unrodded - k_eff_rodded
+```
+
+is called the control rod worth and is the key parameter for reactor control and shutdown
+margin calculations. This case runs two eigenvalue solves — one without the rod and one
+with the rod inserted — and reports both k_eff values and the worth. The spatial flux
+depression near the rod tip demonstrates the neutron flux "peaking" that must be accounted
+for in fuel-rod power peaking factor analyses.
+
+```bash
+cd quickstart-runs/case58-control-rod-worth
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case58-control-rod-worth \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case58_control_rod_worth.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `SubdomainBoundingBoxGenerator` | Creates a rod-shaped subdomain with elevated absorption cross section |
+| `GenericConstantMaterial` | Assigns group-wise nuclear data to fuel and rod subdomains |
+| `Eigenvalue` executioner | Solves the one-group diffusion eigenvalue for each rod position |
+| `CoefReaction` (absorption) | `Sigma_a(x) * phi` using block-restricted material for the rod region |
+| `ElementIntegral` (flux) | Spatial flux distribution showing flux depression in the rod region |
+
+---
+
 ## Troubleshooting Common Errors
 
 **Error: `Object 'Diffusion' was not registered`**
@@ -4907,7 +5123,7 @@ variable name (e.g., `u` or `T`) using the dropdown in the toolbar.
 
 ## Next Steps
 
-After completing these 53 cases:
+After completing these 58 cases:
 
 1. **Read the MOOSE documentation** at https://mooseframework.inl.gov for
    complete reference documentation on every object type.
@@ -4919,8 +5135,8 @@ After completing these 53 cases:
 3. **Write your own application**: Use `moose/scripts/stork.py` to scaffold
    a new MOOSE application with custom kernels, materials, and BCs.
 
-4. **Explore more module features**: Cases 14-53 introduce the major physics
+4. **Explore more module features**: Cases 14-58 introduce the major physics
    modules — from solid mechanics and heat transfer through Navier-Stokes,
-   electrodynamics, MHD, and nonlinear solid mechanics. Each module has many
-   more capabilities — consult the [Modules Reference](modules-reference.md)
+   electrodynamics, MHD, nonlinear solid mechanics, and nuclear reactor physics.
+   Each module has many more capabilities — consult the [Modules Reference](modules-reference.md)
    for full details.

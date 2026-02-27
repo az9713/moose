@@ -1,0 +1,3 @@
+time,T_centerline,T_clad_inner,T_clad_outer,T_fuel_avg,T_fuel_surface
+0,0,0,0,0,0
+1,1229.437435817,625.84333346478,596.55626580463,863.07488356791,656.36756809239

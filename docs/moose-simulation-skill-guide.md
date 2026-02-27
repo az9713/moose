@@ -26,8 +26,8 @@ will then follow the skill's 9-section checklist systematically.
 
 ## What Was Actually Built
 
-Over multiple sessions the skill guided creation of **53 quickstart cases**
-covering 8 MOOSE physics modules:
+Over multiple sessions the skill guided creation of **58 quickstart cases**
+covering 9 MOOSE physics modules:
 
 | Batch | Cases | Source Textbook | Physics |
 |-------|-------|-----------------|---------|
@@ -37,6 +37,7 @@ covering 8 MOOSE physics modules:
 | Rieutord | 37–44 | Michel Rieutord, *Fluid Dynamics: An Introduction* (Springer, 2015) — Chapters 4-10 | Rayleigh-Benard convection, KH instability, Blasius boundary layer, k-epsilon turbulence, RT instability, Sod shock tube, Ekman spiral, Alfven wave |
 | Smith | 45–48 | Smith, *Uncertainty Quantification* (SIAM, 2014) | Monte Carlo UQ, polynomial chaos expansion, heat source inversion (adjoint optimization), Latin Hypercube parameter study |
 | Nonlinear Solid Mechanics (Batch A) | 49–53 | MOOSE solid_mechanics module | J2 plasticity, finite-strain compression, power-law creep, phase-field fracture, Lame pressure vessel solution |
+| Nuclear Reactor Physics | 54–58 | Nuclear engineering fundamentals (diffusion theory, reactor kinetics) | 1-group and 2-group neutron diffusion eigenvalue, fuel-pin RZ heat transfer, xenon-135 poisoning transient, control rod worth |
 
 Every case converges in Docker with `combined-opt` in under 2 minutes and
 produces both Exodus (`.e`) and CSV output files.

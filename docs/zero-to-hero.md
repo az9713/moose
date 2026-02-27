@@ -340,7 +340,7 @@ Write new input files from scratch.
 
 **Primary resources:**
 - `docs/user-guide.md` — full input file syntax reference
-- `docs/quick-start.md` — 53 worked examples
+- `docs/quick-start.md` — 58 worked examples
 - `test/tests/kernels/` — real input files for every kernel type
 
 ---

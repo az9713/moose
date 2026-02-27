@@ -122,6 +122,11 @@ CASE_DIRS = {
     "51": "case51-power-law-creep",
     "52": "case52-phase-field-fracture",
     "53": "case53-pressure-vessel",
+    "54": "case54-neutron-diffusion",
+    "55": "case55-two-group-diffusion",
+    "56": "case56-fuel-pin-heat",
+    "57": "case57-xenon-transient",
+    "58": "case58-control-rod-worth",
 }
 
 
@@ -3229,6 +3234,305 @@ def plot_case53():
 
 
 # ---------------------------------------------------------------------------
+# Case 54 — 1-Group Neutron Diffusion Eigenvalue
+# ---------------------------------------------------------------------------
+
+
+def plot_case54():
+    print("Case 54: 1-Group Neutron Diffusion")
+
+    # Read the VectorPostprocessor CSV for flux profile
+    vpp_file = case_path("54", "case54_neutron_diffusion_out_flux_profile_0001.csv")
+    if not os.path.exists(vpp_file):
+        print("    SKIP: VPP file not found")
+        skipped_cases.append("case54")
+        return
+
+    vpp = read_csv(vpp_file)
+    x_data = np.array(vpp["x"])
+    phi_data = np.array(vpp["phi"])
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    # Panel 1: Flux profile
+    ax = axes[0]
+    ax.plot(x_data, phi_data, "b-", linewidth=2, label=r"$\phi(x)$ (MOOSE)")
+    # Analytical: sin(pi*x/L) for vacuum BCs on [0, L]
+    L = 14.05
+    x_an = np.linspace(0, L, 200)
+    phi_an = np.sin(np.pi * x_an / L)
+    # Normalize analytical to match MOOSE peak
+    phi_an *= phi_data.max()
+    ax.plot(x_an, phi_an, "r--", linewidth=1.5, label=r"$\sin(\pi x/L)$ analytical")
+    ax.set_xlabel("Position $x$ (cm)")
+    ax.set_ylabel(r"Neutron flux $\phi$")
+    ax.set_title("Fundamental Mode — Flux Profile")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    # Panel 2: Text box with eigenvalue info
+    ax = axes[1]
+    ax.axis("off")
+    info_text = (
+        "1-Group Neutron Diffusion\n"
+        "─────────────────────────\n"
+        f"Slab thickness L = {L} cm\n"
+        "D = 1.0 cm\n"
+        r"$\Sigma_a$ = 0.10 /cm" + "\n"
+        r"$\nu\Sigma_f$ = 0.15 /cm" + "\n"
+        r"$k_\infty$ = 1.50" + "\n\n"
+        r"$B^2 = (\nu\Sigma_f - \Sigma_a)/D$ = 0.05" + "\n"
+        r"$L_{crit} = \pi/\sqrt{B^2}$ = 14.05 cm" + "\n\n"
+        r"$k_{eff}$ (MOOSE) ≈ 1.0000" + "\n"
+        "(exactly critical as designed)"
+    )
+    ax.text(0.1, 0.5, info_text, transform=ax.transAxes, fontsize=12,
+            verticalalignment="center", fontfamily="monospace",
+            bbox=dict(boxstyle="round,pad=0.5", facecolor="lightyellow"))
+
+    fig.suptitle("Case 54: 1-Group Neutron Diffusion — Bare Slab Criticality", fontsize=14)
+    fig.tight_layout()
+    save_fig(fig, "54", "case54_neutron_diffusion.png")
+
+
+# ---------------------------------------------------------------------------
+# Case 55 — 2-Group Neutron Diffusion
+# ---------------------------------------------------------------------------
+
+
+def plot_case55():
+    print("Case 55: 2-Group Neutron Diffusion")
+
+    vpp_file = case_path("55", "case55_two_group_diffusion_out_flux_profiles_0001.csv")
+    if not os.path.exists(vpp_file):
+        print("    SKIP: VPP file not found")
+        skipped_cases.append("case55")
+        return
+
+    vpp = read_csv(vpp_file)
+    x_data = np.array(vpp["x"])
+    phi1 = np.array(vpp["phi1"])
+    phi2 = np.array(vpp["phi2"])
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    # Panel 1: Both flux profiles
+    ax = axes[0]
+    ax.plot(x_data, phi1, "b-", linewidth=2, label=r"Fast $\phi_1$")
+    ax.plot(x_data, phi2, "r-", linewidth=2, label=r"Thermal $\phi_2$")
+    ax.set_xlabel("Position $x$ (cm)")
+    ax.set_ylabel("Neutron flux (arb. units)")
+    ax.set_title("Fast and Thermal Flux Profiles")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    # Panel 2: Flux ratio
+    ax = axes[1]
+    # Avoid division by zero at edges
+    mask = phi1 > 0.01 * phi1.max()
+    ax.plot(x_data[mask], (phi2 / phi1)[mask], "g-", linewidth=2)
+    ax.set_xlabel("Position $x$ (cm)")
+    ax.set_ylabel(r"$\phi_2 / \phi_1$ (thermal-to-fast ratio)")
+    ax.set_title("Spectral Ratio Across Slab")
+    ax.grid(True, alpha=0.3)
+
+    fig.suptitle(r"Case 55: 2-Group Neutron Diffusion — $k_{eff}$ = 1.342", fontsize=14)
+    fig.tight_layout()
+    save_fig(fig, "55", "case55_two_group_diffusion.png")
+
+
+# ---------------------------------------------------------------------------
+# Case 56 — Fuel Pin Heat Transfer
+# ---------------------------------------------------------------------------
+
+
+def plot_case56():
+    print("Case 56: Fuel Pin Heat Transfer")
+
+    exo_file = case_path("56", "case56_fuel_pin_heat_out.e")
+    csv_file = case_path("56", "case56_fuel_pin_heat_out.csv")
+
+    if not os.path.exists(exo_file):
+        print("    SKIP: Exodus file not found")
+        skipped_cases.append("case56")
+        return
+
+    ds = nc.Dataset(exo_file)
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    # Panel 1: 2D temperature contour
+    ax = axes[0]
+    coordx = ds.variables["coordx"][:]
+    coordy = ds.variables["coordy"][:]
+    # Get temperature (nodal variable)
+    nod_names = get_nod_var_names(ds)
+    t_idx = nod_names.index("T") + 1
+    T = ds.variables[f"vals_nod_var{t_idx}"][-1, :]
+    sc = ax.tricontourf(coordx * 1000, coordy * 1000, T, levels=30, cmap="hot")
+    plt.colorbar(sc, ax=ax, label="Temperature (K)")
+    ax.set_xlabel("Radius $r$ (mm)")
+    ax.set_ylabel("Height $z$ (mm)")
+    ax.set_title("Temperature Distribution")
+
+    # Panel 2: Radial profile at midplane
+    ax = axes[1]
+    # Read CSV for postprocessor values
+    if os.path.exists(csv_file):
+        csv_data = read_csv(csv_file)
+        r_pts = [0, 4.1, 4.2, 4.75]
+        T_pts = [csv_data["T_centerline"][-1], csv_data["T_fuel_surface"][-1],
+                 csv_data["T_clad_inner"][-1], csv_data["T_clad_outer"][-1]]
+        ax.plot(r_pts, T_pts, "ro-", linewidth=2, markersize=8)
+        ax.axvline(x=4.1, color="gray", linestyle="--", alpha=0.5, label="Fuel/Gap")
+        ax.axvline(x=4.2, color="gray", linestyle=":", alpha=0.5, label="Gap/Clad")
+        ax.set_xlabel("Radius (mm)")
+        ax.set_ylabel("Temperature (K)")
+        ax.set_title("Radial Temperature Profile")
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+
+        # Add annotations
+        ax.annotate(f"T_center = {csv_data['T_centerline'][-1]:.0f} K",
+                    xy=(0, csv_data["T_centerline"][-1]),
+                    xytext=(1.5, csv_data["T_centerline"][-1] - 80),
+                    arrowprops=dict(arrowstyle="->"), fontsize=9)
+        ax.annotate(f"T_clad_out = {csv_data['T_clad_outer'][-1]:.0f} K",
+                    xy=(4.75, csv_data["T_clad_outer"][-1]),
+                    xytext=(3.5, csv_data["T_clad_outer"][-1] + 100),
+                    arrowprops=dict(arrowstyle="->"), fontsize=9)
+
+    ds.close()
+
+    fig.suptitle("Case 56: Fuel Pin Heat Transfer — Radial Temperature Profile", fontsize=14)
+    fig.tight_layout()
+    save_fig(fig, "56", "case56_fuel_pin_heat.png")
+
+
+# ---------------------------------------------------------------------------
+# Case 57 — Xenon-135 Poisoning Transient
+# ---------------------------------------------------------------------------
+
+
+def plot_case57():
+    print("Case 57: Xenon-135 Poisoning Transient")
+
+    csv_file = case_path("57", "case57_xenon_transient_out.csv")
+    if not os.path.exists(csv_file):
+        print("    SKIP: CSV file not found")
+        skipped_cases.append("case57")
+        return
+
+    d = read_csv(csv_file)
+    t = np.array(d["time"])
+    phi_c = np.array(d["phi_center"])
+    phi_m = np.array(d["phi_max"])
+    xe_c = np.array(d["Xe_center"])
+    xe_a = np.array(d["Xe_avg"])
+    i_a = np.array(d["I_avg"])
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+
+    # Panel 1: Flux vs time
+    ax = axes[0]
+    ax.plot(t, phi_c, "b-", linewidth=2, label="Center flux")
+    ax.plot(t, phi_m, "b--", linewidth=1.5, alpha=0.7, label="Max flux")
+    ax.set_xlabel("Time (hours)")
+    ax.set_ylabel(r"Neutron flux $\phi$")
+    ax.set_title("Flux Depression from Xe Buildup")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    # Panel 2: Xe and I concentrations
+    ax = axes[1]
+    ax.plot(t, xe_c, "r-", linewidth=2, label="Xe-135 (center)")
+    ax.plot(t, xe_a, "r--", linewidth=1.5, alpha=0.7, label="Xe-135 (avg)")
+    ax.plot(t, i_a, "g-", linewidth=2, label="I-135 (avg)")
+    ax.set_xlabel("Time (hours)")
+    ax.set_ylabel("Concentration (scaled)")
+    ax.set_title("Fission Product Buildup")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    # Panel 3: Xe vs flux (phase portrait)
+    ax = axes[2]
+    ax.plot(phi_c, xe_c, "m-", linewidth=2)
+    ax.plot(phi_c[0], xe_c[0], "go", markersize=10, label="t=0")
+    ax.plot(phi_c[-1], xe_c[-1], "rs", markersize=10, label="t=24h")
+    ax.set_xlabel(r"Flux $\phi$ at center")
+    ax.set_ylabel("Xe-135 at center")
+    ax.set_title("Xe-Flux Phase Portrait")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    fig.suptitle("Case 57: Xenon-135 Poisoning — Reactor Flux Transient (24 hr)", fontsize=14)
+    fig.tight_layout()
+    save_fig(fig, "57", "case57_xenon_transient.png")
+
+
+# ---------------------------------------------------------------------------
+# Case 58 — Control Rod Worth
+# ---------------------------------------------------------------------------
+
+
+def plot_case58():
+    print("Case 58: Control Rod Worth")
+
+    vpp_file = case_path("58", "case58_control_rod_worth_out_flux_profile_0001.csv")
+    if not os.path.exists(vpp_file):
+        print("    SKIP: VPP file not found")
+        skipped_cases.append("case58")
+        return
+
+    vpp = read_csv(vpp_file)
+    x_data = np.array(vpp["x"])
+    phi_data = np.array(vpp["phi"])
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    # Panel 1: Flux profile with rod region highlighted
+    ax = axes[0]
+    ax.plot(x_data, phi_data, "b-", linewidth=2, label=r"$\phi(x)$ with rod")
+    # Overlay a sin(pi*x/L) for unrodded reference
+    L = 20.0
+    x_an = np.linspace(0, L, 200)
+    phi_ref = np.sin(np.pi * x_an / L)
+    phi_ref *= phi_data.max() / phi_ref.max() * 1.1  # slight scale for visual
+    ax.plot(x_an, phi_ref, "r--", linewidth=1.5, alpha=0.7, label="Unrodded (scaled)")
+    ax.axvspan(8, 12, alpha=0.15, color="gray", label="Control rod region")
+    ax.set_xlabel("Position $x$ (cm)")
+    ax.set_ylabel(r"Neutron flux $\phi$")
+    ax.set_title("Flux Profile with Central Absorber")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    # Panel 2: Info box
+    ax = axes[1]
+    ax.axis("off")
+    info_text = (
+        "Control Rod Worth\n"
+        "─────────────────────────\n"
+        f"Slab thickness L = {L} cm\n"
+        "D = 1.0 cm\n"
+        r"$\Sigma_{a0}$ = 0.08 /cm (base)" + "\n"
+        r"$\Delta\Sigma_a$ = 0.05 /cm (rod)" + "\n"
+        r"$\nu\Sigma_f$ = 0.12 /cm" + "\n\n"
+        "Rod region: x = [8, 12] cm\n\n"
+        r"$k_{eff}$ (with rod) = 1.019" + "\n"
+        r"$k_{eff}$ (no rod, Case 54) ≈ 1.000" + "\n\n"
+        "The central absorber depresses\n"
+        "flux in the rod region, reducing\n"
+        "the effective multiplication factor."
+    )
+    ax.text(0.1, 0.5, info_text, transform=ax.transAxes, fontsize=12,
+            verticalalignment="center", fontfamily="monospace",
+            bbox=dict(boxstyle="round,pad=0.5", facecolor="lightyellow"))
+
+    fig.suptitle(r"Case 58: Control Rod Worth — $k_{eff}$ Shift from Absorber", fontsize=14)
+    fig.tight_layout()
+    save_fig(fig, "58", "case58_control_rod_worth.png")
+
+
+# ---------------------------------------------------------------------------
 # Main driver
 # ---------------------------------------------------------------------------
 
@@ -3286,12 +3590,17 @@ CASE_FUNCTIONS = [
     ("51", plot_case51),
     ("52", plot_case52),
     ("53", plot_case53),
+    ("54", plot_case54),
+    ("55", plot_case55),
+    ("56", plot_case56),
+    ("57", plot_case57),
+    ("58", plot_case58),
 ]
 
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("MOOSE Quick-Start Visualization — All 53 Cases")
+    print("MOOSE Quick-Start Visualization — All 58 Cases")
     print("=" * 60)
     print(f"Script directory: {SCRIPT_DIR}")
     print("Plots will be saved into each case subdirectory.\n")
