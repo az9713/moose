@@ -1,5 +1,5 @@
 """
-MOOSE Quick-Start: Visualization Script for All 73 Cases
+MOOSE Quick-Start: Visualization Script for All 83 Cases
 =========================================================
 Generates 2-3 plots per case and saves each PNG into that case's own directory.
 For example, Case 01's plot is written to case01-1d-steady-diffusion/case01_diffusion_1d.png.
@@ -142,6 +142,16 @@ CASE_DIRS = {
     "71": "case71-xfem-crack",
     "72": "case72-thm-pipe-flow",
     "73": "case73-level-set-advection",
+    "74": "case74-left-handed-material",
+    "75": "case75-drude-slab",
+    "76": "case76-3d-waveguide",
+    "77": "case77-cylinder-scattering",
+    "78": "case78-pulse-reflection",
+    "79": "case79-snell-law-tir",
+    "80": "case80-bragg-mirror",
+    "81": "case81-photonic-crystal",
+    "82": "case82-3d-cavity-resonance",
+    "83": "case83-veselago-lens",
 }
 
 
@@ -4477,6 +4487,375 @@ def plot_case73():
     save_fig(fig, "73", "case73_level_set_advection.png")
 
 
+def plot_case74():
+    """Case 74: Left-Handed Material — Reversed Phase Velocity"""
+    print("Case 74: Left-Handed Material (LHM) — Reversed Phase Velocity")
+    efile = case_path("74", "case74_left_handed_material_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case74")
+        return
+
+    ds = open_exodus(efile)
+    x = np.array(ds.variables["coordx"][:], dtype=float)
+    names = get_nod_var_names(ds)
+    Er_idx = names.index("E_real") + 1
+    Ei_idx = names.index("E_imag") + 1
+    Er = get_nod_var(ds, Er_idx, timestep=-1)
+    Ei = get_nod_var(ds, Ei_idx, timestep=-1)
+    ds.close()
+
+    E_mag = np.sqrt(Er**2 + Ei**2)
+    order = np.argsort(x)
+    x_s = x[order]
+    Er_s = Er[order]
+    Ei_s = Ei[order]
+    Em_s = E_mag[order]
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.5))
+    fig.suptitle(
+        "Case 74: EM Wave in Left-Handed Material (Veselago 1968) — Reversed Phase Velocity",
+        fontsize=FONT_TITLE,
+    )
+
+    # Left panel: real and imaginary field components
+    # Shade the three regions to show vacuum | LHM slab | vacuum layout
+    axes[0].axvspan(0, 40, alpha=0.07, color="blue", label="Vacuum (n=+1)")
+    axes[0].axvspan(40, 80, alpha=0.15, color="red", label="LHM slab (n=-1.5)")
+    axes[0].axvspan(80, 120, alpha=0.07, color="blue")
+    axes[0].plot(x_s, Er_s, "b-", linewidth=1.0, label="E_real")
+    axes[0].plot(x_s, Ei_s, "r--", linewidth=1.0, label="E_imag")
+    axes[0].axvline(40, color="k", linewidth=0.8, linestyle=":")
+    axes[0].axvline(80, color="k", linewidth=0.8, linestyle=":")
+    axes[0].set_xlabel("x (m)")
+    axes[0].set_ylabel("E field (V/m)")
+    axes[0].legend(fontsize=9)
+    axes[0].set_title("Real and Imaginary Components")
+    axes[0].grid(True, alpha=0.3)
+    axes[0].text(
+        20, axes[0].get_ylim()[0] * 0.85 if axes[0].get_ylim()[0] < 0 else -0.1,
+        "PEC x=0",
+        ha="center", fontsize=8, color="gray",
+    )
+
+    # Right panel: field magnitude |E(x)|
+    # The magnitude envelope reveals Fabry-Perot resonances and the
+    # standing wave pattern shaped by the negative-index interface conditions.
+    axes[1].axvspan(0, 40, alpha=0.07, color="blue", label="Vacuum (n=+1)")
+    axes[1].axvspan(40, 80, alpha=0.15, color="red", label="LHM slab (n=-1.5)")
+    axes[1].axvspan(80, 120, alpha=0.07, color="blue")
+    axes[1].plot(x_s, Em_s, "k-", linewidth=1.5, label="|E(x)|")
+    axes[1].axvline(40, color="k", linewidth=0.8, linestyle=":")
+    axes[1].axvline(80, color="k", linewidth=0.8, linestyle=":")
+    axes[1].set_xlabel("x (m)")
+    axes[1].set_ylabel("|E| (V/m)")
+    axes[1].legend(fontsize=9)
+    axes[1].set_title("Field Magnitude (Fabry-Perot + LHM Phase Reversal)")
+    axes[1].grid(True, alpha=0.3)
+
+    fig.tight_layout()
+    save_fig(fig, "74", "case74_left_handed_material.png")
+
+
+def plot_case75():
+    """Case 75: Drude Slab — Lossy Metal Reflection"""
+    print("Case 75: Drude Slab — Lossy Metal Reflection")
+    efile = case_path("75", "case75_drude_slab_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case75")
+        return
+    ds = open_exodus(efile)
+    x = np.array(ds.variables["coordx"][:], dtype=float)
+    names = get_nod_var_names(ds)
+    Er = get_nod_var(ds, names.index("E_real") + 1)
+    Ei = get_nod_var(ds, names.index("E_imag") + 1)
+    ds.close()
+    Esq = Er**2 + Ei**2
+    order = np.argsort(x)
+    fig, ax = plt.subplots(figsize=FIGSIZE_WIDE)
+    ax.axvspan(40, 80, alpha=0.18, color="silver", label="Drude slab")
+    ax.plot(x[order], Esq[order], "b-", linewidth=1.2)
+    ax.axvline(40, color="k", ls=":", lw=0.8)
+    ax.axvline(80, color="k", ls=":", lw=0.8)
+    ax.set_xlabel("x (m)")
+    ax.set_ylabel("|E(x)|²")
+    ax.set_title("Case 75: Drude Slab — Field Intensity")
+    ax.legend(fontsize=9)
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    save_fig(fig, "75", "case75_drude_slab.png")
+
+
+def plot_case76():
+    """Case 76: 3D Waveguide TE10 Mode"""
+    print("Case 76: 3D Rectangular Waveguide — TE10 Mode Propagation")
+    efile = case_path("76", "case76_3d_waveguide_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case76")
+        return
+    ds = open_exodus(efile)
+    enames = get_elem_var_names(ds)
+    ey_idx = list(enames).index("E_y_real") + 1
+    ey = get_elem_var(ds, ey_idx, block=1, timestep=-1)
+    cx, cy = get_elem_centroids_2d(ds, block=1)
+    cz = np.zeros_like(cx)
+    if "coordz" in ds.variables:
+        z_all = np.array(ds.variables["coordz"][:], dtype=float)
+        conn = ds.variables["connect1"][:] - 1
+        cz = np.mean(z_all[conn], axis=1)
+    ds.close()
+    # Select midplane y ≈ 1.0 (b/2)
+    ymid = 1.0
+    mask = np.abs(cy - ymid) < 0.2
+    if mask.sum() < 10:
+        print("    SKIP: not enough elements near y midplane")
+        skipped_cases.append("case76")
+        return
+    fig, ax = plt.subplots(figsize=FIGSIZE_WIDE)
+    sc = ax.tricontourf(cz[mask], cx[mask], ey[mask], levels=40, cmap="RdBu_r")
+    plt.colorbar(sc, ax=ax, label="E_y_real")
+    ax.set_xlabel("z (m) — propagation direction")
+    ax.set_ylabel("x (m) — transverse")
+    ax.set_title("Case 76: TE10 Waveguide Mode — E_y(x,z) at y = b/2")
+    fig.tight_layout()
+    save_fig(fig, "76", "case76_3d_waveguide.png")
+
+
+def plot_case77():
+    """Case 77: Cylinder Scattering"""
+    print("Case 77: 2D Cylinder Scattering — TE Polarization")
+    efile = case_path("77", "case77_cylinder_scattering_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case77")
+        return
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    names = get_nod_var_names(ds)
+    Ei_idx = names.index("E_magnitude_sq") + 1
+    Ei = get_nod_var(ds, Ei_idx)
+    ds.close()
+    fig, ax = plt.subplots(figsize=FIGSIZE_SQUARE)
+    tc = ax.tricontourf(x, y, Ei, levels=40, cmap="inferno")
+    plt.colorbar(tc, ax=ax, label="|E|²")
+    theta = np.linspace(0, 2 * np.pi, 100)
+    ax.plot(np.cos(theta), np.sin(theta), "w-", linewidth=1.5)
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_title("Case 77: Cylinder Scattering — Field Intensity")
+    ax.set_aspect("equal")
+    fig.tight_layout()
+    save_fig(fig, "77", "case77_cylinder_scattering.png")
+
+
+def plot_case78():
+    """Case 78: Time-Domain Pulse Reflection"""
+    print("Case 78: Time-Domain EM Pulse Reflection from Dielectric Slab")
+    efile = case_path("78", "case78_pulse_reflection_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case78")
+        return
+    ds = open_exodus(efile)
+    enames = get_elem_var_names(ds)
+    times = get_times(ds)
+    n_steps = len(times)
+    amp_idx = list(enames).index("E_amplitude") + 1
+    cx, cy = get_elem_centroids_2d(ds, block=1)
+    # Pick 4 time snapshots
+    steps = [n_steps // 5, 2 * n_steps // 5, 3 * n_steps // 5, 4 * n_steps // 5]
+    fig, axes = plt.subplots(2, 2, figsize=FIGSIZE_LARGE)
+    for ax, step in zip(axes.flat, steps):
+        amp = get_elem_var(ds, amp_idx, block=1, timestep=step)
+        sc = ax.tricontourf(cx, cy, amp, levels=30, cmap="RdBu_r")
+        plt.colorbar(sc, ax=ax, label="|E|")
+        ax.axvline(0.3, color="k", ls="--", lw=0.8)
+        ax.axvline(0.5, color="k", ls="--", lw=0.8)
+        ax.set_title(f"t = {times[step]:.3e} s", fontsize=10)
+        ax.set_xlabel("x (m)")
+        ax.set_ylabel("y (m)")
+    ds.close()
+    fig.suptitle("Case 78: Pulse Reflection — Time Snapshots", fontsize=FONT_TITLE)
+    fig.tight_layout()
+    save_fig(fig, "78", "case78_pulse_reflection.png")
+
+
+def plot_case79():
+    """Case 79: Snell's Law / TIR"""
+    print("Case 79: Snell's Law and Total Internal Reflection")
+    efile = case_path("79", "case79_snell_law_tir_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case79")
+        return
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    names = get_nod_var_names(ds)
+    # Try E_total_sq first, fall back to computing from E_real/E_imag
+    if "E_total_sq" in names:
+        idx = names.index("E_total_sq") + 1
+        val = get_nod_var(ds, idx)
+    else:
+        Er = get_nod_var(ds, names.index("E_real") + 1)
+        Ei = get_nod_var(ds, names.index("E_imag") + 1)
+        val = Er**2 + Ei**2
+    ds.close()
+    fig, ax = plt.subplots(figsize=(8, 6))
+    tc = ax.tricontourf(x, y, val, levels=40, cmap="inferno")
+    plt.colorbar(tc, ax=ax, label="|E|²")
+    ax.axvline(0, color="w", ls="--", lw=1.2, label="Interface")
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_title("Case 79: Snell's Law — Oblique Incidence Field Intensity")
+    ax.legend(fontsize=9)
+    ax.set_aspect("equal")
+    fig.tight_layout()
+    save_fig(fig, "79", "case79_snell_law_tir.png")
+
+
+def plot_case80():
+    """Case 80: Bragg Mirror"""
+    print("Case 80: Bragg Mirror — Quarter-Wave Stack")
+    efile = case_path("80", "case80_bragg_mirror_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case80")
+        return
+    ds = open_exodus(efile)
+    x = np.array(ds.variables["coordx"][:], dtype=float)
+    names = get_nod_var_names(ds)
+    Er = get_nod_var(ds, names.index("E_real") + 1)
+    Ei = get_nod_var(ds, names.index("E_imag") + 1)
+    ds.close()
+    Esq = Er**2 + Ei**2
+    order = np.argsort(x)
+    fig, ax = plt.subplots(figsize=FIGSIZE_WIDE)
+    # Shade alternating layers (approximate positions from the .i file)
+    d_H = 1.875
+    d_L = 3.0618
+    pos = 0.0
+    for i in range(5):
+        ax.axvspan(pos, pos + d_H, alpha=0.15, color="blue")
+        pos += d_H
+        ax.axvspan(pos, pos + d_L, alpha=0.08, color="orange")
+        pos += d_L
+    ax.plot(x[order], Esq[order], "k-", linewidth=1.2)
+    ax.set_xlabel("x (m)")
+    ax.set_ylabel("|E(x)|²")
+    ax.set_title("Case 80: Bragg Mirror — Field Intensity Through Stack")
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    save_fig(fig, "80", "case80_bragg_mirror.png")
+
+
+def plot_case81():
+    """Case 81: Photonic Crystal Eigenmodes"""
+    print("Case 81: 2D Photonic Crystal — TM Eigenmodes at Gamma Point")
+    efile = case_path("81", "case81_photonic_crystal_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case81")
+        return
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    names = get_nod_var_names(ds)
+    psi_idx = names.index("psi") + 1
+    times = get_times(ds)
+    n_modes = min(len(times), 4)
+    fig, axes = plt.subplots(2, 2, figsize=FIGSIZE_LARGE)
+    for i, ax in enumerate(axes.flat):
+        if i >= n_modes:
+            ax.set_visible(False)
+            continue
+        psi = get_nod_var(ds, psi_idx, timestep=i)
+        tc = ax.tricontourf(x, y, psi, levels=30, cmap="RdBu_r")
+        plt.colorbar(tc, ax=ax, shrink=0.8)
+        theta = np.linspace(0, 2 * np.pi, 100)
+        ax.plot(0.5 + 0.2 * np.cos(theta), 0.5 + 0.2 * np.sin(theta), "k-", lw=1.2)
+        ax.set_title(f"Mode {i + 1}", fontsize=10)
+        ax.set_aspect("equal")
+    ds.close()
+    fig.suptitle("Case 81: Photonic Crystal TM Eigenmodes", fontsize=FONT_TITLE)
+    fig.tight_layout()
+    save_fig(fig, "81", "case81_photonic_crystal.png")
+
+
+def plot_case82():
+    """Case 82: 3D Cavity Resonance"""
+    print("Case 82: 3D PEC Cavity Resonance — Eigenmodes")
+    efile = case_path("82", "case82_3d_cavity_resonance_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case82")
+        return
+    ds = open_exodus(efile)
+    x = np.array(ds.variables["coordx"][:], dtype=float)
+    y = np.array(ds.variables["coordy"][:], dtype=float)
+    z = np.array(ds.variables["coordz"][:], dtype=float)
+    names = get_nod_var_names(ds)
+    psi_idx = names.index("psi") + 1
+    times = get_times(ds)
+    # Filter nodes near z = 0.5 midplane
+    zmid = 0.5
+    tol = 0.15
+    mask = np.abs(z - zmid) < tol
+    if mask.sum() < 10:
+        print("    SKIP: not enough nodes near z midplane")
+        ds.close()
+        skipped_cases.append("case82")
+        return
+    n_modes = min(len(times), 4)
+    fig, axes = plt.subplots(2, 2, figsize=FIGSIZE_LARGE)
+    for i, ax in enumerate(axes.flat):
+        if i >= n_modes:
+            ax.set_visible(False)
+            continue
+        psi = get_nod_var(ds, psi_idx, timestep=i)
+        tc = ax.tricontourf(x[mask], y[mask], psi[mask], levels=30, cmap="RdBu_r")
+        plt.colorbar(tc, ax=ax, shrink=0.8)
+        ax.set_title(f"Mode {i + 1}", fontsize=10)
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+        ax.set_aspect("equal")
+    ds.close()
+    fig.suptitle("Case 82: 3D Cavity Eigenmodes (z = 0.5 slice)", fontsize=FONT_TITLE)
+    fig.tight_layout()
+    save_fig(fig, "82", "case82_3d_cavity_resonance.png")
+
+
+def plot_case83():
+    """Case 83: Veselago Flat Lens"""
+    print("Case 83: Veselago Flat Lens — Point Source Focusing")
+    efile = case_path("83", "case83_veselago_lens_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case83")
+        return
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    names = get_nod_var_names(ds)
+    Ei_idx = names.index("E_intensity") + 1
+    Ei = get_nod_var(ds, Ei_idx)
+    ds.close()
+    fig, ax = plt.subplots(figsize=(10, 5))
+    tc = ax.tricontourf(x, y, Ei, levels=50, cmap="hot")
+    plt.colorbar(tc, ax=ax, label="|E|²")
+    ax.axvline(-1, color="cyan", ls="--", lw=1.2)
+    ax.axvline(1, color="cyan", ls="--", lw=1.2, label="LHM slab")
+    ax.plot(-2, 0, "w*", ms=12, label="Source")
+    ax.plot(0, 0, "c*", ms=10, label="Internal focus")
+    ax.plot(2, 0, "g*", ms=10, label="External focus")
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_title("Case 83: Veselago Flat Lens — Field Intensity")
+    ax.legend(fontsize=9, loc="upper right")
+    ax.set_aspect("equal")
+    fig.tight_layout()
+    save_fig(fig, "83", "case83_veselago_lens.png")
+
+
 # ---------------------------------------------------------------------------
 # Main driver
 # ---------------------------------------------------------------------------
@@ -4555,12 +4934,22 @@ CASE_FUNCTIONS = [
     ("71", plot_case71),
     ("72", plot_case72),
     ("73", plot_case73),
+    ("74", plot_case74),
+    ("75", plot_case75),
+    ("76", plot_case76),
+    ("77", plot_case77),
+    ("78", plot_case78),
+    ("79", plot_case79),
+    ("80", plot_case80),
+    ("81", plot_case81),
+    ("82", plot_case82),
+    ("83", plot_case83),
 ]
 
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("MOOSE Quick-Start Visualization — All 73 Cases")
+    print("MOOSE Quick-Start Visualization — All 83 Cases")
     print("=" * 60)
     print(f"Script directory: {SCRIPT_DIR}")
     print("Plots will be saved into each case subdirectory.\n")

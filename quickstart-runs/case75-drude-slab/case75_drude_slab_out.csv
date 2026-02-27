@@ -1,0 +1,3 @@
+time,E_imag_at_port,E_imag_slab_deep,E_imag_slab_mid,E_imag_slab_near,E_imag_transmitted,E_imag_vacuum_gap,E_real_at_port,E_real_slab_deep,E_real_slab_mid,E_real_slab_near,E_real_transmitted,E_real_vacuum_gap,reflection_coefficient
+0,0,0,0,0,0,0,0,0,0,0,0,0,0
+1,-1.5964261860505,0.0059083483284662,-2.4279725413129e-05,-1.3265778390106e-08,0.86475749183064,3.7513467135558e-13,-0.91940118315364,0.027851105469127,1.0073207447806e-05,-2.0318063437757e-08,0.34010335092574,4.6030050569889e-12,0.70938265516551

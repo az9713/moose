@@ -1,0 +1,3 @@
+time,E_imag_broadside,E_imag_centre,E_imag_corner,E_imag_forward,E_imag_incident_side,E_imag_shadow,E_real_broadside,E_real_centre,E_real_corner,E_real_forward,E_real_incident_side,E_real_shadow,E_sq_centre,E_sq_forward,E_sq_shadow,total_field_energy
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+1,0.39349180351492,-1.135826776249,0.43321851699312,-0.097668869745473,0.099455474785848,0.86494674984413,0.9905499902887,0.29209985067001,-0.36552017950833,0.66431853749129,-1.0621755507405,0.5182228784571,1.3754247884056,0.45085832737192,1.0166878318223,53.525832824415

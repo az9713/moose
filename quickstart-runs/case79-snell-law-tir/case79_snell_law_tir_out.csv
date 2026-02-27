@@ -1,0 +1,3 @@
+time,E_scat_imag_reflected,E_scat_imag_transmitted,E_scat_real_reflected,E_scat_real_transmitted,E_total_imag_interface,E_total_imag_med1,E_total_imag_med2,E_total_real_interface,E_total_real_med1,E_total_real_med2,E_total_real_p2_y0,E_total_real_p2_y1,E_total_real_p2_ym1,avg_intensity,intensity_m1_y0,intensity_m3_y0,intensity_p1_y0,intensity_p3_y0
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+1,0.35867838449158,-1.3816006005462,1.5093689808286,-0.26864340638069,-0.043051148090081,-0.21065320622832,-0.87568949860849,-0.49383223634933,-0.57511770955535,0.10998595691676,0.10998595691676,0.93066953091106,-1.191608218518,1.4157505287162,0.30702505935041,0.59100662856199,2.988268936826,3.3802009906548
