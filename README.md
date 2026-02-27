@@ -4,7 +4,7 @@
 >
 > This repo **does not include the MOOSE source codes**. Instead, it supplements the original
 > repository with **comprehensive documentation and worked examples** designed to help new users
-> learn the framework from scratch. The 68 progressive quickstart cases are fully explained — from
+> learn the framework from scratch. The 73 progressive quickstart cases are fully explained — from
 > the physics and governing equations, through the input file structure, to interpreting the
 > simulation results — so that users can learn how to set up their own simulations and understand
 > the output without any external help.
@@ -75,7 +75,7 @@ immediately available to every application that enables that module.
 This repository focuses on **learning materials** for the MOOSE framework:
 
 - **Comprehensive documentation** covering architecture, developer workflows, input-file syntax, and all 29 physics modules
-- **68 progressive quickstart examples** (`quickstart-runs/`) — each with a complete input file, detailed README explaining the physics, and matplotlib visualization of the results
+- **73 progressive quickstart examples** (`quickstart-runs/`) — each with a complete input file, detailed README explaining the physics, and matplotlib visualization of the results
 - **An 8-week study plan** for self-learners going from zero to productive MOOSE developer
 - **Docker instructions** for running MOOSE on Windows without compiling from source
 
@@ -90,7 +90,7 @@ To actually build and run MOOSE simulations, you need the framework itself from 
 | [docs/architecture.md](docs/architecture.md) | System architecture with subsystem diagrams covering the Framework → Modules → Applications hierarchy |
 | [docs/developer-guide.md](docs/developer-guide.md) | Step-by-step C++ developer tutorial: writing Kernels, BCs, Materials, and custom objects |
 | [docs/user-guide.md](docs/user-guide.md) | Simulation user reference covering input-file syntax, all major blocks, and solver options |
-| [docs/quick-start.md](docs/quick-start.md) | 68 worked examples progressing from simple diffusion through chemical reactions and geochemistry |
+| [docs/quick-start.md](docs/quick-start.md) | 73 worked examples progressing from simple diffusion through chemical reactions, geochemistry, mortar contact, XFEM, THM pipe flow, and level-set interface tracking |
 | [docs/zero-to-hero.md](docs/zero-to-hero.md) | 8-week structured study plan for new MOOSE developers |
 | [docs/modules-reference.md](docs/modules-reference.md) | Physics module reference with API summaries and example input files |
 | [docs/docker-guide.md](docs/docker-guide.md) | Running MOOSE on Windows with Docker — installation, volume mounts, MPI |
@@ -101,7 +101,7 @@ The official online documentation lives at **https://mooseframework.inl.gov**.
 
 ## Quickstart Examples
 
-The `quickstart-runs/` directory contains **68 fully worked examples**, each in its own subdirectory with:
+The `quickstart-runs/` directory contains **73 fully worked examples**, each in its own subdirectory with:
 
 - **Input file** (`.i`) — ready to run with `moose_test-opt` or `combined-opt`
 - **Detailed README** — explains the physics, walks through every input-file block, describes the output files, and shows how to interpret the results
@@ -488,6 +488,23 @@ These cases introduce the `chemical_reactions` and `geochemistry` MOOSE modules 
 </tr>
 <tr>
 <td align="center"><img src="quickstart-runs/case68-calcite-dissolution/case68_calcite_dissolution.png" width="220"/><br/><sub>Case 68: Calcite Dissolution</sub></td>
+<td colspan="3"></td>
+</tr>
+</table>
+
+### Cases 69-73: Advanced Multiphysics (FSI & Specialty Modules)
+
+These cases introduce four additional MOOSE modules and deepen MultiApp coupling skills. Topics include bidirectional Picard iteration between coupled diffusion apps, mortar frictionless contact mechanics, XFEM heat conduction across a stationary crack, 1D single-phase compressible pipe flow using the THM Component DSL, and SUPG-stabilized level-set bubble advection. All require `combined-opt` via Docker.
+
+<table>
+<tr>
+<td align="center"><img src="quickstart-runs/case69-multiapp-coupled-diffusion/case69_multiapp_coupled_diffusion.png" width="220"/><br/><sub>Case 69: MultiApp Picard Coupling</sub></td>
+<td align="center"><img src="quickstart-runs/case70-mortar-contact/case70_mortar_contact.png" width="220"/><br/><sub>Case 70: Mortar Frictionless Contact</sub></td>
+<td align="center"><img src="quickstart-runs/case71-xfem-heat-crack/case71_xfem_heat_crack.png" width="220"/><br/><sub>Case 71: XFEM Thermal Crack</sub></td>
+<td align="center"><img src="quickstart-runs/case72-thm-pipe-flow/case72_thm_pipe_flow.png" width="220"/><br/><sub>Case 72: THM 1D Pipe Flow</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="quickstart-runs/case73-level-set-bubble/case73_level_set_bubble.png" width="220"/><br/><sub>Case 73: Level Set Bubble Advection</sub></td>
 <td colspan="3"></td>
 </tr>
 </table>

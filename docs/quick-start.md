@@ -1,11 +1,11 @@
-# MOOSE Quick-Start Guide: 68 Working Examples
+# MOOSE Quick-Start Guide: 73 Working Examples
 
-This guide walks a complete beginner through 68 self-contained MOOSE input files,
+This guide walks a complete beginner through 73 self-contained MOOSE input files,
 from the simplest possible diffusion problem to genuine multi-physics simulations
-using MOOSE's physics modules. Cases 01-13 use only the framework. Cases 14-68
+using MOOSE's physics modules. Cases 01-13 use only the framework. Cases 14-73
 use physics modules (heat_transfer, solid_mechanics, navier_stokes, phase_field,
-porous_flow, electromagnetics, chemical_reactions, geochemistry) and require
-`combined-opt`. Read them in order.
+porous_flow, electromagnetics, chemical_reactions, geochemistry, contact, xfem,
+thermal_hydraulics, level_set) and require `combined-opt`. Read them in order.
 
 ## Prerequisites
 
@@ -5605,6 +5605,307 @@ MSYS_NO_PATHCONV=1 docker run --rm \
 
 ---
 
+## Case 69 — MultiApp Coupled Diffusion
+
+### Physics
+
+MultiApp coupling is MOOSE's mechanism for coordinating separate solves that share
+data through a parent-sub application hierarchy. This case demonstrates bidirectional
+Picard (fixed-point) iteration between a parent diffusion problem and a sub-application
+diffusion problem. The parent application solves
+
+```
+-div(D_p * grad u_p) = f_p(u_s)
+```
+
+on a coarse domain, where the right-hand side forcing term depends on the solution
+`u_s` received from the sub-application. The sub-application solves
+
+```
+-div(D_s * grad u_s) = g_s(u_p)
+```
+
+on its own mesh, receiving the parent field `u_p` as a Dirichlet boundary condition
+or as a source coupling. After each Picard iteration the residual of both systems
+is checked; iteration continues until the inter-app transfer quantities converge.
+This pattern is fundamental to multiscale and system-level coupling in MOOSE —
+for example, a fuel rod sub-application exchanging temperature and power density
+with a core-level neutronics parent application. Understanding the mechanics of
+`MultiAppTransfer` objects and their ordering within the Picard loop is essential
+before attempting any real coupled multiphysics workflow.
+
+```bash
+cd quickstart-runs/case69-multiapp-coupled-diffusion
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case69-multiapp-coupled-diffusion \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case69_parent.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `FullSolveMultiApp` | Sub-application that runs to full convergence at each Picard iteration of the parent |
+| `MultiAppCopyTransfer` | Copies a field variable from parent to sub-app or vice versa by node matching |
+| `MultiAppInterpolationTransfer` | Transfers field data between non-matching meshes via interpolation |
+| `MultiAppNearestNodeTransfer` | Maps values to the nearest node — robust for coarse-to-fine transfers |
+| `Picard` (or `FixedPointSolve`) | Controls the outer fixed-point iteration loop and convergence criterion |
+| `PostprocessorComparison` | Monitors whether a postprocessor has converged between Picard iterations |
+| `Transient` / `Steady` executioners | Parent uses `Steady`; each sub-app also runs a `Steady` solve per iteration |
+
+### What You Learn
+
+Bidirectional Picard iteration. How to lay out a parent `.i` file and one or more
+sub-application `.i` files in the same directory. How transfers are ordered relative
+to the sub-app solve (before vs. after). How to diagnose diverging Picard loops by
+watching postprocessor history. This is the gateway skill for all advanced MOOSE
+coupled-physics workflows.
+
+---
+
+## Case 70 — Contact Mechanics
+
+### Physics
+
+Mortar frictionless contact between two elastic bodies enforces the Hertz
+non-penetration constraint
+
+```
+g_n >= 0,   lambda_n >= 0,   lambda_n * g_n = 0
+```
+
+where `g_n` is the normal gap between the secondary surface and the primary surface,
+and `lambda_n` is the normal contact pressure Lagrange multiplier. The mortar
+formulation integrates these constraints over lower-dimensional mortar segments
+that span the interface, giving a variational statement that is more accurate and
+better-conditioned than legacy node-to-segment penalty methods.
+
+This case compresses a 2D elastic block against a rigid foundation. The mesh is
+built using `MeshCollectionGenerator` to assemble two independently generated
+subdomains — the deformable block and a thin rigid substrate — into a single mesh
+with matching surfaces at the interface. The `[Contact]` block activates the
+`ContactAction`, which automatically creates the mortar constraint objects, the
+lower-dimensional interface subdomain, and all required transfers. The simulation
+tracks contact pressure distribution, compares the maximum stress to the Hertz
+analytic formula, and plots gap closure vs. applied displacement.
+
+```bash
+cd quickstart-runs/case70-mortar-contact
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case70-mortar-contact \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case70_mortar_contact.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `MeshCollectionGenerator` | Merges two independently defined mesh blocks (deformable body + rigid foundation) into one mesh |
+| `ContactAction` (via `[Contact]`) | High-level action that reads contact parameters and builds all mortar constraint objects |
+| `ComputeWeightedGapLMMechanicalContact` | Integrates the weighted gap for the mortar normal contact constraint |
+| `NormalMortarMechanicalContact` | Applies the normal contact force to the displacement equations |
+| `Physics/SolidMechanics/QuasiStatic` | Sets up the displacement solve for the elastic body |
+| `ContactPressureAux` | Extracts the Lagrange multiplier contact pressure for visualization |
+| `NodalExtremeValue` | Reports peak contact pressure for comparison with Hertz theory |
+
+### What You Learn
+
+How to set up mortar contact in MOOSE using the `[Contact]` block. The distinction
+between primary and secondary surfaces, mortar vs. penalty formulations, and frictionless
+vs. frictional models. How `MeshCollectionGenerator` assembles multi-body meshes. How to
+interpret the contact pressure Lagrange multiplier field and verify against analytical
+solutions. These skills apply directly to metal forming, bolted joint, and impact
+simulation problems.
+
+---
+
+## Case 71 — XFEM Heat Conduction with Stationary Crack
+
+### Physics
+
+The Extended Finite Element Method (XFEM) models discontinuities in a field without
+re-meshing by enriching the standard FE approximation with additional degrees of freedom.
+For a thermal crack (a perfect insulating cut through a heat-conducting domain), the
+temperature field is discontinuous across the crack face. The XFEM approximation is
+
+```
+T(x) = sum_i N_i(x) T_i  +  sum_j N_j(x) H(x) a_j
+```
+
+where `H(x)` is the Heaviside function (zero on one side of the crack, one on the other)
+and `a_j` are the enrichment DOFs for elements that the crack cuts through.
+
+This case places a horizontal stationary crack through the interior of a 2D square domain
+that has a fixed temperature on the left boundary and an insulated right boundary. A uniform
+heat flux is applied from top to bottom. The `LineSegmentCutUserObject` defines the crack
+geometry as a line segment; XFEM automatically identifies which elements are cut and adds
+the Heaviside enrichment DOFs. The temperature jump across the crack is clearly visible in
+the output field. This case demonstrates the minimum viable XFEM thermal problem: geometry
+definition via `UserObject`, enrichment activation via the `[XFEM]` block, and visualization
+of the discontinuous field in Exodus.
+
+```bash
+cd quickstart-runs/case71-xfem-heat-crack
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case71-xfem-heat-crack \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case71_xfem_heat_crack.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `[XFEM]` block | Activates the XFEM infrastructure; sets quadrature rule (`volfrac`) and controls output |
+| `LineSegmentCutUserObject` | Defines the crack as a 2D line segment by its two endpoints |
+| `CrackTipEnrichmentCutOffBC` | Cuts off enrichment functions at domain boundaries to avoid spurious DOFs |
+| `XFEMVolFracAux` | Computes the volume fraction of each element on each side of the crack |
+| `XFEMMarkerAux` | Marks cut elements vs. uncut elements for visualization |
+| `HeatConduction` kernel | Standard heat conduction kernel; XFEM modifies its integration to respect the crack cut |
+| `XFEMCutMeshOutput` | Writes the crack geometry to an Exodus file for visualization alongside the solution |
+
+### What You Learn
+
+How XFEM augments the standard FE basis without remeshing. The role of UserObjects in
+defining crack geometry. How to activate and configure the `[XFEM]` block. The difference
+between stationary and propagating cracks. How to visualize XFEM output in ParaView (the
+cut elements appear as split elements). These concepts extend directly to XFEM fracture
+mechanics with the `solid_mechanics` module and stress-intensity factor computation.
+
+---
+
+## Case 72 — THM Pipe Flow
+
+### Physics
+
+The `thermal_hydraulics` (THM) module solves the 1D single-phase compressible Euler
+equations with wall friction and gravity along a pipe network. For a single straight pipe
+the governing equations are:
+
+```
+d(rho A)/dt  +  d(rho A V)/dx  =  0                              (mass)
+
+d(rho A V)/dt  +  d((rho V^2 + p) A)/dx  =  -f rho A V|V|/(2 D_h) + rho A g_x  (momentum)
+
+d(rho A E)/dt  +  d((rho E + p) A V)/dx  =  q_wall * P_htf + rho A V g_x       (energy)
+```
+
+where `rho` is density, `V` is velocity, `p` is pressure, `E` is specific total energy,
+`A` is pipe cross-sectional area, `f` is the Darcy-Weisbach friction factor, `D_h` is
+hydraulic diameter, `q_wall` is wall heat flux, and `P_htf` is the heated perimeter.
+The equation of state closes the system via `IdealGasFluidProperties`.
+
+THM uses a **Component DSL** — the user does not write `[Mesh]`, `[Variables]`, or
+`[Kernels]` blocks manually. Instead, a `[Components]` block declares pipe segments,
+inlets, outlets, and heat structures. The framework automatically builds the 1D mesh,
+creates the conserved variables (rho*A, rho*A*V, rho*A*E), and assembles the RDG
+kernels. This case models a horizontal pipe with a velocity inlet, a pressure outlet,
+and a constant wall friction factor. Postprocessors track the steady-state pressure
+drop, Mach number, and wall friction force, which are compared to the Darcy-Weisbach
+analytic formula.
+
+```bash
+cd quickstart-runs/case72-thm-pipe-flow
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case72-thm-pipe-flow \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case72_thm_pipe_flow.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `FlowChannel1Phase` | Declares the pipe geometry: orientation, length, area, element count |
+| `InletVelocityTemperature1Phase` | Specifies inlet velocity and temperature as boundary condition |
+| `Outlet1Phase` | Specifies the outlet pressure boundary condition |
+| `IdealGasFluidProperties` | Equation of state (gamma, R, Cp) for the working fluid |
+| `Closures1PhaseSimple` | Wall friction and heat transfer coefficient correlations |
+| `MachNumberAux` | Computes local Mach number `M = V / c` for output |
+| `SideAverageValue` | Reports average pressure, velocity, and temperature at inlet and outlet cross-sections |
+
+### What You Learn
+
+The Component DSL pattern that distinguishes THM from the standard MOOSE kernel-based
+approach. How to define flow networks without writing explicit mesh or kernel blocks. How
+to choose fluid properties and closure correlations. How to add wall heating
+(`HeatTransferFromSpecifiedTemperature1Phase`) to extend to heated pipe problems. The
+THM module is the foundation of MOOSE-based nuclear plant thermal-hydraulics simulation
+tools including RELAP-7.
+
+---
+
+## Case 73 — Level Set Bubble Advection
+
+### Physics
+
+The level-set method tracks a moving interface (here, a circular bubble) through a
+fixed Eulerian mesh by advecting a signed-distance function `phi` with an imposed
+velocity field `u`:
+
+```
+dphi/dt  +  u . grad phi  =  0
+```
+
+The zero level set `{x : phi(x,t) = 0}` is the interface. The signed-distance property
+`|grad phi| = 1` is maintained (approximately) by the SUPG-stabilized advection kernel.
+The solid-body rotation test uses the divergence-free rotating velocity field
+
+```
+u_x = -2 * pi * y,   u_y = 2 * pi * x
+```
+
+so that a bubble centered off the origin completes one full revolution in unit time and
+returns to its starting position. The exact interface at time `t = 1` is identical to
+the initial condition, providing an unambiguous accuracy benchmark. SUPG (Streamline
+Upwind Petrov-Galerkin) stabilization modifies the test function to add upwinding along
+the streamlines, suppressing the spurious oscillations that pure Galerkin discretization
+produces for advection-dominated problems.
+
+This case uses `LevelSetAdvectionSUPG` and `LevelSetTimeDerivativeSUPG` kernels from
+the `level_set` module. The `LevelSetCFLCondition` postprocessor computes the CFL-limited
+time step from the maximum local velocity, and `LevelSetVolume` tracks the enclosed area
+to verify that the numerical scheme is (approximately) mass-conserving. The area should
+be nearly constant over the full rotation.
+
+```bash
+cd quickstart-runs/case73-level-set-bubble
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case73-level-set-bubble \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case73_level_set_bubble.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `LevelSetAdvectionSUPG` | SUPG-stabilized advection kernel `u . grad phi`; suppresses Gibbs oscillations |
+| `LevelSetTimeDerivativeSUPG` | SUPG-modified time derivative that adds the stabilization term to the mass matrix |
+| `LevelSetCFLCondition` | Postprocessor computing the CFL-limited dt = h / |u_max| for the current mesh and velocity |
+| `LevelSetVolume` | Computes the area (in 2D) enclosed by the zero level set at each time step |
+| `LevelSetOlssonBubble` | `FunctionIC` helper that sets phi to the signed distance for a circular bubble |
+| `PostprocessorDT` | Sets the time step from the `LevelSetCFLCondition` postprocessor for stable explicit advection |
+| `PeriodicBoundary` | Optional periodic wrapping to avoid artificial boundary reflections during rotation |
+
+### What You Learn
+
+How to apply the `level_set` module for interface-tracking problems. How SUPG
+stabilization works and why it is needed for advection-dominated PDEs. How to use
+postprocessor-driven time stepping (CFL condition) for explicit advection. How to
+verify a level-set simulation using the solid-body rotation benchmark — a standard
+accuracy test from the computational geometry literature. These skills extend directly
+to two-phase flow interface tracking when combined with the `navier_stokes` module.
+
+---
+
 ## Troubleshooting Common Errors
 
 **Error: `Object 'Diffusion' was not registered`**
@@ -5635,7 +5936,7 @@ variable name (e.g., `u` or `T`) using the dropdown in the toolbar.
 
 ## Next Steps
 
-After completing these 68 cases:
+After completing these 73 cases:
 
 1. **Read the MOOSE documentation** at https://mooseframework.inl.gov for
    complete reference documentation on every object type.
@@ -5647,9 +5948,11 @@ After completing these 68 cases:
 3. **Write your own application**: Use `moose/scripts/stork.py` to scaffold
    a new MOOSE application with custom kernels, materials, and BCs.
 
-4. **Explore more module features**: Cases 14-68 introduce the major physics
+4. **Explore more module features**: Cases 14-73 introduce the major physics
    modules — from solid mechanics and heat transfer through Navier-Stokes,
    electrodynamics, MHD, nonlinear solid mechanics, nuclear reactor physics,
-   geomechanics / porous flow, and reactive-transport geochemistry.
+   geomechanics / porous flow, reactive-transport geochemistry, MultiApp
+   coupling, mortar contact, XFEM crack modeling, 1D thermal-hydraulics,
+   and level-set interface tracking.
    Each module has many more capabilities — consult the [Modules Reference](modules-reference.md)
    for full details.

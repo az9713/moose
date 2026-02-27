@@ -1,13 +1,13 @@
 # MOOSE Quickstart Tutorial Cases: Complete Reference
 
-This directory contains 68 self-contained simulation cases for learning MOOSE from zero.
+This directory contains 73 self-contained simulation cases for learning MOOSE from zero.
 Each case has its own subdirectory with an input file (`.i`) and pre-run output files.
 You do not need to build or install anything to study the input files, understand the physics,
 and read the results. If you want to run the simulations yourself, see Section 5.
 
 This document is designed so that someone who has never used MOOSE, never written a finite
 element simulation, and is not familiar with scientific computing file formats can read it
-from top to bottom and understand everything in these 68 cases.
+from top to bottom and understand everything in these 73 cases.
 
 Read every section. Do not skip ahead. The later cases build directly on concepts introduced
 in the earlier ones.
@@ -105,7 +105,7 @@ MOOSE also handles:
 - **Nonlinear problems**: handles problems where material properties depend on the solution
   itself (like a material that gets stiffer as it heats up)
 
-### What are the 68 cases in this directory?
+### What are the 73 cases in this directory?
 
 These cases form a progressive tutorial starting from the simplest possible problem
 (1D steady-state diffusion with an exact solution of u = x) and building up to
@@ -246,7 +246,7 @@ L = 1.0
 
 ### All Standard Block Types Explained
 
-The following sections explain every block type you will encounter in the 68 cases.
+The following sections explain every block type you will encounter in the 73 cases.
 Each explanation defines what the block does, what parameters mean, and gives a
 realistic example.
 
@@ -1516,14 +1516,14 @@ and calcite dissolution combining equilibrium and kinetic reactions. Study them 
 | 68 | `case68_calcite_dissolution_out.e`, `case68_calcite_dissolution_out.csv` |
 
 All pre-run output files for cases 01-13 are included in this directory so you can
-examine them without running anything. Cases 14-68 require `combined-opt` (all modules)
+examine them without running anything. Cases 14-73 require `combined-opt` (all modules)
 to run — see each case's README for Docker instructions.
 
 ---
 
 ## 7. Creating Your Own Simulations
 
-Once you understand the 68 cases, you will want to adapt them or build new simulations
+Once you understand the 73 cases, you will want to adapt them or build new simulations
 from scratch. This section walks through the process systematically.
 
 ### Step 1: Define Your Physics

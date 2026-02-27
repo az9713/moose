@@ -1,5 +1,5 @@
 """
-MOOSE Quick-Start: Visualization Script for All 53 Cases
+MOOSE Quick-Start: Visualization Script for All 73 Cases
 =========================================================
 Generates 2-3 plots per case and saves each PNG into that case's own directory.
 For example, Case 01's plot is written to case01-1d-steady-diffusion/case01_diffusion_1d.png.
@@ -137,6 +137,11 @@ CASE_DIRS = {
     "66": "case66-mineral-precipitation",
     "67": "case67-aqueous-equilibrium",
     "68": "case68-calcite-dissolution",
+    "69": "case69-multiapp-coupling",
+    "70": "case70-contact-mechanics",
+    "71": "case71-xfem-crack",
+    "72": "case72-thm-pipe-flow",
+    "73": "case73-level-set-advection",
 }
 
 
@@ -4163,6 +4168,315 @@ def plot_case68():
     save_fig(fig, "68", "case68_calcite_dissolution.png")
 
 
+def plot_case69():
+    print("Case 69: MultiApp Coupled Diffusion")
+
+    csv_file = case_path("69", "case69_multiapp_coupling_out.csv")
+    exo_file = case_path("69", "case69_multiapp_coupling_out.e")
+    if not file_exists(csv_file, exo_file):
+        print("    SKIP: output files not found")
+        skipped_cases.append("case69")
+        return
+
+    data = read_csv(csv_file)
+    t = np.array(data["time"])
+    T_max = np.array(data["T_max"])
+    T_avg = np.array(data["T_avg"])
+    src = np.array(data["source_avg"])
+
+    ds = open_exodus(exo_file)
+    nod_names = get_nod_var_names(ds)
+    x, y = get_coords_2d(ds)
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.5))
+
+    # Panel 1: Time history — T and source
+    ax = axes[0]
+    ax.plot(t, T_max * 1e3, "b-", linewidth=2, label=r"$T_{max}$")
+    ax.plot(t, T_avg * 1e3, "g--", linewidth=2, label=r"$T_{avg}$")
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Temperature (×10⁻³)")
+    ax2 = ax.twinx()
+    ax2.plot(t, src, "r:", linewidth=2, label="Source avg")
+    ax2.set_ylabel("Source avg", color="r")
+    ax2.tick_params(axis="y", labelcolor="r")
+    lines1, labels1 = ax.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax.legend(lines1 + lines2, labels1 + labels2, loc="center right")
+    ax.set_title("Time History")
+    ax.grid(True, alpha=0.3)
+
+    # Panel 2: T field at final time
+    ax = axes[1]
+    T_idx = nod_names.index("T") + 1
+    T_vals = get_nod_var(ds, T_idx, -1)
+    add_2d_contour(ax, x, y, T_vals, cmap=CMAP_TEMP, label="T")
+    ax.set_title("T (final)")
+
+    # Panel 3: source field from sub-app
+    ax = axes[2]
+    src_idx = nod_names.index("source_from_sub") + 1
+    src_vals = get_nod_var(ds, src_idx, -1)
+    add_2d_contour(ax, x, y, src_vals, cmap="YlOrRd", label="Source")
+    ax.set_title("Heat Source (final)")
+
+    ds.close()
+    fig.suptitle("Case 69: MultiApp Coupled Diffusion — Picard Iteration", fontsize=14)
+    fig.tight_layout()
+    save_fig(fig, "69", "case69_multiapp_coupling.png")
+
+
+def plot_case70():
+    print("Case 70: Contact Mechanics")
+
+    csv_file = case_path("70", "case70_contact_mechanics_out.csv")
+    exo_file = case_path("70", "case70_contact_mechanics_out.e")
+    if not file_exists(csv_file, exo_file):
+        print("    SKIP: output files not found")
+        skipped_cases.append("case70")
+        return
+
+    data = read_csv(csv_file)
+    t = np.array(data["time"])
+    max_disp = np.array(data["max_disp_x"])
+    max_vm = np.array(data["max_vonmises"])
+    avg_vm = np.array(data["avg_vonmises"])
+
+    ds = open_exodus(exo_file)
+    elem_names = get_elem_var_names(ds)
+    vm_idx = [
+        i for i, n in enumerate(elem_names) if "vonmises" in n.strip().lower()
+    ]
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.5))
+
+    # Panel 1: Time histories — displacement and stress
+    ax = axes[0]
+    ax.plot(t, max_disp * 1e3, "b-o", linewidth=2, markersize=4, label="Max disp_x (mm)")
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Displacement (mm)", color="b")
+    ax.tick_params(axis="y", labelcolor="b")
+    ax2 = ax.twinx()
+    ax2.plot(t, max_vm / 1e3, "r-s", linewidth=2, markersize=4, label="Max σ_VM (kPa)")
+    ax2.set_ylabel("Von Mises Stress (kPa)", color="r")
+    ax2.tick_params(axis="y", labelcolor="r")
+    lines1, labels1 = ax.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax.legend(lines1 + lines2, labels1 + labels2, loc="upper left")
+    ax.set_title("Displacement & Stress vs Time")
+    ax.grid(True, alpha=0.3)
+
+    # Panel 2: Deformed shape with von Mises at final step
+    ax = axes[1]
+    if vm_idx:
+        vidx = vm_idx[0] + 1
+        # Plot both blocks
+        all_cx, all_cy, all_vm = [], [], []
+        for blk in [1, 2]:
+            try:
+                cx, cy = get_elem_centroids_2d(ds, blk)
+                vm_vals = get_elem_var(ds, vidx, blk, -1)
+                all_cx.append(cx)
+                all_cy.append(cy)
+                all_vm.append(vm_vals)
+            except Exception:
+                pass
+        if all_cx:
+            cx_all = np.concatenate(all_cx)
+            cy_all = np.concatenate(all_cy)
+            vm_all = np.concatenate(all_vm)
+            tcf = ax.tricontourf(cx_all, cy_all, vm_all / 1e3, levels=20, cmap="hot_r")
+            cb = plt.colorbar(tcf, ax=ax)
+            cb.set_label("Von Mises (kPa)")
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_aspect("equal")
+    ax.set_title("Von Mises Stress (final)")
+
+    # Panel 3: Stress along x at y=0
+    ax = axes[2]
+    mask = t > 0
+    ax.plot(t[mask], avg_vm[mask] / 1e3, "g-^", linewidth=2, markersize=4, label="Avg σ_VM")
+    ax.plot(t[mask], max_vm[mask] / 1e3, "r-s", linewidth=2, markersize=4, label="Max σ_VM")
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Stress (kPa)")
+    ax.set_title("Stress Evolution")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    ds.close()
+    fig.suptitle("Case 70: Contact Mechanics — Mortar Frictionless", fontsize=14)
+    fig.tight_layout()
+    save_fig(fig, "70", "case70_contact_mechanics.png")
+
+
+def plot_case71():
+    print("Case 71: XFEM Crack")
+
+    csv_file = case_path("71", "case71_xfem_crack_out.csv")
+    exo_file = case_path("71", "case71_xfem_crack_out.e")
+    if not file_exists(csv_file, exo_file):
+        print("    SKIP: output files not found")
+        skipped_cases.append("case71")
+        return
+
+    data = read_csv(csv_file)
+    t = np.array(data["time"])
+    T_avg = np.array(data["T_avg"])
+    T_max = np.array(data["T_max"])
+    T_min = np.array(data["T_min"])
+
+    ds = open_exodus(exo_file)
+    nod_names = get_nod_var_names(ds)
+    x, y = get_coords_2d(ds)
+    times = get_times(ds)
+    T_idx = nod_names.index("T") + 1
+
+    fig, axes = plt.subplots(2, 2, figsize=(11, 9))
+
+    # Panels 1-3: T snapshots at different times
+    snap_times = [0.1, 0.25, 0.5]
+    for i, st in enumerate(snap_times):
+        ax = axes[i // 2][i % 2]
+        ti = find_closest_timestep(times, st)
+        T_vals = get_nod_var(ds, T_idx, ti)
+        tcf = ax.tricontourf(x, y, T_vals, levels=20, cmap=CMAP_TEMP)
+        plt.colorbar(tcf, ax=ax, label="T")
+        # Draw crack line
+        ax.plot([0.5, 0.5], [0.0, 0.5], "k-", linewidth=3)
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+        ax.set_aspect("equal")
+        ax.set_title(f"t = {times[ti]:.2f}")
+
+    # Panel 4: Time history
+    ax = axes[1][1]
+    ax.plot(t, T_avg, "b-", linewidth=2, label=r"$T_{avg}$")
+    ax.plot(t, T_max, "r--", linewidth=2, label=r"$T_{max}$")
+    ax.plot(t, T_min, "g:", linewidth=2, label=r"$T_{min}$")
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Temperature")
+    ax.set_title("Temperature Evolution")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    ds.close()
+    fig.suptitle("Case 71: XFEM — Heat Conduction with Stationary Crack", fontsize=14)
+    fig.tight_layout()
+    save_fig(fig, "71", "case71_xfem_crack.png")
+
+
+def plot_case72():
+    print("Case 72: THM Pipe Flow")
+
+    csv_file = case_path("72", "case72_thm_pipe_flow_out.csv")
+    if not os.path.exists(csv_file):
+        print("    SKIP: CSV file not found")
+        skipped_cases.append("case72")
+        return
+
+    data = read_csv(csv_file)
+    t = np.array(data["time"])
+    T_in = np.array(data["T_near_inlet"])
+    T_mid = np.array(data["T_mid"])
+    T_out = np.array(data["T_near_outlet"])
+    p_in = np.array(data["p_near_inlet"])
+    p_out = np.array(data["p_near_outlet"])
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    # Panel 1: Temperature evolution
+    ax = axes[0]
+    ax.plot(t, T_in, "r-o", linewidth=2, markersize=3, label="Near inlet")
+    ax.plot(t, T_mid, "g-s", linewidth=2, markersize=3, label="Midpoint")
+    ax.plot(t, T_out, "b-^", linewidth=2, markersize=3, label="Near outlet")
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Temperature (K)")
+    ax.set_title("Temperature Propagation Along Pipe")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    # Panel 2: Pressure evolution
+    ax = axes[1]
+    ax.plot(t, p_in / 1e3, "r-o", linewidth=2, markersize=3, label="Near inlet")
+    ax.plot(t, p_out / 1e3, "b-^", linewidth=2, markersize=3, label="Near outlet")
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Pressure (kPa)")
+    ax.set_title("Pressure Along Pipe")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    fig.suptitle("Case 72: THM Pipe Flow — 1D Single-Phase Compressible", fontsize=14)
+    fig.tight_layout()
+    save_fig(fig, "72", "case72_thm_pipe_flow.png")
+
+
+def plot_case73():
+    print("Case 73: Level Set Advection")
+
+    csv_file = case_path("73", "case73_level_set_advection_out.csv")
+    exo_file = case_path("73", "case73_level_set_advection_out.e")
+    if not file_exists(csv_file, exo_file):
+        print("    SKIP: output files not found")
+        skipped_cases.append("case73")
+        return
+
+    data = read_csv(csv_file)
+    t = np.array(data["time"])
+    total = np.array(data["total_phi"])
+    max_phi = np.array(data["max_phi"])
+    min_phi = np.array(data["min_phi"])
+
+    ds = open_exodus(exo_file)
+    nod_names = get_nod_var_names(ds)
+    x, y = get_coords_2d(ds)
+    times = get_times(ds)
+    phi_idx = nod_names.index("phi") + 1
+
+    fig, axes = plt.subplots(2, 3, figsize=(15, 9))
+
+    # Panels 1-4: Snapshots at different times
+    snap_times = [0.0, 1.0, 2.0, 3.14]
+    snap_labels = ["t = 0", "t = 1.0", "t = 2.0", r"t = $\pi$"]
+    for i, (st, sl) in enumerate(zip(snap_times, snap_labels)):
+        ax = axes[i // 3][i % 3]
+        ti = find_closest_timestep(times, st)
+        phi_vals = get_nod_var(ds, phi_idx, ti)
+        tcf = ax.tricontourf(x, y, phi_vals, levels=20, cmap="RdYlBu_r",
+                              vmin=-0.1, vmax=1.1)
+        plt.colorbar(tcf, ax=ax, label=r"$\phi$")
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+        ax.set_aspect("equal")
+        ax.set_title(sl)
+
+    # Panel 5: Mass conservation
+    ax = axes[1][1]
+    ax.plot(t, total / total[0], "b-", linewidth=2)
+    ax.set_xlabel("Time")
+    ax.set_ylabel(r"$\int \phi \, dA$ / initial")
+    ax.set_title("Mass Conservation")
+    ax.grid(True, alpha=0.3)
+    ax.axhline(1.0, color="k", linestyle="--", alpha=0.5)
+
+    # Panel 6: Max/min tracking
+    ax = axes[1][2]
+    ax.plot(t, max_phi, "r-", linewidth=2, label=r"$\phi_{max}$")
+    ax.plot(t, min_phi, "b-", linewidth=2, label=r"$\phi_{min}$")
+    ax.axhline(1.0, color="r", linestyle="--", alpha=0.3)
+    ax.axhline(0.0, color="b", linestyle="--", alpha=0.3)
+    ax.set_xlabel("Time")
+    ax.set_ylabel(r"$\phi$")
+    ax.set_title("Peak / Trough Tracking")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    ds.close()
+    fig.suptitle("Case 73: Level Set Bubble Advection — Solid Body Rotation", fontsize=14)
+    fig.tight_layout()
+    save_fig(fig, "73", "case73_level_set_advection.png")
+
+
 # ---------------------------------------------------------------------------
 # Main driver
 # ---------------------------------------------------------------------------
@@ -4236,12 +4550,17 @@ CASE_FUNCTIONS = [
     ("66", plot_case66),
     ("67", plot_case67),
     ("68", plot_case68),
+    ("69", plot_case69),
+    ("70", plot_case70),
+    ("71", plot_case71),
+    ("72", plot_case72),
+    ("73", plot_case73),
 ]
 
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("MOOSE Quick-Start Visualization — All 68 Cases")
+    print("MOOSE Quick-Start Visualization — All 73 Cases")
     print("=" * 60)
     print(f"Script directory: {SCRIPT_DIR}")
     print("Plots will be saved into each case subdirectory.\n")

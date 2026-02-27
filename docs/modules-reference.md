@@ -583,6 +583,15 @@ contact resistance across a gap use the `GapConductanceConstraint` from
 deformable interface, use `fsi`. Cohesive zone fracture without contact can
 also be handled entirely within `solid_mechanics`.
 
+#### Quickstart Example
+
+**Case 70** (`quickstart-runs/case70-mortar-contact`) demonstrates mortar
+frictionless contact between a 2D elastic block and a rigid foundation. It
+uses `MeshCollectionGenerator` to assemble the two-body mesh, the `[Contact]`
+block to activate `ContactAction`, and `ContactPressureAux` to visualize the
+Lagrange multiplier pressure field. The peak contact pressure is compared to
+the Hertz analytic solution.
+
 ---
 
 ### 4.4 electromagnetics
@@ -1479,6 +1488,16 @@ moving phase boundary (liquid-gas, solid-melt, etc.) through a fixed Eulerian
 mesh. For diffuse interface problems (phase-field) use `phase_field` instead.
 `level_set` is often used with `navier_stokes` for two-phase flow with sharp
 interfaces.
+
+#### Quickstart Example
+
+**Case 73** (`quickstart-runs/case73-level-set-bubble`) demonstrates
+SUPG-stabilized level-set advection using the solid-body rotation benchmark:
+a circular bubble is advected by a divergence-free rotating velocity field and
+completes one full revolution in unit time. `LevelSetAdvectionSUPG` and
+`LevelSetTimeDerivativeSUPG` provide the stabilized kernels; `LevelSetCFLCondition`
+drives the adaptive time step; `LevelSetVolume` verifies approximate mass
+conservation over the rotation.
 
 ---
 
@@ -3243,6 +3262,15 @@ primary and secondary loops, steam generators, feedwater systems, and
 geothermal wells. For higher-dimensional flow (2D/3D CFD), use `navier_stokes`.
 For multi-phase porous media flow, use `porous_flow`.
 
+#### Quickstart Example
+
+**Case 72** (`quickstart-runs/case72-thm-pipe-flow`) demonstrates the Component
+DSL by modeling a single horizontal pipe with a velocity inlet, pressure outlet,
+and constant Darcy-Weisbach wall friction using `IdealGasFluidProperties` and
+`Closures1PhaseSimple`. Postprocessors report steady-state pressure drop, Mach
+number, and wall friction force for comparison with the analytic Darcy-Weisbach
+formula.
+
 ---
 
 ### 4.29 xfem
@@ -3389,6 +3417,15 @@ the near-tip singularity accurately without a highly refined mesh around the
 crack tip. For predefined stationary cracks, standard `solid_mechanics` with
 a conforming mesh and domain integrals may be simpler. For diffuse damage
 (not a sharp crack), use `phase_field` fracture models.
+
+#### Quickstart Example
+
+**Case 71** (`quickstart-runs/case71-xfem-heat-crack`) demonstrates XFEM
+applied to heat conduction across a stationary insulating crack. A
+`LineSegmentCutUserObject` defines the crack geometry; the `[XFEM]` block
+activates Heaviside enrichment for cut elements; `XFEMMarkerAux` and
+`XFEMVolFracAux` provide visualization of which elements are cut. The
+temperature jump across the crack face is clearly visible in the Exodus output.
 
 ---
 

@@ -26,8 +26,8 @@ will then follow the skill's 9-section checklist systematically.
 
 ## What Was Actually Built
 
-Over multiple sessions the skill guided creation of **68 quickstart cases**
-covering 11 MOOSE physics modules:
+Over multiple sessions the skill guided creation of **73 quickstart cases**
+covering 16 MOOSE physics modules:
 
 | Batch | Cases | Source Textbook | Physics |
 |-------|-------|-----------------|---------|
@@ -40,6 +40,7 @@ covering 11 MOOSE physics modules:
 | Nuclear Reactor Physics | 54–58 | Nuclear engineering fundamentals (diffusion theory, reactor kinetics) | 1-group and 2-group neutron diffusion eigenvalue, fuel-pin RZ heat transfer, xenon-135 poisoning transient, control rod worth |
 | Geomechanics & Porous Flow (Batch C) | 59–63 | Geomechanics and groundwater fundamentals | Terzaghi consolidation, wellbore drawdown (Theis), unsaturated Richards' equation, Biot poroelasticity, gravity dam structural analysis |
 | Chemical Reactions & Transport (Batch D) | 64–68 | Reactive transport and geochemistry | Reaction-diffusion (first-order decay + Gaussian), contaminant ADR with Darcy convection, mineral precipitation (Arrhenius kinetics), aqueous equilibrium speciation and pH, calcite dissolution (equilibrium + kinetic) |
+| Advanced Multiphysics | 69–73 | Various | MultiApp coupling (Picard iteration), mortar contact, XFEM crack, THM pipe flow, level set advection |
 
 Every case converges in Docker with `combined-opt` in under 2 minutes and
 produces both Exodus (`.e`) and CSV output files.
@@ -284,7 +285,7 @@ debugging:
    prevents 30 minutes of debugging silent Docker failures.
 
 3. **Read existing cases as templates.** Before writing a new `.i` file,
-   find the closest existing case and adapt it. The 68 quickstart cases
+   find the closest existing case and adapt it. The 73 quickstart cases
    cover most MOOSE object types.
 
 4. **Trust the failure catalog first.** When a run fails, check Section 7
