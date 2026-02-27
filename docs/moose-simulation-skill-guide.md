@@ -45,6 +45,24 @@ covering 16 MOOSE physics modules:
 Every case converges in Docker with `combined-opt` in under 2 minutes and
 produces both Exodus (`.e`) and CSV output files.
 
+### The Prompt That Launched Batches A-E
+
+Cases 49-73 (Batches A through E) were generated autonomously from a single
+user prompt:
+
+> *"is it possible for you to complete each of Batch A, B, C, D, E using
+> moose-simulation skill. In other words, apply moose-simulation skill to
+> finish Batch A (push to GitHub), then apply moose-simulation skill to
+> finish Batch B (push to GitHub), ...., and do the same to Batch E ?"*
+
+Claude Code executed the full 9-step workflow for each batch without further
+human intervention: researching MOOSE module APIs, authoring input files,
+running simulations in Docker, validating convergence, generating matplotlib
+plots, writing README documentation, and pushing to GitHub. The 25 cases
+span 10+ MOOSE modules across nonlinear solid mechanics, nuclear reactor
+physics, geomechanics, reactive transport geochemistry, and advanced
+multiphysics (contact, XFEM, THM, level set).
+
 ---
 
 ## How to Invoke the Skill

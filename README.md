@@ -424,7 +424,36 @@ Drawn from Smith, *Uncertainty Quantification* (SIAM, 2014). These cases introdu
 </tr>
 </table>
 
-### Cases 49-53: Nonlinear Solid Mechanics (Batch A)
+### Cases 49-73: AI-Generated Simulation Batches
+
+> **These 25 cases were generated entirely by [Claude Code](https://claude.ai/claude-code)**
+> using the `moose-simulation` skill — a structured checklist that governs the complete
+> lifecycle of a MOOSE simulation (prerequisites, input file authoring, Docker execution,
+> output validation, matplotlib visualization, README documentation, and git push).
+>
+> The entire 25-case expansion was launched with a single prompt:
+>
+> *"is it possible for you to complete each of Batch A, B, C, D, E using moose-simulation
+> skill. In other words, apply moose-simulation skill to finish Batch A (push to GitHub),
+> then apply moose-simulation skill to finish Batch B (push to GitHub), ...., and do the
+> same to Batch E ?"*
+>
+> Claude Code then autonomously executed the full 9-step workflow for each of the 5 batches:
+> researching MOOSE module APIs and reference test files, authoring `.i` input files with
+> physics-accurate parameters, running all simulations in Docker (`combined-opt`), diagnosing
+> and fixing convergence failures, generating multi-panel matplotlib plots, writing detailed
+> README documentation for every case, updating all project-level docs, and pushing each batch
+> to GitHub — all without further human intervention.
+>
+> | Batch | Cases | Topic | MOOSE Modules Used |
+> |-------|-------|-------|--------------------|
+> | A | 49-53 | Nonlinear Solid Mechanics | `solid_mechanics`, `phase_field` |
+> | B | 54-58 | Nuclear Reactor Physics | framework, `heat_transfer` |
+> | C | 59-63 | Geomechanics & Porous Flow | `porous_flow`, `solid_mechanics`, `richards` |
+> | D | 64-68 | Chemical Reactions & Transport | `chemical_reactions`, `geochemistry` |
+> | E | 69-73 | Advanced Multiphysics | `contact`, `xfem`, `thermal_hydraulics`, `level_set` |
+
+#### Batch A: Nonlinear Solid Mechanics (Cases 49-53)
 
 Drawn from the MOOSE `solid_mechanics` module. These cases cover plasticity, finite-strain kinematics, creep, phase-field fracture, and pressure-vessel analytical solutions — the core toolkit for structural integrity and manufacturing simulation.
 
@@ -441,7 +470,7 @@ Drawn from the MOOSE `solid_mechanics` module. These cases cover plasticity, fin
 </tr>
 </table>
 
-### Cases 54-58: Nuclear Reactor Physics
+#### Batch B: Nuclear Reactor Physics (Cases 54-58)
 
 These cases introduce the neutronics and reactor-physics kernels built into the MOOSE framework. They cover the neutron diffusion equation (1-group and 2-group eigenvalue problems), fuel-pin heat transfer in axisymmetric geometry, xenon poisoning transients, and control-rod worth calculations. All use only the MOOSE framework or the `heat_transfer` module and require `combined-opt` via Docker.
 
@@ -458,7 +487,7 @@ These cases introduce the neutronics and reactor-physics kernels built into the 
 </tr>
 </table>
 
-### Cases 59-63: Geomechanics & Porous Flow (Batch C)
+#### Batch C: Geomechanics & Porous Flow (Cases 59-63)
 
 These cases cover coupled hydro-mechanical behavior in porous and geologic media. Topics include classical consolidation benchmarks (Terzaghi, Theis), variably-saturated groundwater flow via Richards' equation, full Biot poroelasticity with explicit kernel coupling, and multi-material structural analysis of a gravity dam. All require `combined-opt` via Docker.
 
@@ -475,7 +504,7 @@ These cases cover coupled hydro-mechanical behavior in porous and geologic media
 </tr>
 </table>
 
-### Cases 64-68: Chemical Reactions & Transport (Batch D)
+#### Batch D: Chemical Reactions & Transport (Cases 64-68)
 
 These cases introduce the `chemical_reactions` and `geochemistry` MOOSE modules for reactive-transport modeling. Topics span first-order reaction-diffusion with an analytical Gaussian solution, advection-diffusion-reaction contaminant transport driven by Darcy flow, solid-phase mineral precipitation via Arrhenius kinetics, aqueous equilibrium speciation with pH tracking, and a fully coupled calcite dissolution benchmark combining equilibrium and kinetic reactions. All require `combined-opt` via Docker.
 
@@ -492,7 +521,7 @@ These cases introduce the `chemical_reactions` and `geochemistry` MOOSE modules 
 </tr>
 </table>
 
-### Cases 69-73: Advanced Multiphysics (FSI & Specialty Modules)
+#### Batch E: Advanced Multiphysics (Cases 69-73)
 
 These cases introduce four additional MOOSE modules and deepen MultiApp coupling skills. Topics include bidirectional Picard iteration between coupled diffusion apps, mortar frictionless contact mechanics, XFEM heat conduction across a stationary crack, 1D single-phase compressible pipe flow using the THM Component DSL, and SUPG-stabilized level-set bubble advection. All require `combined-opt` via Docker.
 

@@ -4793,6 +4793,31 @@ Contrast with Case 45's manual setup — the `[ParameterStudy]` action replaces 
 
 ---
 
+## Cases 49-73: AI-Generated Simulation Batches (A-E)
+
+> **The following 25 cases were generated entirely by [Claude Code](https://claude.ai/claude-code)**
+> using the `moose-simulation` skill. The entire expansion was launched with a single prompt:
+>
+> *"is it possible for you to complete each of Batch A, B, C, D, E using moose-simulation
+> skill. In other words, apply moose-simulation skill to finish Batch A (push to GitHub),
+> then apply moose-simulation skill to finish Batch B (push to GitHub), ...., and do the
+> same to Batch E ?"*
+>
+> Claude Code autonomously executed the full 9-step workflow for each batch — researching
+> MOOSE module APIs, authoring input files, running simulations in Docker, validating
+> convergence, generating matplotlib plots, writing README documentation, and pushing to
+> GitHub — all without further human intervention.
+>
+> | Batch | Cases | Topic | MOOSE Modules |
+> |-------|-------|-------|---------------|
+> | A | 49-53 | Nonlinear Solid Mechanics | `solid_mechanics`, `phase_field` |
+> | B | 54-58 | Nuclear Reactor Physics | framework, `heat_transfer` |
+> | C | 59-63 | Geomechanics & Porous Flow | `porous_flow`, `solid_mechanics`, `richards` |
+> | D | 64-68 | Chemical Reactions & Transport | `chemical_reactions`, `geochemistry` |
+> | E | 69-73 | Advanced Multiphysics | `contact`, `xfem`, `thermal_hydraulics`, `level_set` |
+
+---
+
 ## Case 49 — J2 Plasticity: Uniaxial Tension with Isotropic Hardening
 
 ### Physics

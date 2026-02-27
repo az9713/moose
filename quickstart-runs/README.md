@@ -21,7 +21,7 @@ in the earlier ones.
 3. [Understanding Output Files](#3-understanding-output-files)
 4. [How MOOSE Solves Problems](#4-how-moose-solves-problems-conceptual)
 5. [Running Simulations](#5-running-simulations)
-6. [The 68 Cases at a Glance](#6-the-68-cases-at-a-glance)
+6. [The 73 Cases at a Glance](#6-the-73-cases-at-a-glance)
 7. [Creating Your Own Simulations](#7-creating-your-own-simulations)
 8. [Glossary](#8-glossary)
 
@@ -1347,7 +1347,7 @@ To override: add `file_base = my_custom_name` to the `[Outputs]` block.
 
 ---
 
-## 6. The 68 Cases at a Glance
+## 6. The 73 Cases at a Glance
 
 The cases are ordered from simplest to most complex. Cases 01-13 use only the MOOSE
 framework (Diffusion, BodyForce, MatDiffusion, etc.). Cases 14-21 use physics **modules**
@@ -1360,7 +1360,24 @@ scattering, coupled modes, noise, and solitons — inspired by **Professor Herma
 classical chapters (Chs 1-5, 10) only. Cases 37-44 cover advanced fluid dynamics —
 instabilities, boundary layers, turbulence, compressible flow, rotating fluids, and MHD
 waves — inspired by **Michel Rieutord**'s *Fluid Dynamics: An Introduction* (Springer, 2015),
-spanning Chapters 4-10. Cases 49-53 cover nonlinear solid mechanics — J2 plasticity,
+spanning Chapters 4-10. Cases 45-48 cover stochastic tools and optimization — Monte Carlo UQ,
+polynomial chaos surrogates, adjoint-based optimization, and Latin Hypercube parameter studies.
+
+**Cases 49-73 (Batches A-E)** were generated autonomously by [Claude Code](https://claude.ai/claude-code)
+using the `moose-simulation` skill. The entire 25-case expansion — covering nonlinear solid
+mechanics, nuclear reactor physics, geomechanics, reactive transport, and advanced multiphysics —
+was launched with a single user prompt:
+
+> *"is it possible for you to complete each of Batch A, B, C, D, E using moose-simulation skill.
+> In other words, apply moose-simulation skill to finish Batch A (push to GitHub), then apply
+> moose-simulation skill to finish Batch B (push to GitHub), ...., and do the same to Batch E ?"*
+
+Claude Code then executed the full 9-step workflow for each batch autonomously: researching
+MOOSE module APIs, authoring input files, running simulations in Docker, validating convergence,
+generating matplotlib plots, writing README documentation, and pushing to GitHub. All 25 cases
+converge in Docker with `combined-opt` in under 2 minutes each.
+
+Cases 49-53 cover nonlinear solid mechanics — J2 plasticity,
 finite-strain kinematics, power-law creep, phase-field fracture, and pressure-vessel
 verification. Cases 54-58 cover nuclear reactor physics — neutron diffusion eigenvalue
 problems, fuel-pin heat transfer, xenon poisoning transients, and control-rod worth
@@ -1369,7 +1386,10 @@ wellbore drawdown, unsaturated Richards' equation, Biot poroelasticity, and grav
 structural analysis. Cases 64-68 cover chemical reactions and transport — reaction-diffusion
 with analytical verification, contaminant advection-diffusion-reaction driven by Darcy flow,
 mineral precipitation via Arrhenius kinetics, aqueous equilibrium speciation with pH tracking,
-and calcite dissolution combining equilibrium and kinetic reactions. Study them in order.
+and calcite dissolution combining equilibrium and kinetic reactions. Cases 69-73 cover advanced
+multiphysics — MultiApp Picard coupling, mortar contact mechanics, XFEM heat conduction with
+cracks, THM pipe flow using the Component DSL, and level-set bubble advection with SUPG
+stabilization. Study them in order.
 
 | Case | Subdirectory | Title | Physics | Key Concepts Introduced | Difficulty |
 |------|--------------|-------|---------|-------------------------|------------|
@@ -1441,6 +1461,11 @@ and calcite dissolution combining equilibrium and kinetic reactions. Study them 
 | 66 | `case66-mineral-precipitation/` | Mineral Precipitation — A+B→Mineral Arrhenius Kinetics | Bimolecular A + B → mineral at rate r = A_freq*exp(-Ea/RT)*[A][B]; coupled PDEs for [A], [B], and solid volume fraction; temperature-dependent rate | `SolidKineticReactions` action, `TimeDerivative`, `Diffusion`, `CoupledForce`, `ParsedMaterial` (Arrhenius rate) | Advanced |
 | 67 | `case67-aqueous-equilibrium/` | Aqueous Equilibrium — CO2-H2O Speciation and pH | Batch equilibrium: CO2 + H2O ⇌ H2CO3 ⇌ HCO3⁻ + H⁺ ⇌ CO3²⁻ + H⁺; pH computed from [H⁺] via PHAux; charge balance enforced | `geochemistry` module `GeochemicalModelInterrogator`, `PHAux`, `GeochemistryTimeDependentReactor`; equilibrium constants from LLNL database | Advanced |
 | 68 | `case68-calcite-dissolution/` | Calcite Dissolution — Combined Equilibrium + Kinetic Reactions | CaCO3 dissolves: equilibrium speciation + TST kinetic rate r = k*(1 - Q/K); Ca²⁺ and CO3²⁻ concentrations evolve; saturation index tracked as postprocessor | `GeochemistryTimeDependentReactor`, `GeochemistrySpatialReactor`, `KineticRate` object, `SaturationIndex` postprocessor | Expert |
+| 69 | `case69-multiapp-coupling/` | MultiApp Coupled Diffusion — Picard Iteration | Bidirectional coupling: main (heat + source) ↔ sub (source + feedback); Picard fixed-point iteration converges in 2 iterations per step | `TransientMultiApp`, `MultiAppNearestNodeTransfer`, `CoupledForce`, fixed-point iteration, `fixed_point_max_its` | Advanced |
+| 70 | `case70-contact-mechanics/` | Mortar Frictionless Contact | Two elastic blocks pushed together; mortar-based frictionless contact prevents interpenetration; von Mises stress at interface | `MeshCollectionGenerator`, `SubdomainIDGenerator`, `RenameBlockGenerator`, `[Contact]` action (mortar formulation), block-restricted postprocessors | Advanced |
+| 71 | `case71-xfem-crack/` | XFEM Heat Conduction — Stationary Crack | Transient heat conduction with vertical edge crack as perfect insulator; XFEM enrichment without remeshing | `[XFEM]` block, `LineSegmentCutUserObject`, `qrule = volfrac`, enriched elements, no Constraints block needed | Advanced |
+| 72 | `case72-thm-pipe-flow/` | THM 1D Pipe Flow — Compressible Gas | 1D compressible ideal gas flow using THM Component DSL; temperature front propagation and pressure equilibration | `[Components]` DSL, `FlowChannel1Phase`, `InletMassFlowRateTemperature1Phase`, `Outlet1Phase`, `scaling_factor_1phase`, `IdealGasFluidProperties` | Advanced |
+| 73 | `case73-level-set-advection/` | Level Set Bubble Advection — SUPG | Smooth bubble in solid-body rotation; SUPG-stabilized advection; mass conservation monitoring | `LevelSetAdvection`, `LevelSetAdvectionSUPG`, `LevelSetTimeDerivativeSUPG`, `LAGRANGE_VEC`, `VectorFunctionIC`, BDF2 | Advanced |
 
 ### What each case produces
 
@@ -1514,6 +1539,11 @@ and calcite dissolution combining equilibrium and kinetic reactions. Study them 
 | 66 | `case66_mineral_precipitation_out.e`, `case66_mineral_precipitation_out.csv` |
 | 67 | `case67_aqueous_equilibrium_out.e`, `case67_aqueous_equilibrium_out.csv` |
 | 68 | `case68_calcite_dissolution_out.e`, `case68_calcite_dissolution_out.csv` |
+| 69 | `case69_multiapp_coupling_out.e`, `case69_multiapp_coupling_out.csv`, `case69_multiapp_coupling_out_sub0.e` |
+| 70 | `case70_contact_mechanics_out.e`, `case70_contact_mechanics_out.csv` |
+| 71 | `case71_xfem_crack_out.e`, `case71_xfem_crack_out.csv` |
+| 72 | `case72_thm_pipe_flow_out.e`, `case72_thm_pipe_flow_out.csv` |
+| 73 | `case73_level_set_advection_out.e`, `case73_level_set_advection_out.csv` |
 
 All pre-run output files for cases 01-13 are included in this directory so you can
 examine them without running anything. Cases 14-73 require `combined-opt` (all modules)
