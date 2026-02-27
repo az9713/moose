@@ -4,7 +4,7 @@
 >
 > This repo **does not include the MOOSE source codes**. Instead, it supplements the original
 > repository with **comprehensive documentation and worked examples** designed to help new users
-> learn the framework from scratch. The 63 progressive quickstart cases are fully explained — from
+> learn the framework from scratch. The 68 progressive quickstart cases are fully explained — from
 > the physics and governing equations, through the input file structure, to interpreting the
 > simulation results — so that users can learn how to set up their own simulations and understand
 > the output without any external help.
@@ -75,7 +75,7 @@ immediately available to every application that enables that module.
 This repository focuses on **learning materials** for the MOOSE framework:
 
 - **Comprehensive documentation** covering architecture, developer workflows, input-file syntax, and all 29 physics modules
-- **63 progressive quickstart examples** (`quickstart-runs/`) — each with a complete input file, detailed README explaining the physics, and matplotlib visualization of the results
+- **68 progressive quickstart examples** (`quickstart-runs/`) — each with a complete input file, detailed README explaining the physics, and matplotlib visualization of the results
 - **An 8-week study plan** for self-learners going from zero to productive MOOSE developer
 - **Docker instructions** for running MOOSE on Windows without compiling from source
 
@@ -90,7 +90,7 @@ To actually build and run MOOSE simulations, you need the framework itself from 
 | [docs/architecture.md](docs/architecture.md) | System architecture with subsystem diagrams covering the Framework → Modules → Applications hierarchy |
 | [docs/developer-guide.md](docs/developer-guide.md) | Step-by-step C++ developer tutorial: writing Kernels, BCs, Materials, and custom objects |
 | [docs/user-guide.md](docs/user-guide.md) | Simulation user reference covering input-file syntax, all major blocks, and solver options |
-| [docs/quick-start.md](docs/quick-start.md) | 63 worked examples progressing from simple diffusion through geomechanics and porous flow |
+| [docs/quick-start.md](docs/quick-start.md) | 68 worked examples progressing from simple diffusion through chemical reactions and geochemistry |
 | [docs/zero-to-hero.md](docs/zero-to-hero.md) | 8-week structured study plan for new MOOSE developers |
 | [docs/modules-reference.md](docs/modules-reference.md) | Physics module reference with API summaries and example input files |
 | [docs/docker-guide.md](docs/docker-guide.md) | Running MOOSE on Windows with Docker — installation, volume mounts, MPI |
@@ -101,7 +101,7 @@ The official online documentation lives at **https://mooseframework.inl.gov**.
 
 ## Quickstart Examples
 
-The `quickstart-runs/` directory contains **63 fully worked examples**, each in its own subdirectory with:
+The `quickstart-runs/` directory contains **68 fully worked examples**, each in its own subdirectory with:
 
 - **Input file** (`.i`) — ready to run with `moose_test-opt` or `combined-opt`
 - **Detailed README** — explains the physics, walks through every input-file block, describes the output files, and shows how to interpret the results
@@ -471,6 +471,23 @@ These cases cover coupled hydro-mechanical behavior in porous and geologic media
 </tr>
 <tr>
 <td align="center"><img src="quickstart-runs/case63-gravity-dam/case63_gravity_dam.png" width="220"/><br/><sub>Case 63: Gravity Dam</sub></td>
+<td colspan="3"></td>
+</tr>
+</table>
+
+### Cases 64-68: Chemical Reactions & Transport (Batch D)
+
+These cases introduce the `chemical_reactions` and `geochemistry` MOOSE modules for reactive-transport modeling. Topics span first-order reaction-diffusion with an analytical Gaussian solution, advection-diffusion-reaction contaminant transport driven by Darcy flow, solid-phase mineral precipitation via Arrhenius kinetics, aqueous equilibrium speciation with pH tracking, and a fully coupled calcite dissolution benchmark combining equilibrium and kinetic reactions. All require `combined-opt` via Docker.
+
+<table>
+<tr>
+<td align="center"><img src="quickstart-runs/case64-reaction-diffusion/case64_reaction_diffusion.png" width="220"/><br/><sub>Case 64: Reaction-Diffusion</sub></td>
+<td align="center"><img src="quickstart-runs/case65-contaminant-transport/case65_contaminant_transport.png" width="220"/><br/><sub>Case 65: Contaminant Transport</sub></td>
+<td align="center"><img src="quickstart-runs/case66-mineral-precipitation/case66_mineral_precipitation.png" width="220"/><br/><sub>Case 66: Mineral Precipitation</sub></td>
+<td align="center"><img src="quickstart-runs/case67-aqueous-equilibrium/case67_aqueous_equilibrium.png" width="220"/><br/><sub>Case 67: Aqueous Equilibrium</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="quickstart-runs/case68-calcite-dissolution/case68_calcite_dissolution.png" width="220"/><br/><sub>Case 68: Calcite Dissolution</sub></td>
 <td colspan="3"></td>
 </tr>
 </table>

@@ -1,13 +1,13 @@
 # MOOSE Quickstart Tutorial Cases: Complete Reference
 
-This directory contains 63 self-contained simulation cases for learning MOOSE from zero.
+This directory contains 68 self-contained simulation cases for learning MOOSE from zero.
 Each case has its own subdirectory with an input file (`.i`) and pre-run output files.
 You do not need to build or install anything to study the input files, understand the physics,
 and read the results. If you want to run the simulations yourself, see Section 5.
 
 This document is designed so that someone who has never used MOOSE, never written a finite
 element simulation, and is not familiar with scientific computing file formats can read it
-from top to bottom and understand everything in these 63 cases.
+from top to bottom and understand everything in these 68 cases.
 
 Read every section. Do not skip ahead. The later cases build directly on concepts introduced
 in the earlier ones.
@@ -21,7 +21,7 @@ in the earlier ones.
 3. [Understanding Output Files](#3-understanding-output-files)
 4. [How MOOSE Solves Problems](#4-how-moose-solves-problems-conceptual)
 5. [Running Simulations](#5-running-simulations)
-6. [The 63 Cases at a Glance](#6-the-63-cases-at-a-glance)
+6. [The 68 Cases at a Glance](#6-the-68-cases-at-a-glance)
 7. [Creating Your Own Simulations](#7-creating-your-own-simulations)
 8. [Glossary](#8-glossary)
 
@@ -105,7 +105,7 @@ MOOSE also handles:
 - **Nonlinear problems**: handles problems where material properties depend on the solution
   itself (like a material that gets stiffer as it heats up)
 
-### What are the 63 cases in this directory?
+### What are the 68 cases in this directory?
 
 These cases form a progressive tutorial starting from the simplest possible problem
 (1D steady-state diffusion with an exact solution of u = x) and building up to
@@ -246,7 +246,7 @@ L = 1.0
 
 ### All Standard Block Types Explained
 
-The following sections explain every block type you will encounter in the 63 cases.
+The following sections explain every block type you will encounter in the 68 cases.
 Each explanation defines what the block does, what parameters mean, and gives a
 realistic example.
 
@@ -1347,7 +1347,7 @@ To override: add `file_base = my_custom_name` to the `[Outputs]` block.
 
 ---
 
-## 6. The 63 Cases at a Glance
+## 6. The 68 Cases at a Glance
 
 The cases are ordered from simplest to most complex. Cases 01-13 use only the MOOSE
 framework (Diffusion, BodyForce, MatDiffusion, etc.). Cases 14-21 use physics **modules**
@@ -1366,7 +1366,10 @@ verification. Cases 54-58 cover nuclear reactor physics — neutron diffusion ei
 problems, fuel-pin heat transfer, xenon poisoning transients, and control-rod worth
 calculations. Cases 59-63 cover geomechanics and porous flow — Terzaghi consolidation,
 wellbore drawdown, unsaturated Richards' equation, Biot poroelasticity, and gravity dam
-structural analysis. Study them in order.
+structural analysis. Cases 64-68 cover chemical reactions and transport — reaction-diffusion
+with analytical verification, contaminant advection-diffusion-reaction driven by Darcy flow,
+mineral precipitation via Arrhenius kinetics, aqueous equilibrium speciation with pH tracking,
+and calcite dissolution combining equilibrium and kinetic reactions. Study them in order.
 
 | Case | Subdirectory | Title | Physics | Key Concepts Introduced | Difficulty |
 |------|--------------|-------|---------|-------------------------|------------|
@@ -1433,6 +1436,11 @@ structural analysis. Study them in order.
 | 61 | `case61-unsaturated-flow/` | Unsaturated Flow — Richards' Equation with van Genuchten | 1D infiltration into initially dry soil; nonlinear wetting front via van Genuchten retention and Mualem relative permeability | `PorousFlowUnsaturated` action, `PorousFlowCapillaryPressureVG`, `PorousFlowRelativePermeabilityVG`, `IterationAdaptiveDT` | Advanced |
 | 62 | `case62-biot-poroelasticity/` | Biot Poroelasticity — Explicit Coupling | Full Biot THM using explicit PorousFlow + SolidMechanics kernels; fluid-solid coupling terms visible in input; 2D plane-strain block verified against 1D Terzaghi | `Physics/SolidMechanics/QuasiStatic`, `PorousFlowFullySaturated`, `PorousFlowEffectiveFluidPressure`, `PorousFlowVolumetricStrain`, `ElementL2Error` | Advanced |
 | 63 | `case63-gravity-dam/` | Gravity Dam — Multi-Material Structural Analysis | Plain concrete dam + rock foundation under self-weight and hydrostatic load; von Mises stress, principal stress, and heel tensile stress design check | `SubdomainBoundingBoxGenerator`, block-restricted `ADComputeIsotropicElasticityTensor`, `Gravity`, `Pressure` BC (hydrostatic), `ADRankTwoScalarAux`, `NodalExtremeValue` | Advanced |
+| 64 | `case64-reaction-diffusion/` | Reaction-Diffusion — First-Order Decay + Diffusion | dc/dt = D*Lap(c) - lambda*c, Gaussian initial condition, analytical solution c(x,t)=c0*exp(-lambda*t)*G(x,t); L2 error verification | `TimeDerivative`, `MatDiffusion`, `Reaction` (first-order decay), `FunctionIC` (Gaussian blob), `ElementL2Error` | Intermediate |
+| 65 | `case65-contaminant-transport/` | Contaminant Transport — ADR with Darcy Convection | Advection-diffusion-reaction in porous medium: phi*dc/dt + div(v*c) - div(D*grad c) + lambda*c = 0; Darcy velocity from upstream pressure gradient | `chemical_reactions` module `PrimaryConvection`, `PrimaryDiffusion`, `PrimaryTimeDerivative`, `PrimaryDecay`; `DarcyVelocity` AuxKernel | Advanced |
+| 66 | `case66-mineral-precipitation/` | Mineral Precipitation — A+B→Mineral Arrhenius Kinetics | Bimolecular A + B → mineral at rate r = A_freq*exp(-Ea/RT)*[A][B]; coupled PDEs for [A], [B], and solid volume fraction; temperature-dependent rate | `SolidKineticReactions` action, `TimeDerivative`, `Diffusion`, `CoupledForce`, `ParsedMaterial` (Arrhenius rate) | Advanced |
+| 67 | `case67-aqueous-equilibrium/` | Aqueous Equilibrium — CO2-H2O Speciation and pH | Batch equilibrium: CO2 + H2O ⇌ H2CO3 ⇌ HCO3⁻ + H⁺ ⇌ CO3²⁻ + H⁺; pH computed from [H⁺] via PHAux; charge balance enforced | `geochemistry` module `GeochemicalModelInterrogator`, `PHAux`, `GeochemistryTimeDependentReactor`; equilibrium constants from LLNL database | Advanced |
+| 68 | `case68-calcite-dissolution/` | Calcite Dissolution — Combined Equilibrium + Kinetic Reactions | CaCO3 dissolves: equilibrium speciation + TST kinetic rate r = k*(1 - Q/K); Ca²⁺ and CO3²⁻ concentrations evolve; saturation index tracked as postprocessor | `GeochemistryTimeDependentReactor`, `GeochemistrySpatialReactor`, `KineticRate` object, `SaturationIndex` postprocessor | Expert |
 
 ### What each case produces
 
@@ -1501,16 +1509,21 @@ structural analysis. Study them in order.
 | 61 | `case61_unsaturated_flow_out.e`, `case61_unsaturated_flow_out.csv` |
 | 62 | `case62_biot_poroelasticity_out.e`, `case62_biot_poroelasticity_out.csv` |
 | 63 | `case63_gravity_dam_out.e`, `case63_gravity_dam_out.csv` |
+| 64 | `case64_reaction_diffusion_out.e`, `case64_reaction_diffusion_out.csv` |
+| 65 | `case65_contaminant_transport_out.e`, `case65_contaminant_transport_out.csv` |
+| 66 | `case66_mineral_precipitation_out.e`, `case66_mineral_precipitation_out.csv` |
+| 67 | `case67_aqueous_equilibrium_out.e`, `case67_aqueous_equilibrium_out.csv` |
+| 68 | `case68_calcite_dissolution_out.e`, `case68_calcite_dissolution_out.csv` |
 
 All pre-run output files for cases 01-13 are included in this directory so you can
-examine them without running anything. Cases 14-63 require `combined-opt` (all modules)
+examine them without running anything. Cases 14-68 require `combined-opt` (all modules)
 to run — see each case's README for Docker instructions.
 
 ---
 
 ## 7. Creating Your Own Simulations
 
-Once you understand the 63 cases, you will want to adapt them or build new simulations
+Once you understand the 68 cases, you will want to adapt them or build new simulations
 from scratch. This section walks through the process systematically.
 
 ### Step 1: Define Your Physics

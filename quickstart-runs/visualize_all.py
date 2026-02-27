@@ -132,6 +132,11 @@ CASE_DIRS = {
     "61": "case61-unsaturated-flow",
     "62": "case62-biot-poroelasticity",
     "63": "case63-gravity-dam",
+    "64": "case64-reaction-diffusion",
+    "65": "case65-contaminant-transport",
+    "66": "case66-mineral-precipitation",
+    "67": "case67-aqueous-equilibrium",
+    "68": "case68-calcite-dissolution",
 }
 
 
@@ -3846,6 +3851,318 @@ def plot_case63():
     save_fig(fig, "63", "case63_gravity_dam.png")
 
 
+def plot_case64():
+    print("Case 64: Reaction-Diffusion — Decaying Gaussian Pulse")
+
+    csv_file = case_path("64", "case64_reaction_diffusion_out.csv")
+    exo_file = case_path("64", "case64_reaction_diffusion_out.e")
+    if not file_exists(csv_file, exo_file):
+        print("    SKIP: output files not found")
+        skipped_cases.append("case64")
+        return
+
+    data = read_csv(csv_file)
+    t = np.array(data["time"])
+    u_max = np.array(data["u_max"])
+    u_avg = np.array(data["u_avg"])
+    u_int = np.array(data["u_integral"])
+
+    ds = open_exodus(exo_file)
+    times = get_times(ds)
+    x, y_coord = get_coords_2d(ds)
+    nod_names = get_nod_var_names(ds)
+    u_idx = nod_names.index("u") + 1
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    # Panel 1: Pulse profiles at different times
+    ax = axes[0]
+    mid_mask = np.abs(y_coord - 0.1) < 0.06
+    snap_times = [0, 2, 5, 10]
+    colors = ["b", "r", "g", "m"]
+    for st, col in zip(snap_times, colors):
+        ti = find_closest_timestep(times, st)
+        u_vals = get_nod_var(ds, u_idx, ti)
+        x_mid = x[mid_mask]
+        u_mid = u_vals[mid_mask]
+        sort_idx = np.argsort(x_mid)
+        ax.plot(x_mid[sort_idx], u_mid[sort_idx], f"{col}-", linewidth=1.5,
+                label=f"t={st}s")
+    # Analytical: Gaussian spreading + decay
+    D, k, w, x0 = 0.01, 0.05, 0.3, 1.0
+    x_an = np.linspace(0, 4, 200)
+    for st, col in zip(snap_times[1:], colors[1:]):
+        u_an = np.exp(-k * st) / np.sqrt(1 + 4 * D * st / w**2) * \
+               np.exp(-(x_an - x0)**2 / (w**2 + 4 * D * st))
+        ax.plot(x_an, u_an, f"{col}--", linewidth=1, alpha=0.5)
+    ax.set_xlabel("Position x (m)")
+    ax.set_ylabel("Concentration u")
+    ax.set_title("Pulse Spreading + Decay")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    # Panel 2: Peak value and integral over time
+    ax = axes[1]
+    mask = t > 0
+    ax.plot(t[mask], u_max[mask], "b-", linewidth=2, label=r"$u_{max}$")
+    # Analytical peak decay
+    t_an = np.linspace(0.01, 10, 100)
+    peak_an = np.exp(-k * t_an) / np.sqrt(1 + 4 * D * t_an / w**2)
+    ax.plot(t_an, peak_an, "r--", linewidth=1.5, label="Analytical peak")
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Value")
+    ax.set_title("Peak Decay Over Time")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    ds.close()
+    fig.suptitle("Case 64: Reaction-Diffusion (First-Order Decay + Diffusion)", fontsize=14)
+    fig.tight_layout()
+    save_fig(fig, "64", "case64_reaction_diffusion.png")
+
+
+def plot_case65():
+    print("Case 65: Contaminant Transport")
+
+    csv_file = case_path("65", "case65_contaminant_transport_out.csv")
+    exo_file = case_path("65", "case65_contaminant_transport_out.e")
+    if not file_exists(csv_file, exo_file):
+        print("    SKIP: output files not found")
+        skipped_cases.append("case65")
+        return
+
+    data = read_csv(csv_file)
+    t = np.array(data["time"])
+    c_025 = np.array(data["c_025"])
+    c_050 = np.array(data["c_050"])
+    c_075 = np.array(data["c_075"])
+    c_avg = np.array(data["c_avg"])
+
+    ds = open_exodus(exo_file)
+    times = get_times(ds)
+    x, y_coord = get_coords_2d(ds)
+    nod_names = get_nod_var_names(ds)
+    c_idx = nod_names.index("c") + 1
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    # Panel 1: Concentration profiles at different times
+    ax = axes[0]
+    mid_mask = np.abs(y_coord - 0.05) < 0.04
+    snap_times = [10, 30, 60, 100]
+    colors = ["b", "r", "g", "m"]
+    for st, col in zip(snap_times, colors):
+        ti = find_closest_timestep(times, st)
+        c_vals = get_nod_var(ds, c_idx, ti)
+        x_mid = x[mid_mask]
+        c_mid = c_vals[mid_mask]
+        sort_idx = np.argsort(x_mid)
+        ax.plot(x_mid[sort_idx], c_mid[sort_idx], f"{col}-", linewidth=1.5,
+                label=f"t={st}s")
+    ax.set_xlabel("Position x (m)")
+    ax.set_ylabel("Concentration c")
+    ax.set_title("Contaminant Plume Advancement")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    # Panel 2: Concentration history at monitoring points
+    ax = axes[1]
+    mask = t > 0
+    ax.plot(t[mask], c_025[mask], "b-", linewidth=2, label="x=0.25 m")
+    ax.plot(t[mask], c_050[mask], "r--", linewidth=2, label="x=0.50 m")
+    ax.plot(t[mask], c_075[mask], "g:", linewidth=2, label="x=0.75 m")
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Concentration c")
+    ax.set_title("Breakthrough Curves")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    ds.close()
+    fig.suptitle("Case 65: Contaminant Transport — Advection-Dispersion-Reaction", fontsize=14)
+    fig.tight_layout()
+    save_fig(fig, "65", "case65_contaminant_transport.png")
+
+
+def plot_case66():
+    print("Case 66: Mineral Precipitation")
+
+    csv_file = case_path("66", "case66_mineral_precipitation_out.csv")
+    exo_file = case_path("66", "case66_mineral_precipitation_out.e")
+    if not file_exists(csv_file, exo_file):
+        print("    SKIP: output files not found")
+        skipped_cases.append("case66")
+        return
+
+    data = read_csv(csv_file)
+    t = np.array(data["time"])
+    a_mid = np.array(data["a_mid"])
+    b_mid = np.array(data["b_mid"])
+    mineral_mid = np.array(data["mineral_mid"])
+
+    ds = open_exodus(exo_file)
+    times = get_times(ds)
+    x, y_coord = get_coords_2d(ds)
+    nod_names = get_nod_var_names(ds)
+    a_idx = nod_names.index("a") + 1
+    b_idx = nod_names.index("b") + 1
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    # Panel 1: Species profiles at final time
+    ax = axes[0]
+    mid_mask = np.abs(y_coord - 0.1) < 0.06
+    a_final = get_nod_var(ds, a_idx, -1)
+    b_final = get_nod_var(ds, b_idx, -1)
+    x_mid = x[mid_mask]
+    sort_idx = np.argsort(x_mid)
+    ax.plot(x_mid[sort_idx], a_final[mid_mask][sort_idx] * 1e3, "b-",
+            linewidth=2, label="Species A")
+    ax.plot(x_mid[sort_idx], b_final[mid_mask][sort_idx] * 1e3, "r--",
+            linewidth=2, label="Species B")
+    ax.set_xlabel("Position x (m)")
+    ax.set_ylabel("Concentration (mmol/L)")
+    ax.set_title("Concentration Profiles at t=50s")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    # Panel 2: Time history at midpoint
+    ax = axes[1]
+    mask = t > 0
+    ax2 = ax.twinx()
+    ax.plot(t[mask], a_mid[mask] * 1e3, "b-", linewidth=2, label="A (mid)")
+    ax.plot(t[mask], b_mid[mask] * 1e3, "r--", linewidth=2, label="B (mid)")
+    ax2.plot(t[mask], mineral_mid[mask] * 1e9, "g-", linewidth=2, label="Mineral (mid)")
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Species Conc. (mmol/L)")
+    ax2.set_ylabel("Mineral Conc. (nmol/L)", color="g")
+    ax.set_title("Species at Midpoint vs Time")
+    lines1, labels1 = ax.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax.legend(lines1 + lines2, labels1 + labels2)
+    ax.grid(True, alpha=0.3)
+
+    ds.close()
+    fig.suptitle("Case 66: Mineral Precipitation — A + B → Mineral(s)", fontsize=14)
+    fig.tight_layout()
+    save_fig(fig, "66", "case66_mineral_precipitation.png")
+
+
+def plot_case67():
+    print("Case 67: Aqueous Equilibrium — CO2-H2O")
+
+    csv_file = case_path("67", "case67_aqueous_equilibrium_out.csv")
+    if not os.path.exists(csv_file):
+        print("    SKIP: CSV file not found")
+        skipped_cases.append("case67")
+        return
+
+    data = read_csv(csv_file)
+    t = np.array(data["time"])
+    h_plus = np.array(data["h_plus"])
+    hco3 = np.array(data["hco3_minus"])
+    co2_aq = np.array(data["co2_aq_val"])
+    co3 = np.array(data["co3_val"])
+    oh = np.array(data["oh_val"])
+    ph = np.array(data["ph_val"])
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    # Panel 1: Species concentrations (bar chart at equilibrium)
+    ax = axes[0]
+    species = [r"H$^+$", r"HCO$_3^-$", r"CO$_2$(aq)", r"CO$_3^{2-}$", r"OH$^-$"]
+    concs = [h_plus[-1], hco3[-1], co2_aq[-1], co3[-1], oh[-1]]
+    colors = ["red", "blue", "green", "purple", "orange"]
+    bars = ax.bar(species, concs, color=colors, alpha=0.7)
+    ax.set_yscale("log")
+    ax.set_ylabel("Concentration (mol/L)")
+    ax.set_title("Equilibrium Speciation")
+    ax.grid(True, alpha=0.3, axis="y")
+    # Add value labels
+    for bar, c in zip(bars, concs):
+        if c > 0:
+            ax.text(bar.get_x() + bar.get_width() / 2, c * 1.5,
+                    f"{c:.2e}", ha="center", va="bottom", fontsize=8)
+
+    # Panel 2: Info box
+    ax = axes[1]
+    ax.axis("off")
+    info_text = (
+        "CO2-H2O Equilibrium at 25\u00b0C\n"
+        "\u2500" * 35 + "\n\n"
+        f"pH = {ph[-1]:.2f}\n\n"
+        "Reactions:\n"
+        r"  H+ + HCO3- $\rightleftharpoons$ CO2(aq)" + "\n"
+        f"    log10(Keq) = 6.3447\n\n"
+        r"  HCO3- $\rightleftharpoons$ H+ + CO3\u00b2-" + "\n"
+        f"    log10(Keq) = -10.3288\n\n"
+        r"  H2O $\rightleftharpoons$ H+ + OH-" + "\n"
+        f"    log10(Keq) = -13.9951\n\n"
+        "Dominant species: CO2(aq)\n"
+        "(acidic pH → carbonate shifts to CO2)"
+    )
+    ax.text(0.1, 0.5, info_text, transform=ax.transAxes, fontsize=11,
+            verticalalignment="center", fontfamily="monospace",
+            bbox=dict(boxstyle="round,pad=0.5", facecolor="lightyellow"))
+
+    fig.suptitle(r"Case 67: Aqueous Equilibrium — CO$_2$-H$_2$O System", fontsize=14)
+    fig.tight_layout()
+    save_fig(fig, "67", "case67_aqueous_equilibrium.png")
+
+
+def plot_case68():
+    print("Case 68: Calcite Dissolution")
+
+    csv_file = case_path("68", "case68_calcite_dissolution_out.csv")
+    if not os.path.exists(csv_file):
+        print("    SKIP: CSV file not found")
+        skipped_cases.append("case68")
+        return
+
+    data = read_csv(csv_file)
+    t = np.array(data["time"])
+    ca = np.array(data["ca_plus"])
+    hco3 = np.array(data["hco3_minus"])
+    h_plus = np.array(data["h_plus"])
+    ph = np.array(data["ph_val"])
+    caco3 = np.array(data["caco3_s_val"])
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    # Panel 1: Species evolution over time
+    ax = axes[0]
+    mask = t > 0
+    ax.plot(t[mask], ca[mask] * 1e6, "b-", linewidth=2, label=r"Ca$^{2+}$")
+    ax.plot(t[mask], hco3[mask] * 1e6, "r--", linewidth=2, label=r"HCO$_3^-$")
+    ax.plot(t[mask], h_plus[mask] * 1e6, "g:", linewidth=2, label=r"H$^+$")
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel(r"Concentration ($\mu$mol/L)")
+    ax.set_title("Dissolved Species Evolution")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    # Panel 2: pH and mineral mass evolution
+    ax = axes[1]
+    ax.plot(t[mask], ph[mask], "b-", linewidth=2, label="pH")
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("pH", color="b")
+    ax.tick_params(axis="y", labelcolor="b")
+    ax.grid(True, alpha=0.3)
+
+    ax2 = ax.twinx()
+    ax2.plot(t[mask], caco3[mask] * 1e3, "r--", linewidth=2, label=r"CaCO$_3$(s)")
+    ax2.set_ylabel(r"Mineral (mmol/L)", color="r")
+    ax2.tick_params(axis="y", labelcolor="r")
+
+    ax.set_title("pH Rise and Calcite Dissolution")
+    lines1, labels1 = ax.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax.legend(lines1 + lines2, labels1 + labels2, loc="center right")
+
+    fig.suptitle("Case 68: Calcite Dissolution — Reactive Geochemistry", fontsize=14)
+    fig.tight_layout()
+    save_fig(fig, "68", "case68_calcite_dissolution.png")
+
+
 # ---------------------------------------------------------------------------
 # Main driver
 # ---------------------------------------------------------------------------
@@ -3914,12 +4231,17 @@ CASE_FUNCTIONS = [
     ("61", plot_case61),
     ("62", plot_case62),
     ("63", plot_case63),
+    ("64", plot_case64),
+    ("65", plot_case65),
+    ("66", plot_case66),
+    ("67", plot_case67),
+    ("68", plot_case68),
 ]
 
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("MOOSE Quick-Start Visualization — All 63 Cases")
+    print("MOOSE Quick-Start Visualization — All 68 Cases")
     print("=" * 60)
     print(f"Script directory: {SCRIPT_DIR}")
     print("Plots will be saved into each case subdirectory.\n")

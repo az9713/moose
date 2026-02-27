@@ -1,10 +1,11 @@
-# MOOSE Quick-Start Guide: 63 Working Examples
+# MOOSE Quick-Start Guide: 68 Working Examples
 
-This guide walks a complete beginner through 63 self-contained MOOSE input files,
+This guide walks a complete beginner through 68 self-contained MOOSE input files,
 from the simplest possible diffusion problem to genuine multi-physics simulations
-using MOOSE's physics modules. Cases 01-13 use only the framework. Cases 14-63
+using MOOSE's physics modules. Cases 01-13 use only the framework. Cases 14-68
 use physics modules (heat_transfer, solid_mechanics, navier_stokes, phase_field,
-porous_flow, electromagnetics) and require `combined-opt`. Read them in order.
+porous_flow, electromagnetics, chemical_reactions, geochemistry) and require
+`combined-opt`. Read them in order.
 
 ## Prerequisites
 
@@ -5344,6 +5345,266 @@ MSYS_NO_PATHCONV=1 docker run --rm \
 
 ---
 
+## Case 64 — Reaction-Diffusion
+
+### Physics
+
+The reaction-diffusion equation is the fundamental model for any transported species that
+simultaneously diffuses through space and undergoes a first-order removal process — radioactive
+decay, biological degradation, or linear chemical consumption. In one spatial dimension the
+governing equation is:
+
+```
+dc/dt = D * d²c/dx² - lambda * c
+```
+
+where c is the concentration, D is the diffusion coefficient, and lambda is the first-order
+decay rate constant (units 1/s). Given an initial Gaussian distribution
+c(x, 0) = c0 * exp(-(x - x0)² / (2*sigma0²)), the exact solution is:
+
+```
+c(x, t) = c0 * exp(-lambda * t) * (sigma0 / sigma(t)) * exp(-(x - x0)² / (2*sigma(t)²))
+```
+
+where sigma(t)² = sigma0² + 2*D*t is the time-evolving Gaussian variance. The amplitude
+decays as exp(-lambda*t) while the peak broadens diffusively. This case uses
+`TimeDerivative` + `MatDiffusion` + `Reaction` on a 1D domain, with a `FunctionIC` for
+the Gaussian initial condition. The `ElementL2Error` postprocessor verifies the numerical
+solution against the exact formula at each time step, confirming that MOOSE matches the
+analytic result to within solver tolerance.
+
+```bash
+cd quickstart-runs/case64-reaction-diffusion
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case64-reaction-diffusion \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case64_reaction_diffusion.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `TimeDerivative` | dc/dt term; advances concentration in time |
+| `MatDiffusion` | D * d²c/dx² diffusive spreading; D from `GenericConstantMaterial` |
+| `Reaction` | -lambda * c first-order linear decay; coefficient = lambda |
+| `FunctionIC` | Gaussian c(x,0) = c0*exp(-(x-x0)²/(2*sigma0²)) via `ParsedFunction` |
+| `FunctionDirichletBC` | Enforces the exact solution at domain endpoints to eliminate boundary artifacts |
+| `ElementL2Error` | L2 norm of (c_numerical - c_exact) over the domain at each output step |
+| `IterationAdaptiveDT` | Adapts time step size as the decay slows and the Gaussian broadens |
+
+---
+
+## Case 65 — Contaminant Transport
+
+### Physics
+
+Contaminant transport in a saturated porous aquifer couples advection by the Darcy velocity
+field to diffusion-dispersion in the pore space and first-order biodegradation. The governing
+advection-diffusion-reaction (ADR) equation for the dissolved concentration c is:
+
+```
+phi * dc/dt + div(v * c) - div(D_h * grad c) + lambda * c = 0
+```
+
+where phi is the porosity, v = -(k/mu) * grad p is the Darcy velocity (computed from a
+steady pressure field), D_h is the hydrodynamic dispersion tensor (combining molecular
+diffusion and mechanical dispersion), and lambda is the first-order biodegradation rate.
+The `chemical_reactions` module provides dedicated kernels `PrimaryTimeDerivative`,
+`PrimaryConvection`, `PrimaryDiffusion`, and `PrimaryDecay` that form this equation
+directly. The Darcy pressure field is solved first using a `Diffusion` kernel with
+permeability as the material property; a `DarcyVelocity` AuxKernel then projects the
+pressure gradient into a vector field that feeds the convection term. A plume of contaminant
+injected at the upstream boundary spreads and decays as it advects across the domain,
+demonstrating the competing effects of advection (sharp front), diffusion (broadening), and
+reaction (attenuation).
+
+```bash
+cd quickstart-runs/case65-contaminant-transport
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case65-contaminant-transport \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case65_contaminant_transport.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `PrimaryTimeDerivative` | phi * dc/dt storage term from the `chemical_reactions` module |
+| `PrimaryConvection` | div(v * c) advection; takes the Darcy velocity from an AuxVariable |
+| `PrimaryDiffusion` | -div(D_h * grad c) hydrodynamic dispersion |
+| `PrimaryDecay` | lambda * c first-order biodegradation sink |
+| `MatDiffusion` (pressure solve) | Solves -div(k/mu * grad p) = 0 for the background Darcy pressure field |
+| `DarcyVelocity` AuxKernel | Computes v = -(k/mu) * grad p component by component into AuxVariables |
+| `DirichletBC` (concentration) | Constant inlet concentration at the upstream boundary |
+| `ElementAverageValue` | Tracks average concentration vs time as the plume evolves |
+
+---
+
+## Case 66 — Mineral Precipitation
+
+### Physics
+
+Mineral precipitation from aqueous solution occurs when two dissolved species react to form
+a solid phase. The simplest bimolecular reaction A + B → Mineral has a rate that depends
+strongly on temperature through the Arrhenius law:
+
+```
+r(T) = A_freq * exp(-Ea / (R * T)) * [A] * [B]
+```
+
+where A_freq is the pre-exponential frequency factor, Ea is the activation energy (J/mol),
+R = 8.314 J/(mol K) is the gas constant, and T is the absolute temperature. The governing
+coupled PDEs for the dissolved concentrations [A] and [B] and the precipitated mineral
+volume fraction phi_m are:
+
+```
+d[A]/dt = D_A * Lap([A]) - r(T) * [A] * [B]
+d[B]/dt = D_B * Lap([B]) - r(T) * [A] * [B]
+d(phi_m)/dt = V_m * r(T) * [A] * [B]
+```
+
+where V_m is the molar volume of the mineral. This case uses `SolidKineticReactions` to
+set up the mineral precipitation system. The reaction rate is implemented as a
+`ParsedMaterial` that evaluates the Arrhenius expression at each quadrature point, coupling
+to the temperature field (held constant or computed separately). The simulation tracks
+how [A] and [B] are consumed from an initially uniform distribution and how the mineral
+volume fraction grows preferentially in regions of high reactant concentration, demonstrating
+the spatial-temporal coupling between transport and reaction kinetics.
+
+```bash
+cd quickstart-runs/case66-mineral-precipitation
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case66-mineral-precipitation \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case66_mineral_precipitation.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `SolidKineticReactions` action | Configures the coupled solid-precipitation reaction system |
+| `TimeDerivative` (×3) | d[A]/dt, d[B]/dt, d(phi_m)/dt storage terms for each species |
+| `MatDiffusion` (×2) | Diffusion of dissolved species A and B with species-specific D coefficients |
+| `ParsedMaterial` (Arrhenius) | Computes r(T) = A_freq*exp(-Ea/RT) at quadrature points; disable_fpoptimizer = true |
+| `CoupledForce` | Couples the -r*[A]*[B] sink into the concentration equations |
+| `ElementAverageValue` | Tracks average [A], [B], and phi_m vs time to monitor reaction progress |
+| `IterationAdaptiveDT` | Adapts time step as the fast initial reaction slows toward equilibrium |
+
+---
+
+## Case 67 — Aqueous Equilibrium
+
+### Physics
+
+Aqueous geochemistry is governed by thermodynamic equilibrium among dissolved species.
+The CO2-H2O system illustrates the fundamental concepts: dissolved CO2 hydrates to form
+carbonic acid, which dissociates stepwise to bicarbonate and carbonate ions, with each
+equilibrium controlled by an equilibrium constant K that is a known function of temperature:
+
+```
+CO2(aq) + H2O ⇌ H2CO3         K1 = [H2CO3] / [CO2]
+H2CO3 ⇌ HCO3⁻ + H⁺            K_a1 = [HCO3⁻][H⁺] / [H2CO3]
+HCO3⁻ ⇌ CO3²⁻ + H⁺            K_a2 = [CO3²⁻][H⁺] / [HCO3⁻]
+H2O ⇌ H⁺ + OH⁻                 K_w = [H⁺][OH⁻]
+```
+
+The charge balance must hold at all times:
+
+```
+[H⁺] + [Na⁺] = [OH⁻] + [HCO3⁻] + 2[CO3²⁻] + [Cl⁻]
+```
+
+This case uses the MOOSE `geochemistry` module with `GeochemistryTimeDependentReactor`
+to solve a batch (zero-dimensional) equilibrium problem: a fixed amount of CO2 is added
+to a solution at a given temperature, and the equilibrium distribution of all carbonate
+species is computed. The `PHAux` auxiliary variable extracts -log10([H⁺]) as the pH.
+Running the simulation at several CO2 concentrations and temperatures demonstrates how
+ocean acidification works — higher dissolved CO2 drives the equilibrium toward higher
+[H⁺], lowering the pH. Equilibrium constants are taken from the LLNL thermodynamic
+database embedded in MOOSE's `geochemistry` module.
+
+```bash
+cd quickstart-runs/case67-aqueous-equilibrium
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case67-aqueous-equilibrium \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case67_aqueous_equilibrium.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `GeochemicalModelDefinition` | Loads the LLNL thermodynamic database; declares which species are primary and secondary |
+| `GeochemistryTimeDependentReactor` | Solves the batch equilibrium problem (no spatial transport) at each time step |
+| `PHAux` | Computes pH = -log10([H⁺]) from the primary H⁺ concentration variable |
+| `GeochemistryQuantityAux` | Extracts individual species molalities (e.g., [HCO3⁻], [CO3²⁻]) for output |
+| `PointValue` | Reports species concentrations and pH at each time step for plotting |
+| `Transient` executioner | Steps through a sequence of CO2 additions or temperature changes |
+
+---
+
+## Case 68 — Calcite Dissolution
+
+### Physics
+
+Calcite (CaCO3) dissolution in groundwater is the archetype of combined equilibrium and
+kinetic geochemistry. The overall reaction is:
+
+```
+CaCO3(s) ⇌ Ca²⁺(aq) + CO3²⁻(aq)
+```
+
+At equilibrium, the ion activity product Q = [Ca²⁺][CO3²⁻] / K_sp equals 1 (where K_sp
+is the solubility product). Far from equilibrium the dissolution rate is governed by
+transition-state theory (TST):
+
+```
+r = k_diss * A_s * (1 - Q / K_sp)
+```
+
+where k_diss is the rate constant (mol m⁻² s⁻¹), A_s is the reactive mineral surface area
+per unit volume (m² m⁻³), and (1 - Q/K_sp) is the saturation departure. When Q < K_sp
+(undersaturated) the mineral dissolves (r > 0); when Q > K_sp (supersaturated) it
+precipitates (r < 0). This case uses `GeochemistryTimeDependentReactor` for the batch
+equilibrium speciation combined with a `KineticRate` object that implements the TST rate
+law for calcite. Starting from an initially undersaturated solution, Ca²⁺ and CO3²⁻
+concentrations rise as calcite dissolves, asymptotically approaching the equilibrium
+saturation. The saturation index SI = log10(Q/K_sp) is tracked as a postprocessor and
+converges to zero as equilibrium is reached. This case demonstrates how MOOSE's
+`geochemistry` module handles the interplay between fast equilibrium reactions (carbonate
+speciation) and slow kinetic processes (mineral dissolution) in a single coupled solve.
+
+```bash
+cd quickstart-runs/case68-calcite-dissolution
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case68-calcite-dissolution \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case68_calcite_dissolution.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `GeochemicalModelDefinition` | Loads LLNL database; declares calcite as a kinetic (not equilibrium) mineral |
+| `GeochemistryTimeDependentReactor` | Solves equilibrium speciation for carbonate system at each time step |
+| `KineticRate` | Implements TST rate r = k_diss * A_s * (1 - Q/K_sp) for calcite dissolution |
+| `GeochemistryQuantityAux` | Extracts [Ca²⁺], [CO3²⁻], pH, and calcite moles remaining |
+| `SaturationIndex` postprocessor | Tracks SI = log10(Q/K_sp) to monitor approach to equilibrium |
+| `IterationAdaptiveDT` | Short early time steps to capture rapid initial dissolution; larger steps near equilibrium |
+| `Transient` executioner | Marches the kinetic dissolution from initial undersaturation to equilibrium |
+
+---
+
 ## Troubleshooting Common Errors
 
 **Error: `Object 'Diffusion' was not registered`**
@@ -5374,7 +5635,7 @@ variable name (e.g., `u` or `T`) using the dropdown in the toolbar.
 
 ## Next Steps
 
-After completing these 63 cases:
+After completing these 68 cases:
 
 1. **Read the MOOSE documentation** at https://mooseframework.inl.gov for
    complete reference documentation on every object type.
@@ -5386,9 +5647,9 @@ After completing these 63 cases:
 3. **Write your own application**: Use `moose/scripts/stork.py` to scaffold
    a new MOOSE application with custom kernels, materials, and BCs.
 
-4. **Explore more module features**: Cases 14-63 introduce the major physics
+4. **Explore more module features**: Cases 14-68 introduce the major physics
    modules — from solid mechanics and heat transfer through Navier-Stokes,
    electrodynamics, MHD, nonlinear solid mechanics, nuclear reactor physics,
-   and geomechanics / porous flow.
+   geomechanics / porous flow, and reactive-transport geochemistry.
    Each module has many more capabilities — consult the [Modules Reference](modules-reference.md)
    for full details.
