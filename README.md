@@ -431,7 +431,7 @@ Drawn from the MOOSE `solid_mechanics` module. These cases cover plasticity, fin
 <table>
 <tr>
 <td align="center"><img src="quickstart-runs/case49-j2-plasticity/case49_j2_plasticity.png" width="220"/><br/><sub>Case 49: J2 Plasticity</sub></td>
-<td align="center"><img src="quickstart-runs/case50-finite-strain-compression/case50_finite_strain_compression.png" width="220"/><br/><sub>Case 50: Finite Strain Compression</sub></td>
+<td align="center"><img src="quickstart-runs/case50-finite-strain/case50_finite_strain.png" width="220"/><br/><sub>Case 50: Finite Strain</sub></td>
 <td align="center"><img src="quickstart-runs/case51-power-law-creep/case51_power_law_creep.png" width="220"/><br/><sub>Case 51: Power-Law Creep</sub></td>
 <td align="center"><img src="quickstart-runs/case52-phase-field-fracture/case52_phase_field_fracture.png" width="220"/><br/><sub>Case 52: Phase-Field Fracture</sub></td>
 </tr>
@@ -447,10 +447,10 @@ These cases introduce the neutronics and reactor-physics kernels built into the 
 
 <table>
 <tr>
-<td align="center"><img src="quickstart-runs/case54-neutron-diffusion-bare-slab/case54_neutron_diffusion_bare_slab.png" width="220"/><br/><sub>Case 54: 1-Group Neutron Diffusion</sub></td>
+<td align="center"><img src="quickstart-runs/case54-neutron-diffusion/case54_neutron_diffusion.png" width="220"/><br/><sub>Case 54: 1-Group Neutron Diffusion</sub></td>
 <td align="center"><img src="quickstart-runs/case55-two-group-diffusion/case55_two_group_diffusion.png" width="220"/><br/><sub>Case 55: 2-Group Neutron Diffusion</sub></td>
-<td align="center"><img src="quickstart-runs/case56-fuel-pin-heat-transfer/case56_fuel_pin_heat_transfer.png" width="220"/><br/><sub>Case 56: Fuel Pin Heat Transfer</sub></td>
-<td align="center"><img src="quickstart-runs/case57-xenon-poisoning/case57_xenon_poisoning.png" width="220"/><br/><sub>Case 57: Xenon-135 Poisoning</sub></td>
+<td align="center"><img src="quickstart-runs/case56-fuel-pin-heat/case56_fuel_pin_heat.png" width="220"/><br/><sub>Case 56: Fuel Pin Heat Transfer</sub></td>
+<td align="center"><img src="quickstart-runs/case57-xenon-transient/case57_xenon_transient.png" width="220"/><br/><sub>Case 57: Xenon-135 Transient</sub></td>
 </tr>
 <tr>
 <td align="center"><img src="quickstart-runs/case58-control-rod-worth/case58_control_rod_worth.png" width="220"/><br/><sub>Case 58: Control Rod Worth</sub></td>
@@ -498,13 +498,13 @@ These cases introduce four additional MOOSE modules and deepen MultiApp coupling
 
 <table>
 <tr>
-<td align="center"><img src="quickstart-runs/case69-multiapp-coupled-diffusion/case69_multiapp_coupled_diffusion.png" width="220"/><br/><sub>Case 69: MultiApp Picard Coupling</sub></td>
-<td align="center"><img src="quickstart-runs/case70-mortar-contact/case70_mortar_contact.png" width="220"/><br/><sub>Case 70: Mortar Frictionless Contact</sub></td>
-<td align="center"><img src="quickstart-runs/case71-xfem-heat-crack/case71_xfem_heat_crack.png" width="220"/><br/><sub>Case 71: XFEM Thermal Crack</sub></td>
+<td align="center"><img src="quickstart-runs/case69-multiapp-coupling/case69_multiapp_coupling.png" width="220"/><br/><sub>Case 69: MultiApp Picard Coupling</sub></td>
+<td align="center"><img src="quickstart-runs/case70-contact-mechanics/case70_contact_mechanics.png" width="220"/><br/><sub>Case 70: Mortar Frictionless Contact</sub></td>
+<td align="center"><img src="quickstart-runs/case71-xfem-crack/case71_xfem_crack.png" width="220"/><br/><sub>Case 71: XFEM Thermal Crack</sub></td>
 <td align="center"><img src="quickstart-runs/case72-thm-pipe-flow/case72_thm_pipe_flow.png" width="220"/><br/><sub>Case 72: THM 1D Pipe Flow</sub></td>
 </tr>
 <tr>
-<td align="center"><img src="quickstart-runs/case73-level-set-bubble/case73_level_set_bubble.png" width="220"/><br/><sub>Case 73: Level Set Bubble Advection</sub></td>
+<td align="center"><img src="quickstart-runs/case73-level-set-advection/case73_level_set_advection.png" width="220"/><br/><sub>Case 73: Level Set Bubble Advection</sub></td>
 <td colspan="3"></td>
 </tr>
 </table>
