@@ -26,7 +26,7 @@ will then follow the skill's 9-section checklist systematically.
 
 ## What Was Actually Built
 
-Over multiple sessions the skill guided creation of **44 quickstart cases**
+Over multiple sessions the skill guided creation of **48 quickstart cases**
 covering 8 MOOSE physics modules:
 
 | Batch | Cases | Source Textbook | Physics |
@@ -35,6 +35,7 @@ covering 8 MOOSE physics modules:
 | Melcher | 22–29 | Melcher, *Continuum Electromechanics* | Charge relaxation, EHD, MHD, ferrofluid, electroquasistatics |
 | Haus | 30–36 | Professor Herman A. Haus, *Electromagnetic Noise and Quantum Optical Measurements* (Springer, 2000) — classical chapters only (Chs 1-5, 10); the quantum chapters (Chs 6-9, 11-13) describe photon operators, squeezed states, and quantum noise that have no classical PDE representation | Waveguide eigenvalues, driven cavities, dielectric slabs, coupled resonators, thermal noise, dispersive pulses, solitons |
 | Rieutord | 37–44 | Michel Rieutord, *Fluid Dynamics: An Introduction* (Springer, 2015) — Chapters 4-10 | Rayleigh-Benard convection, KH instability, Blasius boundary layer, k-epsilon turbulence, RT instability, Sod shock tube, Ekman spiral, Alfven wave |
+| Smith | 45–48 | Smith, *Uncertainty Quantification* (SIAM, 2014) | Monte Carlo UQ, polynomial chaos expansion, heat source inversion (adjoint optimization), Latin Hypercube parameter study |
 
 Every case converges in Docker with `combined-opt` in under 2 minutes and
 produces both Exodus (`.e`) and CSV output files.

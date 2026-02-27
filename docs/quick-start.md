@@ -1,8 +1,8 @@
-# MOOSE Quick-Start Guide: 44 Working Examples
+# MOOSE Quick-Start Guide: 48 Working Examples
 
-This guide walks a complete beginner through 44 self-contained MOOSE input files,
+This guide walks a complete beginner through 48 self-contained MOOSE input files,
 from the simplest possible diffusion problem to genuine multi-physics simulations
-using MOOSE's physics modules. Cases 01-13 use only the framework. Cases 14-44
+using MOOSE's physics modules. Cases 01-13 use only the framework. Cases 14-48
 use physics modules (heat_transfer, solid_mechanics, navier_stokes, phase_field,
 porous_flow, electromagnetics) and require `combined-opt`. Read them in order.
 
@@ -4686,6 +4686,110 @@ confirming perfect decoupling. Total integral of d+ decays monotonically
 
 ---
 
+## Case 45 — Monte Carlo UQ: Uncertainty in Thermal Conductivity
+
+### Physics
+
+Propagate uncertainty in thermal conductivity k ~ Uniform(0.5, 3.0) through 2D steady heat conduction with volumetric source. Uses the `stochastic_tools` module's MultiApp sampling architecture.
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `[StochasticTools]` | Creates dummy main problem (no PDE solved in main app) |
+| `MonteCarlo` sampler | Generates 30 random k values from Uniform distribution |
+| `SamplerFullSolveMultiApp` | Runs one full sub-app solve per sample |
+| `SamplerParameterTransfer` | Sends sampled k to sub-app material property |
+| `SamplerReporterTransfer` | Collects postprocessor values from sub-apps |
+| `SamplerReceiver` | Control in sub-app that accepts transferred parameters |
+
+### What Makes This Case Interesting
+
+First case to use the `stochastic_tools` module. Introduces the MultiApp sampling architecture where the main app orchestrates sub-solves without solving a PDE itself. Shows how uncertainty in material properties propagates to output uncertainty.
+
+### Expected Results
+
+avg_T ranges from 1.09 to 6.26 (right-skewed distribution because T ~ 1/k). Strong linear correlation between avg_T and max_T (slope ≈ 2.32).
+
+---
+
+## Case 46 — Polynomial Chaos Expansion: Surrogate Modeling
+
+### Physics
+
+Build a polynomial chaos surrogate for a 1D diffusion-reaction problem with two uncertain parameters (D and sigma). Train on 36 deterministic quadrature points, then evaluate on 100 new random samples with zero additional PDE solves.
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `Quadrature` sampler | Generates deterministic integration points for training |
+| `PolynomialChaosTrainer` | Trains order-5 PCE from quadrature data |
+| `PolynomialChaos` surrogate | Loaded surrogate model for evaluation |
+| `EvaluateSurrogate` reporter | Evaluates surrogate on new MC samples |
+| `MatReaction` + `DerivativeParsedMaterial` | Handles sign convention for absorption term |
+
+### What Makes This Case Interesting
+
+Demonstrates surrogate-based UQ — 36 training solves replace 100+ MC solves. The polynomial chaos expansion captures the full input-output relationship analytically. Shows the Docker JIT workaround (`disable_fpoptimizer = true`, `enable_jit = false`) for `DerivativeParsedMaterial`.
+
+### Expected Results
+
+Surrogate predictions: mean = 0.177, std = 0.055, range 0.109–0.308. Training data shows smooth monotonic trend across 36 quadrature points.
+
+---
+
+## Case 47 — Heat Source Inversion: PDE-Constrained Optimization
+
+### Physics
+
+Recover an unknown volumetric heat source q from 4 sparse temperature measurements using adjoint-based gradient optimization. Three-file architecture: main (TAO optimizer), forward (heat equation), adjoint (sensitivity equation).
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `[Optimization]` | Creates dummy main problem for optimizer |
+| `Optimize` executioner | Drives TAO L-BFGS optimizer |
+| `GeneralOptimization` | Manages parameters, bounds, and objective |
+| `ParsedOptimizationFunction` | Links optimization parameter to PDE source term |
+| `OptimizationData` | Computes misfit and objective at measurement points |
+| `ReporterPointSource` | Applies misfit as point loads in adjoint equation |
+| `ElementOptimizationSourceFunctionInnerProduct` | Computes gradient dJ/dq |
+
+### What Makes This Case Interesting
+
+First case using the `optimization` module. Introduces adjoint methods — the gradient is computed by solving one additional PDE (the adjoint), not by finite differences. The optimizer recovers q = 1000 from initial guess 500 in just 1 L-BFGS step because the problem is linear.
+
+### Expected Results
+
+Recovered q = 1000.0 (exact match to true value). Objective drops from ~2×10⁴ to 1.6×10⁻²³ in a single iteration.
+
+---
+
+## Case 48 — Latin Hypercube Parameter Study: Multi-Parameter UQ
+
+### Physics
+
+Multi-parameter uncertainty study with 3 uncertain inputs (k, T_left, T_right) using the high-level `[ParameterStudy]` action. 50 Latin Hypercube samples. The entire main input file is just 15 lines.
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `[ParameterStudy]` action | Creates all samplers, multiapps, transfers, and output automatically |
+| Latin Hypercube sampler | Space-filling sampling for efficient parameter coverage |
+
+### What Makes This Case Interesting
+
+Contrast with Case 45's manual setup — the `[ParameterStudy]` action replaces ~50 lines of configuration with ~15 lines. Shows that T_right dominates avg_T, T_left has moderate effect, and k has secondary effect through the volumetric source term.
+
+### Expected Results
+
+50 LHS samples. avg_T ranges from ~105 to ~248 (mean ~179). Strong correlation between T_right and avg_T.
+
+---
+
 ## Troubleshooting Common Errors
 
 **Error: `Object 'Diffusion' was not registered`**
@@ -4728,7 +4832,7 @@ After completing these 44 cases:
 3. **Write your own application**: Use `moose/scripts/stork.py` to scaffold
    a new MOOSE application with custom kernels, materials, and BCs.
 
-4. **Explore more module features**: Cases 14-44 introduce the major physics
+4. **Explore more module features**: Cases 14-48 introduce the major physics
    modules — from solid mechanics and heat transfer through Navier-Stokes,
    electrodynamics, and MHD. Each module has many more capabilities — consult
    the [Modules Reference](modules-reference.md) for full details.

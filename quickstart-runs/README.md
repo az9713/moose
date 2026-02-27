@@ -1,13 +1,13 @@
 # MOOSE Quickstart Tutorial Cases: Complete Reference
 
-This directory contains 44 self-contained simulation cases for learning MOOSE from zero.
+This directory contains 48 self-contained simulation cases for learning MOOSE from zero.
 Each case has its own subdirectory with an input file (`.i`) and pre-run output files.
 You do not need to build or install anything to study the input files, understand the physics,
 and read the results. If you want to run the simulations yourself, see Section 5.
 
 This document is designed so that someone who has never used MOOSE, never written a finite
 element simulation, and is not familiar with scientific computing file formats can read it
-from top to bottom and understand everything in these 44 cases.
+from top to bottom and understand everything in these 48 cases.
 
 Read every section. Do not skip ahead. The later cases build directly on concepts introduced
 in the earlier ones.
@@ -21,7 +21,7 @@ in the earlier ones.
 3. [Understanding Output Files](#3-understanding-output-files)
 4. [How MOOSE Solves Problems](#4-how-moose-solves-problems-conceptual)
 5. [Running Simulations](#5-running-simulations)
-6. [The 44 Cases at a Glance](#6-the-44-cases-at-a-glance)
+6. [The 48 Cases at a Glance](#6-the-48-cases-at-a-glance)
 7. [Creating Your Own Simulations](#7-creating-your-own-simulations)
 8. [Glossary](#8-glossary)
 
@@ -1347,7 +1347,7 @@ To override: add `file_base = my_custom_name` to the `[Outputs]` block.
 
 ---
 
-## 6. The 44 Cases at a Glance
+## 6. The 48 Cases at a Glance
 
 The cases are ordered from simplest to most complex. Cases 01-13 use only the MOOSE
 framework (Diffusion, BodyForce, MatDiffusion, etc.). Cases 14-21 use physics **modules**
@@ -1408,6 +1408,10 @@ spanning Chapters 4-10. Study them in order.
 | 42 | `case42-sod-shock-tube/` | Sod Shock Tube — 1D Riemann | Compressible Euler, shock/contact/rarefaction at t=0.2 | CNS HLLC flux splitting, ExplicitSSPRungeKutta, IdealGasFluidProperties | Expert |
 | 43 | `case43-ekman-spiral/` | Ekman Spiral — Rotating BL | Coriolis-coupled vx/vy in rotating frame, exact solution | CoupledForce, BodyForce, ADMatDiffusion, analytical Ekman spiral | Intermediate |
 | 44 | `case44-alfven-wave/` | Alfven Wave — MHD Elsasser | Elsasser decomposition: d+ rightward, d- zero, diffusive decay | ADConservativeAdvection, ADMatDiffusion, opposite velocities | Advanced |
+| 45 | `case45-monte-carlo-uq/` | Monte Carlo UQ | 2D heat conduction with uncertain k, 30 MC samples | `SamplerFullSolveMultiApp`, `MonteCarlo` sampler | Advanced |
+| 46 | `case46-polynomial-chaos/` | Polynomial Chaos | 1D diffusion-reaction surrogate, 36 training + 100 eval | `PolynomialChaosTrainer`, `EvaluateSurrogate` | Advanced |
+| 47 | `case47-heat-source-inversion/` | Heat Source Inversion | Adjoint-based recovery of unknown heat source | `Optimize`, `GeneralOptimization`, adjoint method | Expert |
+| 48 | `case48-parameter-study/` | Parameter Study | 3-parameter LHS with ParameterStudy action | `[ParameterStudy]` action, `LatinHypercube` | Advanced |
 
 ### What each case produces
 
@@ -1457,6 +1461,10 @@ spanning Chapters 4-10. Study them in order.
 | 42 | `case42_sod_shock_tube_out.e`, `case42_sod_shock_tube_out.csv` |
 | 43 | `case43_ekman_spiral_out.e`, `case43_ekman_spiral_out.csv` |
 | 44 | `case44_alfven_wave_out.e`, `case44_alfven_wave_out.csv` |
+| 45 | `case45_monte_carlo_uq_out_storage_0001.csv.0` | Sampled avg_T and max_T for 30 MC samples |
+| 46 | `case46_polynomial_chaos_out_eval_0002.csv` | 100 PCE surrogate predictions |
+| 47 | `case47_main_out.csv`, `case47_main_out_OptimizationReporter_0001.csv` | Objective convergence and recovered parameter |
+| 48 | `case48_parameter_study_csv_study_results_0001.csv` | 50 LHS parameter samples and QoI values |
 
 All pre-run output files for cases 01-13 are included in this directory so you can
 examine them without running anything. Cases 14-44 require `combined-opt` (all modules)
@@ -1466,7 +1474,7 @@ to run — see each case's README for Docker instructions.
 
 ## 7. Creating Your Own Simulations
 
-Once you understand the 44 cases, you will want to adapt them or build new simulations
+Once you understand the 48 cases, you will want to adapt them or build new simulations
 from scratch. This section walks through the process systematically.
 
 ### Step 1: Define Your Physics

@@ -238,6 +238,8 @@ python/MooseDocs/test/output
 !quickstart-runs/**/*.e
 !quickstart-runs/**/*.e-s*
 !quickstart-runs/**/*.csv
+!quickstart-runs/**/*.csv.*
+!quickstart-runs/**/*.json
 !quickstart-runs/**/*.png
 
 # Chigger

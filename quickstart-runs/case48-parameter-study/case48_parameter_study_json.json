@@ -1,0 +1,98 @@
+{
+    "app_name": "main",
+    "current_time": "Fri Feb 27 00:17:23 2026",
+    "executable": "/opt/moose/bin/combined-opt",
+    "executable_time": "Sat Feb 14 15:31:49 2026",
+    "libmesh_version": "502d42871efb6093844d2e02abe82bb15d48a033",
+    "moose_version": "git commit e8b3c00851 on 2026-02-14",
+    "petsc_version": "3.24.3",
+    "reporters": {
+        "study_statistics": {
+            "confidence_intervals": {
+                "levels": [
+                    0.01,
+                    0.05,
+                    0.1,
+                    0.9,
+                    0.95,
+                    0.99
+                ],
+                "method": "percentile",
+                "replicates": 1000,
+                "seed": 1
+            },
+            "type": "StatisticsReporter",
+            "values": {
+                "study_results_avg_T:value_MEAN": {
+                    "stat": "MEAN",
+                    "type": "std::pair<double, std::vector<double>>"
+                },
+                "study_results_avg_T:value_STDDEV": {
+                    "stat": "STDDEV",
+                    "type": "std::pair<double, std::vector<double>>"
+                },
+                "study_results_max_T:value_MEAN": {
+                    "stat": "MEAN",
+                    "type": "std::pair<double, std::vector<double>>"
+                },
+                "study_results_max_T:value_STDDEV": {
+                    "stat": "STDDEV",
+                    "type": "std::pair<double, std::vector<double>>"
+                }
+            }
+        }
+    },
+    "slepc_version": "3.24.0",
+    "time_steps": [
+        {
+            "study_statistics": {
+                "study_results_avg_T:value_MEAN": [
+                    179.1130406465935,
+                    [
+                        165.70735031453617,
+                        170.06343638464577,
+                        171.95133637928112,
+                        185.796644662398,
+                        188.07613484377742,
+                        191.08903903195144
+                    ]
+                ],
+                "study_results_avg_T:value_STDDEV": [
+                    35.698739437213725,
+                    [
+                        29.079102600060022,
+                        30.98732030931384,
+                        31.83375022241804,
+                        38.54099297625218,
+                        39.33257982254274,
+                        41.52522966438275
+                    ]
+                ],
+                "study_results_max_T:value_MEAN": [
+                    300.0822857153694,
+                    [
+                        276.9943849122789,
+                        286.2608710882552,
+                        289.06115980984,
+                        310.95009611940725,
+                        314.03859992871145,
+                        319.61983903738025
+                    ]
+                ],
+                "study_results_max_T:value_STDDEV": [
+                    58.20292161693536,
+                    [
+                        48.785855931247106,
+                        51.44922915892368,
+                        52.9143560353549,
+                        62.1729326366922,
+                        63.5594335253706,
+                        66.28826548127923
+                    ]
+                ]
+            },
+            "time": 1.0,
+            "time_step": 1
+        }
+    ]
+}
