@@ -635,47 +635,57 @@ These cases use the MOOSE `electromagnetics` and `optimization` modules to model
 <table>
 <tr>
 <td align="center" width="25%">
-<a href="quickstart-runs/case84-lossy-tem-cavity"><b>Case 84</b>: Lossy TEM Cavity</a><br/>
+<a href="quickstart-runs/case84-lossy-tem-cavity"><img src="quickstart-runs/case84-lossy-tem-cavity/case84_lossy_tem_cavity.png" width="100%"/></a><br/>
+<b>Case 84</b>: Lossy TEM Cavity<br/>
 <sub>Complex Eigenvalue Q Factor</sub>
 </td>
 <td align="center" width="25%">
-<a href="quickstart-runs/case85-hertzian-dipole"><b>Case 85</b>: Hertzian Dipole</a><br/>
+<a href="quickstart-runs/case85-hertzian-dipole"><img src="quickstart-runs/case85-hertzian-dipole/case85_hertzian_dipole.png" width="100%"/></a><br/>
+<b>Case 85</b>: Hertzian Dipole<br/>
 <sub>sin²θ Radiation Pattern (RZ)</sub>
 </td>
 <td align="center" width="25%">
-<a href="quickstart-runs/case86-half-wave-dipole"><b>Case 86</b>: Half-Wave Dipole</a><br/>
+<a href="quickstart-runs/case86-half-wave-dipole"><img src="quickstart-runs/case86-half-wave-dipole/case86_half_wave_dipole.png" width="100%"/></a><br/>
+<b>Case 86</b>: Half-Wave Dipole<br/>
 <sub>2.15 dBi Gain Pattern</sub>
 </td>
 <td align="center" width="25%">
-<a href="quickstart-runs/case87-phased-array"><b>Case 87</b>: Phased Array</a><br/>
+<a href="quickstart-runs/case87-phased-array"><img src="quickstart-runs/case87-phased-array/case87_phased_array.png" width="100%"/></a><br/>
+<b>Case 87</b>: Phased Array<br/>
 <sub>Beam Steering & Grating Lobes</sub>
 </td>
 </tr>
 <tr>
 <td align="center">
-<a href="quickstart-runs/case88-single-slit-diffraction"><b>Case 88</b>: Single-Slit Diffraction</a><br/>
+<a href="quickstart-runs/case88-single-slit-diffraction"><img src="quickstart-runs/case88-single-slit-diffraction/case88_single_slit_diffraction.png" width="100%"/></a><br/>
+<b>Case 88</b>: Single-Slit Diffraction<br/>
 <sub>Fraunhofer Pattern (λ/a)</sub>
 </td>
 <td align="center">
-<a href="quickstart-runs/case89-dielectric-waveguide"><b>Case 89</b>: Dielectric Waveguide</a><br/>
+<a href="quickstart-runs/case89-dielectric-waveguide"><img src="quickstart-runs/case89-dielectric-waveguide/case89_dielectric_waveguide.png" width="100%"/></a><br/>
+<b>Case 89</b>: Dielectric Waveguide<br/>
 <sub>Guided TE Modes (V-number)</sub>
 </td>
 <td align="center">
-<a href="quickstart-runs/case90-parabolic-reflector"><b>Case 90</b>: Parabolic Reflector</a><br/>
+<a href="quickstart-runs/case90-parabolic-reflector"><img src="quickstart-runs/case90-parabolic-reflector/case90_parabolic_reflector.png" width="100%"/></a><br/>
+<b>Case 90</b>: Parabolic Reflector<br/>
 <sub>Focal Spot Formation</sub>
 </td>
 <td align="center">
-<a href="quickstart-runs/case91-radar-cross-section"><b>Case 91</b>: Radar Cross Section</a><br/>
+<a href="quickstart-runs/case91-radar-cross-section"><img src="quickstart-runs/case91-radar-cross-section/case91_radar_cross_section.png" width="100%"/></a><br/>
+<b>Case 91</b>: Radar Cross Section<br/>
 <sub>Flat Plate Scattering (4πL²/λ²)</sub>
 </td>
 </tr>
 <tr>
 <td align="center">
-<a href="quickstart-runs/case92-interferometer"><b>Case 92</b>: Interferometer</a><br/>
+<a href="quickstart-runs/case92-interferometer"><img src="quickstart-runs/case92-interferometer/case92_interferometer.png" width="100%"/></a><br/>
+<b>Case 92</b>: Interferometer<br/>
 <sub>Aperture Synthesis Fringes</sub>
 </td>
 <td align="center">
-<a href="quickstart-runs/case93-inverse-source-recovery"><b>Case 93</b>: Inverse Source Recovery</a><br/>
+<a href="quickstart-runs/case93-inverse-source-recovery"><img src="quickstart-runs/case93-inverse-source-recovery/case93_inverse_source_recovery.png" width="100%"/></a><br/>
+<b>Case 93</b>: Inverse Source Recovery<br/>
 <sub>Adjoint L-BFGS Optimization</sub>
 </td>
 <td colspan="2"></td>
