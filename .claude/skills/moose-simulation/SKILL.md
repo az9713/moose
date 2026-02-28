@@ -347,7 +347,80 @@ Bullet list of what the learner should take away from this case.
 
 ---
 
-## 7. Common Failure Patterns and Fixes
+## 7. README Image Display Grid (Root README.md)
+
+After generating plots for new cases, update the root `README.md` image grid
+so that simulation thumbnails appear on GitHub. The grid uses a 4-column HTML
+table with linked thumbnail images.
+
+### 7.1 Grid Structure
+
+Each batch of cases gets its own `<table>` section. Cases are arranged in rows
+of 4, with each cell following this exact pattern:
+
+```html
+<table>
+<tr>
+<td align="center" width="25%">
+<a href="quickstart-runs/caseNN-slug"><img src="quickstart-runs/caseNN-slug/caseNN_slug.png" width="100%"/></a><br/>
+<b>Case NN</b>: Short Title<br/>
+<sub>One-line physics description</sub>
+</td>
+<!-- repeat for up to 4 columns per row -->
+</tr>
+</table>
+```
+
+### 7.2 Rules
+
+| Rule | Why |
+|------|-----|
+| Use `<img src="..." width="100%"/>` (not markdown `![](...)`) | Markdown images don't respect column widths on GitHub |
+| Set `width="25%"` on every `<td>` | Ensures equal 4-column layout |
+| Wrap `<img>` in `<a href="...">` pointing to the case directory | Clicking the thumbnail navigates to the case README |
+| Use `<b>Case NN</b>: Title` + `<sub>description</sub>` | Matches the established visual style |
+| Start a new `<tr>` every 4 cases | Keeps the grid compact and readable |
+| If the final row has fewer than 4 cases, leave remaining cells empty | GitHub renders the partial row correctly |
+
+### 7.3 Where to Add
+
+New batch sections go after the last existing batch in `README.md`. Look for
+the pattern:
+
+```
+### Batch X: Title (Cases NN-MM)
+<table>
+...
+</table>
+```
+
+Add the new batch heading and table immediately after the previous batch's
+closing `</table>`.
+
+### 7.4 Updating Case Counts
+
+When adding a new batch, search the entire `README.md` for the previous total
+case count (e.g., "93") and update all occurrences to the new total. Also check
+these files for stale counts:
+
+- `docs/quick-start.md`
+- `docs/zero-to-hero.md`
+- `docs/moose-simulation-skill-guide.md`
+- `CLAUDE.md`
+- `quickstart-runs/README.md`
+
+### 7.5 Checklist
+
+After completing a new batch of cases:
+
+- [ ] Add batch heading and `<table>` grid to root `README.md`
+- [ ] Verify every `<img src="...">` path matches the actual PNG filename
+- [ ] Update all case count references across documentation files
+- [ ] Verify the grid renders correctly (push and check on GitHub)
+
+---
+
+## 8. Common Failure Patterns and Fixes
 
 These are real failures encountered across 21 cases. Check for these FIRST
 when debugging a failed run.
@@ -433,7 +506,7 @@ preconditioner, or ill-conditioned system.
 
 ---
 
-## 8. Physics Module Quick Reference
+## 9. Physics Module Quick Reference
 
 Modules used in quickstart cases 01-21 and their key objects:
 
@@ -449,7 +522,7 @@ Modules used in quickstart cases 01-21 and their key objects:
 
 ---
 
-## 9. Complete Run Workflow Checklist
+## 10. Complete Run Workflow Checklist
 
 When asked to create and run a new MOOSE simulation, follow ALL steps:
 
@@ -458,8 +531,9 @@ When asked to create and run a new MOOSE simulation, follow ALL steps:
 - [ ] **3. Write input file** (Section 2): header, comments, outputs, portability rules
 - [ ] **4. Run in Docker** (Section 3): use canonical command, check for convergence
 - [ ] **5. Validate outputs** (Section 4): `.e` and `.csv` exist, values are sane
-- [ ] **6. If run fails**: diagnose using Section 7, fix, and re-run
+- [ ] **6. If run fails**: diagnose using Section 8, fix, and re-run
 - [ ] **7. Generate plots** (Section 5): add function to `visualize_all.py`, handle nodal vs element vars
 - [ ] **8. Verify plots visually**: read the PNG files and confirm physics looks correct
 - [ ] **9. Write README.md** (Section 6): physics, walkthrough, Docker command, results
-- [ ] **10. Report results** to user: summarize what converged, what the plots show, physical interpretation
+- [ ] **10. Update image grid** (Section 7): add thumbnails to root README.md, update case counts
+- [ ] **11. Report results** to user: summarize what converged, what the plots show, physical interpretation
