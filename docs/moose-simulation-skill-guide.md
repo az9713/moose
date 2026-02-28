@@ -26,7 +26,7 @@ will then follow the skill's 9-section checklist systematically.
 
 ## What Was Actually Built
 
-Over multiple sessions the skill guided creation of **83 quickstart cases**
+Over multiple sessions the skill guided creation of **93 quickstart cases**
 covering 16 MOOSE physics modules:
 
 | Batch | Cases | Source Textbook | Physics |
@@ -42,6 +42,7 @@ covering 16 MOOSE physics modules:
 | Chemical Reactions & Transport (Batch D) | 64–68 | Reactive transport and geochemistry | Reaction-diffusion (first-order decay + Gaussian), contaminant ADR with Darcy convection, mineral precipitation (Arrhenius kinetics), aqueous equilibrium speciation and pH, calcite dissolution (equilibrium + kinetic) |
 | Advanced Multiphysics | 69–73 | Various | MultiApp coupling (Picard iteration), mortar contact, XFEM crack, THM pipe flow, level set advection |
 | Kong | 74–83 | Professor Jin Au Kong, [MIT 6.635 *Advanced Electromagnetism*](https://ocw.mit.edu/courses/6-635-advanced-electromagnetism-spring-2003/pages/lecture-notes/) (Spring 2003) | Left-handed materials, Drude skin depth, 3D waveguide (NEDELEC_ONE), cylinder scattering, pulse reflection, Snell's law, Bragg mirror, photonic crystal eigenvalue, 3D cavity resonance, Veselago flat lens |
+| Staelin | 84–93 | MIT 6.661 *Electromagnetics and Applications* (Prof. D. H. Staelin) | Lossy TEM cavity Q factor, Hertzian dipole, half-wave dipole, phased array beam steering, single-slit diffraction, dielectric waveguide modes, parabolic reflector focusing, radar cross section, aperture synthesis interferometer, inverse source recovery (adjoint optimization) |
 
 Every case converges in Docker with `combined-opt` in under 2 minutes and
 produces both Exodus (`.e`) and CSV output files.
@@ -304,7 +305,7 @@ debugging:
    prevents 30 minutes of debugging silent Docker failures.
 
 3. **Read existing cases as templates.** Before writing a new `.i` file,
-   find the closest existing case and adapt it. The 83 quickstart cases
+   find the closest existing case and adapt it. The 93 quickstart cases
    cover most MOOSE object types.
 
 4. **Trust the failure catalog first.** When a run fails, check Section 7
