@@ -90,6 +90,15 @@ This repository focuses on **learning materials** for the MOOSE framework:
 - **An 8-week study plan** for self-learners going from zero to productive MOOSE developer
 - **Docker instructions** for running MOOSE on Windows without compiling from source
 
+Many of the advanced quickstart cases are drawn from MIT course materials by four professors:
+
+| Professor | Course / Textbook | Cases | Topics |
+|---|---|---|---|
+| **James R. Melcher** | *Continuum Electromechanics* (MIT Press, 1981) | 22–29 | Charge relaxation, electrohydrodynamics, MHD, ferrofluids, electroquasistatics |
+| **Herman A. Haus** | *Electromagnetic Noise and Quantum Optical Measurements* (Springer, 2000) — classical chapters | 30–36 | Waveguide eigenvalues, driven cavities, dielectric slabs, coupled resonators, thermal noise, dispersive pulses, solitons |
+| **Jin Au Kong** | [MIT 6.635 *Advanced Electromagnetism*](https://ocw.mit.edu/courses/6-635-advanced-electromagnetism-spring-2003/pages/lecture-notes/) (Spring 2003) | 74–83 | Left-handed materials, Drude skin depth, 3D waveguides, cylinder scattering, Bragg mirrors, photonic crystals, cavity resonance, Veselago lens |
+| **David H. Staelin** | MIT 6.661 *Receivers, Antennas, and Signals* | 84–93 | Lossy TEM cavity Q factor, Hertzian and half-wave dipoles, phased array beamforming, single-slit diffraction, dielectric waveguide modes, parabolic reflector, radar cross section, aperture synthesis, inverse source recovery |
+
 To actually build and run MOOSE simulations, you need the framework itself from the [original repository](https://github.com/idaholab/moose) or the official [Docker image](https://hub.docker.com/r/idaholab/moose) (`idaholab/moose:latest`).
 
 ---
