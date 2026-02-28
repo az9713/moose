@@ -99,6 +99,13 @@ Many of the advanced quickstart cases are drawn from MIT course materials by fou
 | **Jin Au Kong** | [MIT 6.635 *Advanced Electromagnetism*](https://ocw.mit.edu/courses/6-635-advanced-electromagnetism-spring-2003/pages/lecture-notes/) (Spring 2003) | 74–83 | Left-handed materials, Drude skin depth, 3D waveguides, cylinder scattering, Bragg mirrors, photonic crystals, cavity resonance, Veselago lens |
 | **David H. Staelin** | MIT 6.661 *Receivers, Antennas, and Signals* | 84–93 | Lossy TEM cavity Q factor, Hertzian and half-wave dipoles, phased array beamforming, single-slit diffraction, dielectric waveguide modes, parabolic reflector, radar cross section, aperture synthesis, inverse source recovery |
 
+Additional cases are based on textbooks by these authors:
+
+| Author | Textbook | Cases | Topics |
+|---|---|---|---|
+| **Michel Rieutord** | *Fluid Dynamics: An Introduction* (Springer, 2015) — Chapters 4–10 | 37–44 | Rayleigh-Benard convection, Kelvin-Helmholtz instability, Blasius boundary layer, k-epsilon turbulence, Rayleigh-Taylor instability, Sod shock tube, Ekman spiral, Alfven wave |
+| **Ralph C. Smith** | *Uncertainty Quantification: Theory, Implementation, and Applications* (SIAM, 2014) | 45–48 | Monte Carlo UQ, polynomial chaos expansion, heat source inversion (adjoint optimization), Latin Hypercube parameter study |
+
 To actually build and run MOOSE simulations, you need the framework itself from the [original repository](https://github.com/idaholab/moose) or the official [Docker image](https://hub.docker.com/r/idaholab/moose) (`idaholab/moose:latest`).
 
 ---
