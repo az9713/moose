@@ -1,5 +1,5 @@
 """
-MOOSE Quick-Start: Visualization Script for All 83 Cases
+MOOSE Quick-Start: Visualization Script for All 93 Cases
 =========================================================
 Generates 2-3 plots per case and saves each PNG into that case's own directory.
 For example, Case 01's plot is written to case01-1d-steady-diffusion/case01_diffusion_1d.png.
@@ -152,6 +152,16 @@ CASE_DIRS = {
     "81": "case81-photonic-crystal",
     "82": "case82-3d-cavity-resonance",
     "83": "case83-veselago-lens",
+    "84": "case84-lossy-tem-cavity",
+    "85": "case85-hertzian-dipole",
+    "86": "case86-half-wave-dipole",
+    "87": "case87-phased-array",
+    "88": "case88-single-slit-diffraction",
+    "89": "case89-dielectric-waveguide",
+    "90": "case90-parabolic-reflector",
+    "91": "case91-radar-cross-section",
+    "92": "case92-interferometer",
+    "93": "case93-inverse-source-recovery",
 }
 
 
@@ -4856,6 +4866,386 @@ def plot_case83():
     save_fig(fig, "83", "case83_veselago_lens.png")
 
 
+def plot_case84():
+    """Case 84: Lossy TEM Cavity — Q Factor"""
+    print("Case 84: Lossy TEM Cavity — Complex Eigenvalue Q Factor")
+    efile = case_path("84", "case84_lossy_tem_cavity_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case84")
+        return
+    ds = open_exodus(efile)
+    x = np.array(ds.variables["coordx"][:], dtype=float)
+    names = get_nod_var_names(ds)
+    Er_idx = names.index("E_real") + 1
+    Ei_idx = names.index("E_imag") + 1
+    times = get_times(ds)
+    n_modes = min(len(times), 4)
+    order = np.argsort(x)
+    fig, axes = plt.subplots(2, 2, figsize=(11, 8))
+    for i, ax in enumerate(axes.flat):
+        if i >= n_modes:
+            ax.set_visible(False)
+            continue
+        Er = get_nod_var(ds, Er_idx, timestep=i)[order]
+        Ei = get_nod_var(ds, Ei_idx, timestep=i)[order]
+        ax.plot(x[order], Er, "b-", lw=1.2, label="E_real")
+        ax.plot(x[order], Ei, "r--", lw=1.2, label="E_imag")
+        ax.set_title(f"Mode {i + 1}", fontsize=10)
+        ax.set_xlabel("x (m)")
+        ax.set_ylabel("E field")
+        ax.legend(fontsize=8)
+        ax.grid(True, alpha=0.3)
+    ds.close()
+    fig.suptitle("Case 84: Lossy TEM Cavity — Resonant Eigenmodes", fontsize=13)
+    fig.tight_layout()
+    save_fig(fig, "84", "case84_lossy_tem_cavity.png")
+
+
+def plot_case85():
+    """Case 85: Hertzian Dipole Radiation Pattern"""
+    print("Case 85: Hertzian Dipole — 2D RZ Radiation Pattern")
+    efile = case_path("85", "case85_hertzian_dipole_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case85")
+        return
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)  # x=r, y=z in RZ coordinates
+    names = get_nod_var_names(ds)
+    Ei_idx = names.index("E_intensity") + 1
+    Ei = get_nod_var(ds, Ei_idx)
+    ds.close()
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    # Left: E_intensity contour in RZ plane
+    tc = axes[0].tricontourf(x, y, Ei, levels=40, cmap="hot")
+    plt.colorbar(tc, ax=axes[0], label="|E|²")
+    axes[0].set_xlabel("r (wavelengths)")
+    axes[0].set_ylabel("z (wavelengths)")
+    axes[0].set_title("Field Intensity |E|² (RZ plane)")
+    axes[0].set_aspect("equal")
+    axes[0].plot(0, 0, "w*", ms=10, label="Dipole")
+    axes[0].legend(fontsize=9)
+    # Right: angular pattern at fixed radius
+    # Extract points at approximately r²+z² ≈ R² for large R
+    R_target = 0.8 * x.max()
+    dist = np.sqrt(x**2 + y**2)
+    tol = 0.1 * R_target
+    mask = np.abs(dist - R_target) < tol
+    if mask.sum() > 5:
+        theta = np.arctan2(x[mask], y[mask])  # angle from z-axis
+        I_ring = Ei[mask]
+        order = np.argsort(theta)
+        axes[1].plot(np.degrees(theta[order]), I_ring[order], "b-", lw=1.5)
+        # Analytical: sin²θ pattern
+        theta_an = np.linspace(0, np.pi, 100)
+        I_an = np.sin(theta_an)**2
+        I_an *= np.max(I_ring) / np.max(I_an) if np.max(I_an) > 0 else 1
+        axes[1].plot(np.degrees(theta_an), I_an, "r--", lw=1.2, label="sin²θ (theory)")
+        axes[1].legend(fontsize=9)
+    axes[1].set_xlabel("θ (degrees from z-axis)")
+    axes[1].set_ylabel("Intensity")
+    axes[1].set_title(f"Radiation Pattern at R ≈ {R_target:.1f}")
+    axes[1].grid(True, alpha=0.3)
+    fig.suptitle("Case 85: Hertzian Dipole — Radiation Pattern", fontsize=13)
+    fig.tight_layout()
+    save_fig(fig, "85", "case85_hertzian_dipole.png")
+
+
+def plot_case86():
+    """Case 86: Half-Wave Dipole Antenna"""
+    print("Case 86: Half-Wave Dipole — Gain Pattern")
+    efile = case_path("86", "case86_half_wave_dipole_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case86")
+        return
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)  # x=r, y=z
+    names = get_nod_var_names(ds)
+    Ei_idx = names.index("E_intensity") + 1
+    Ei = get_nod_var(ds, Ei_idx)
+    ds.close()
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    tc = axes[0].tricontourf(x, y, Ei, levels=40, cmap="hot")
+    plt.colorbar(tc, ax=axes[0], label="|E|²")
+    axes[0].set_xlabel("r (wavelengths)")
+    axes[0].set_ylabel("z (wavelengths)")
+    axes[0].set_title("Field Intensity |E|² (RZ plane)")
+    axes[0].set_aspect("equal")
+    # Right: angular pattern comparison with theory
+    R_target = 0.8 * x.max()
+    dist = np.sqrt(x**2 + y**2)
+    tol = 0.1 * R_target
+    mask = np.abs(dist - R_target) < tol
+    if mask.sum() > 5:
+        theta = np.arctan2(x[mask], y[mask])
+        I_ring = Ei[mask]
+        order = np.argsort(theta)
+        axes[1].plot(np.degrees(theta[order]), I_ring[order], "b-", lw=1.5, label="MOOSE")
+        # Analytical half-wave dipole: cos²(π/2 cosθ)/sin²θ
+        theta_an = np.linspace(0.01, np.pi - 0.01, 200)
+        I_an = (np.cos(np.pi / 2 * np.cos(theta_an)) / np.sin(theta_an))**2
+        I_an *= np.max(I_ring) / np.max(I_an) if np.max(I_an) > 0 else 1
+        axes[1].plot(np.degrees(theta_an), I_an, "r--", lw=1.2, label="cos²(π/2 cosθ)/sin²θ")
+        axes[1].legend(fontsize=9)
+    axes[1].set_xlabel("θ (degrees from z-axis)")
+    axes[1].set_ylabel("Intensity")
+    axes[1].set_title(f"Radiation Pattern at R ≈ {R_target:.1f}")
+    axes[1].grid(True, alpha=0.3)
+    fig.suptitle("Case 86: Half-Wave Dipole — Gain Pattern", fontsize=13)
+    fig.tight_layout()
+    save_fig(fig, "86", "case86_half_wave_dipole.png")
+
+
+def plot_case87():
+    """Case 87: Phased Array Beamforming"""
+    print("Case 87: Phased Array — Beam Steering")
+    efile = case_path("87", "case87_phased_array_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case87")
+        return
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    names = get_nod_var_names(ds)
+    Ei_idx = names.index("E_intensity") + 1
+    Ei = get_nod_var(ds, Ei_idx)
+    ds.close()
+    fig, ax = plt.subplots(figsize=(10, 8))
+    tc = ax.tricontourf(x, y, Ei, levels=50, cmap="hot")
+    plt.colorbar(tc, ax=ax, label="|E|²")
+    ax.set_xlabel("x (wavelengths)")
+    ax.set_ylabel("y (wavelengths)")
+    ax.set_title("Case 87: Phased Array — Beam Pattern (E Intensity)")
+    ax.set_aspect("equal")
+    fig.tight_layout()
+    save_fig(fig, "87", "case87_phased_array.png")
+
+
+def plot_case88():
+    """Case 88: Single-Slit Diffraction"""
+    print("Case 88: Single-Slit Diffraction — Resolution Limit")
+    efile = case_path("88", "case88_single_slit_diffraction_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case88")
+        return
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    names = get_nod_var_names(ds)
+    Ei_idx = names.index("E_intensity") + 1
+    Ei = get_nod_var(ds, Ei_idx)
+    ds.close()
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+    # Left: 2D contour
+    tc = axes[0].tricontourf(x, y, Ei, levels=50, cmap="hot")
+    plt.colorbar(tc, ax=axes[0], label="|E|²")
+    axes[0].set_xlabel("x (wavelengths)")
+    axes[0].set_ylabel("y (wavelengths)")
+    axes[0].set_title("Diffraction Pattern |E|²")
+    axes[0].set_aspect("equal")
+    # Right: line cut at y ≈ 0.8*y_max (far field)
+    y_cut = 0.8 * y.max()
+    tol = 0.05 * (y.max() - y.min())
+    mask = np.abs(y - y_cut) < tol
+    if mask.sum() > 5:
+        order = np.argsort(x[mask])
+        axes[1].plot(x[mask][order], Ei[mask][order], "b-", lw=1.5)
+    axes[1].set_xlabel("x (wavelengths)")
+    axes[1].set_ylabel("|E|²")
+    axes[1].set_title(f"Far-Field Slice at y ≈ {y_cut:.1f}")
+    axes[1].grid(True, alpha=0.3)
+    fig.suptitle("Case 88: Single-Slit Diffraction — Fraunhofer Pattern", fontsize=13)
+    fig.tight_layout()
+    save_fig(fig, "88", "case88_single_slit_diffraction.png")
+
+
+def plot_case89():
+    """Case 89: Dielectric Slab Waveguide Modes"""
+    print("Case 89: Dielectric Waveguide — Guided TE Modes")
+    efile = case_path("89", "case89_dielectric_waveguide_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case89")
+        return
+    ds = open_exodus(efile)
+    x = np.array(ds.variables["coordx"][:], dtype=float)
+    names = get_nod_var_names(ds)
+    psi_idx = names.index("psi") + 1
+    times = get_times(ds)
+    n_modes = min(len(times), 4)
+    order = np.argsort(x)
+    fig, axes = plt.subplots(2, 2, figsize=(11, 8))
+    for i, ax in enumerate(axes.flat):
+        if i >= n_modes:
+            ax.set_visible(False)
+            continue
+        psi = get_nod_var(ds, psi_idx, timestep=i)[order]
+        ax.plot(x[order], psi, "b-", lw=1.5)
+        # Shade core region (assuming core is in the middle)
+        x_min, x_max = x.min(), x.max()
+        x_mid = (x_min + x_max) / 2
+        core_half = (x_max - x_min) * 0.1  # approximate core region
+        ax.axvspan(x_mid - core_half, x_mid + core_half, alpha=0.15, color="orange", label="Core")
+        ax.set_title(f"Mode {i + 1}", fontsize=10)
+        ax.set_xlabel("x (μm)")
+        ax.set_ylabel("ψ (mode profile)")
+        ax.legend(fontsize=8)
+        ax.grid(True, alpha=0.3)
+    ds.close()
+    fig.suptitle("Case 89: Dielectric Waveguide — Guided TE Mode Profiles", fontsize=13)
+    fig.tight_layout()
+    save_fig(fig, "89", "case89_dielectric_waveguide.png")
+
+
+def plot_case90():
+    """Case 90: Parabolic Reflector Focusing"""
+    print("Case 90: Parabolic Reflector — Focal Spot")
+    efile = case_path("90", "case90_parabolic_reflector_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case90")
+        return
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    names = get_nod_var_names(ds)
+    Ei_idx = names.index("E_intensity") + 1
+    Ei = get_nod_var(ds, Ei_idx)
+    ds.close()
+    fig, ax = plt.subplots(figsize=(10, 8))
+    # Clip intensity for better visualization (focus is very bright)
+    Ei_clip = np.clip(Ei, 0, np.percentile(Ei, 99))
+    tc = ax.tricontourf(x, y, Ei_clip, levels=50, cmap="hot")
+    plt.colorbar(tc, ax=ax, label="|E|² (clipped at 99th percentile)")
+    ax.set_xlabel("x (wavelengths)")
+    ax.set_ylabel("y (wavelengths)")
+    ax.set_title("Case 90: Parabolic Reflector — Field Intensity (Focusing)")
+    ax.set_aspect("equal")
+    fig.tight_layout()
+    save_fig(fig, "90", "case90_parabolic_reflector.png")
+
+
+def plot_case91():
+    """Case 91: Radar Cross Section"""
+    print("Case 91: Radar Cross Section — Flat Plate Scattering")
+    efile = case_path("91", "case91_radar_cross_section_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case91")
+        return
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    names = get_nod_var_names(ds)
+    Er_idx = names.index("E_real") + 1
+    Ei_idx = names.index("E_intensity") + 1
+    Er = get_nod_var(ds, Er_idx)
+    Eint = get_nod_var(ds, Ei_idx)
+    ds.close()
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+    # Left: E_real (wave pattern showing scattering)
+    vmax = np.percentile(np.abs(Er), 98)
+    tc1 = axes[0].tricontourf(x, y, Er, levels=40, cmap="RdBu_r", vmin=-vmax, vmax=vmax)
+    plt.colorbar(tc1, ax=axes[0], label="E_real")
+    axes[0].set_xlabel("x (wavelengths)")
+    axes[0].set_ylabel("y (wavelengths)")
+    axes[0].set_title("Scattered E_real (Wave Pattern)")
+    axes[0].set_aspect("equal")
+    # Right: E_intensity
+    Eint_clip = np.clip(Eint, 0, np.percentile(Eint, 99))
+    tc2 = axes[1].tricontourf(x, y, Eint_clip, levels=40, cmap="hot")
+    plt.colorbar(tc2, ax=axes[1], label="|E|²")
+    axes[1].set_xlabel("x (wavelengths)")
+    axes[1].set_ylabel("y (wavelengths)")
+    axes[1].set_title("Scattered Field Intensity")
+    axes[1].set_aspect("equal")
+    fig.suptitle("Case 91: Radar Cross Section — Flat Plate", fontsize=13)
+    fig.tight_layout()
+    save_fig(fig, "91", "case91_radar_cross_section.png")
+
+
+def plot_case92():
+    """Case 92: Aperture Synthesis Interferometer"""
+    print("Case 92: Aperture Synthesis — Interference Fringes")
+    efile = case_path("92", "case92_interferometer_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case92")
+        return
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    names = get_nod_var_names(ds)
+    Ei_idx = names.index("E_intensity") + 1
+    Ei = get_nod_var(ds, Ei_idx)
+    ds.close()
+    fig, ax = plt.subplots(figsize=(10, 8))
+    tc = ax.tricontourf(x, y, Ei, levels=50, cmap="hot")
+    plt.colorbar(tc, ax=ax, label="|E|²")
+    ax.set_xlabel("x (wavelengths)")
+    ax.set_ylabel("y (wavelengths)")
+    ax.set_title("Case 92: Interferometer — Fringe Pattern (E Intensity)")
+    ax.set_aspect("equal")
+    fig.tight_layout()
+    save_fig(fig, "92", "case92_interferometer.png")
+
+
+def plot_case93():
+    """Case 93: Inverse Source Recovery"""
+    print("Case 93: Inverse Source Recovery — PDE-Constrained Optimization")
+    csv_file = case_path("93", "case93_inverse_source_recovery_out.csv")
+    param_file = case_path("93", "case93_inverse_source_recovery_out_OptimizationReporter_0001.csv")
+    fwd_efile = case_path("93", "case93_inverse_source_recovery_out_forward0.e")
+    if not file_exists(csv_file):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case93")
+        return
+    # Read objective history
+    obj_data = read_csv(csv_file)
+    obj_vals = obj_data.get("OptimizationReporter/objective_value", [])
+    # Read recovered parameter
+    p_recovered = None
+    if file_exists(param_file):
+        pdata = read_csv(param_file)
+        if "source_amplitude" in pdata:
+            p_recovered = pdata["source_amplitude"][-1]
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.5))
+    fig.suptitle("Case 93: Inverse Source Recovery — Adjoint Optimization", fontsize=13)
+    # Left: objective convergence
+    if obj_vals:
+        iters = list(range(len(obj_vals)))
+        axes[0].semilogy(iters, [max(v, 1e-20) for v in obj_vals], "bo-", lw=1.5)
+        axes[0].set_xlabel("TAO Iteration")
+        axes[0].set_ylabel("Objective J")
+        axes[0].set_title("Objective Convergence")
+        axes[0].grid(True, alpha=0.3)
+    # Middle: parameter recovery
+    p_init, p_true = 1.0, 10.0
+    p_final = p_recovered if p_recovered is not None else p_true
+    bars = axes[1].bar(["Initial\n(p=1)", "Recovered", "True\n(p=10)"],
+                       [p_init, p_final, p_true],
+                       color=["lightcoral", "steelblue", "forestgreen"],
+                       edgecolor="black", linewidth=0.8)
+    axes[1].set_ylabel("Source Amplitude p₁")
+    axes[1].set_title(f"Parameter Recovery: p = {p_final:.4f}")
+    axes[1].grid(True, alpha=0.3, axis="y")
+    # Right: forward solution field
+    if file_exists(fwd_efile):
+        ds = open_exodus(fwd_efile)
+        x, y = get_coords_2d(ds)
+        names = get_nod_var_names(ds)
+        u_idx = names.index("u") + 1
+        u = get_nod_var(ds, u_idx)
+        ds.close()
+        tc = axes[2].tricontourf(x, y, u, levels=30, cmap="viridis")
+        plt.colorbar(tc, ax=axes[2], label="u(x,y)")
+        axes[2].set_xlabel("x")
+        axes[2].set_ylabel("y")
+        axes[2].set_title("Recovered Forward Solution")
+        axes[2].set_aspect("equal")
+    fig.tight_layout()
+    save_fig(fig, "93", "case93_inverse_source_recovery.png")
+
+
 # ---------------------------------------------------------------------------
 # Main driver
 # ---------------------------------------------------------------------------
@@ -4944,12 +5334,22 @@ CASE_FUNCTIONS = [
     ("81", plot_case81),
     ("82", plot_case82),
     ("83", plot_case83),
+    ("84", plot_case84),
+    ("85", plot_case85),
+    ("86", plot_case86),
+    ("87", plot_case87),
+    ("88", plot_case88),
+    ("89", plot_case89),
+    ("90", plot_case90),
+    ("91", plot_case91),
+    ("92", plot_case92),
+    ("93", plot_case93),
 ]
 
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("MOOSE Quick-Start Visualization — All 83 Cases")
+    print("MOOSE Quick-Start Visualization — All 93 Cases")
     print("=" * 60)
     print(f"Script directory: {SCRIPT_DIR}")
     print("Plots will be saved into each case subdirectory.\n")

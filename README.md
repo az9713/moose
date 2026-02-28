@@ -4,7 +4,7 @@
 >
 > This repo **does not include the MOOSE source codes**. Instead, it supplements the original
 > repository with **comprehensive documentation and worked examples** designed to help new users
-> learn the framework from scratch. The 83 progressive quickstart cases are fully explained — from
+> learn the framework from scratch. The 93 progressive quickstart cases are fully explained — from
 > the physics and governing equations, through the input file structure, to interpreting the
 > simulation results — so that users can learn how to set up their own simulations and understand
 > the output without any external help.
@@ -86,7 +86,7 @@ immediately available to every application that enables that module.
 This repository focuses on **learning materials** for the MOOSE framework:
 
 - **Comprehensive documentation** covering architecture, developer workflows, input-file syntax, and all 29 physics modules
-- **83 progressive quickstart examples** (`quickstart-runs/`) — each with a complete input file, detailed README explaining the physics, and matplotlib visualization of the results
+- **93 progressive quickstart examples** (`quickstart-runs/`) — each with a complete input file, detailed README explaining the physics, and matplotlib visualization of the results
 - **An 8-week study plan** for self-learners going from zero to productive MOOSE developer
 - **Docker instructions** for running MOOSE on Windows without compiling from source
 
@@ -101,7 +101,7 @@ To actually build and run MOOSE simulations, you need the framework itself from 
 | [docs/architecture.md](docs/architecture.md) | System architecture with subsystem diagrams covering the Framework → Modules → Applications hierarchy |
 | [docs/developer-guide.md](docs/developer-guide.md) | Step-by-step C++ developer tutorial: writing Kernels, BCs, Materials, and custom objects |
 | [docs/user-guide.md](docs/user-guide.md) | Simulation user reference covering input-file syntax, all major blocks, and solver options |
-| [docs/quick-start.md](docs/quick-start.md) | 83 worked examples progressing from simple diffusion through chemical reactions, mortar contact, XFEM, THM pipe flow, level-set interface tracking, and advanced electromagnetism |
+| [docs/quick-start.md](docs/quick-start.md) | 93 worked examples progressing from simple diffusion through chemical reactions, mortar contact, XFEM, THM pipe flow, level-set interface tracking, and advanced electromagnetism |
 | [docs/zero-to-hero.md](docs/zero-to-hero.md) | 8-week structured study plan for new MOOSE developers |
 | [docs/modules-reference.md](docs/modules-reference.md) | Physics module reference with API summaries and example input files |
 | [docs/docker-guide.md](docs/docker-guide.md) | Running MOOSE on Windows with Docker — installation, volume mounts, MPI |
@@ -112,7 +112,7 @@ The official online documentation lives at **https://mooseframework.inl.gov**.
 
 ## Quickstart Examples
 
-The `quickstart-runs/` directory contains **83 fully worked examples**, each in its own subdirectory with:
+The `quickstart-runs/` directory contains **93 fully worked examples**, each in its own subdirectory with:
 
 - **Input file** (`.i`) — ready to run with `moose_test-opt` or `combined-opt`
 - **Detailed README** — explains the physics, walks through every input-file block, describes the output files, and shows how to interpret the results
@@ -618,6 +618,65 @@ These cases use the MOOSE `electromagnetics` module to visualize the physics fro
 <a href="quickstart-runs/case83-veselago-lens"><img src="quickstart-runs/case83-veselago-lens/case83_veselago_lens.png" width="100%"/></a><br/>
 <b>Case 83</b>: Veselago Flat Lens<br/>
 <sub>Point Source Focusing (n = -1)</sub>
+</td>
+<td colspan="2"></td>
+</tr>
+</table>
+
+### Cases 84-93: Receivers, Antennas & Sensing
+
+> Based on **MIT 6.661 *Electromagnetics and Applications*** (Prof. D. H. Staelin) —
+> covering TEM resonators, antenna radiation patterns, phased arrays, diffraction,
+> dielectric waveguides, parabolic reflectors, radar cross section, interferometry,
+> and PDE-constrained inverse estimation.
+
+These cases use the MOOSE `electromagnetics` and `optimization` modules to model practical electromagnetic systems. Topics include lossy cavity Q factors, Hertzian and half-wave dipole radiation in RZ coordinates, phased array beam steering, single-slit Fraunhofer diffraction, dielectric waveguide guided modes, parabolic reflector focusing, flat-plate radar cross section, aperture synthesis interferometry, and adjoint-based inverse source recovery.
+
+<table>
+<tr>
+<td align="center" width="25%">
+<a href="quickstart-runs/case84-lossy-tem-cavity"><b>Case 84</b>: Lossy TEM Cavity</a><br/>
+<sub>Complex Eigenvalue Q Factor</sub>
+</td>
+<td align="center" width="25%">
+<a href="quickstart-runs/case85-hertzian-dipole"><b>Case 85</b>: Hertzian Dipole</a><br/>
+<sub>sin²θ Radiation Pattern (RZ)</sub>
+</td>
+<td align="center" width="25%">
+<a href="quickstart-runs/case86-half-wave-dipole"><b>Case 86</b>: Half-Wave Dipole</a><br/>
+<sub>2.15 dBi Gain Pattern</sub>
+</td>
+<td align="center" width="25%">
+<a href="quickstart-runs/case87-phased-array"><b>Case 87</b>: Phased Array</a><br/>
+<sub>Beam Steering & Grating Lobes</sub>
+</td>
+</tr>
+<tr>
+<td align="center">
+<a href="quickstart-runs/case88-single-slit-diffraction"><b>Case 88</b>: Single-Slit Diffraction</a><br/>
+<sub>Fraunhofer Pattern (λ/a)</sub>
+</td>
+<td align="center">
+<a href="quickstart-runs/case89-dielectric-waveguide"><b>Case 89</b>: Dielectric Waveguide</a><br/>
+<sub>Guided TE Modes (V-number)</sub>
+</td>
+<td align="center">
+<a href="quickstart-runs/case90-parabolic-reflector"><b>Case 90</b>: Parabolic Reflector</a><br/>
+<sub>Focal Spot Formation</sub>
+</td>
+<td align="center">
+<a href="quickstart-runs/case91-radar-cross-section"><b>Case 91</b>: Radar Cross Section</a><br/>
+<sub>Flat Plate Scattering (4πL²/λ²)</sub>
+</td>
+</tr>
+<tr>
+<td align="center">
+<a href="quickstart-runs/case92-interferometer"><b>Case 92</b>: Interferometer</a><br/>
+<sub>Aperture Synthesis Fringes</sub>
+</td>
+<td align="center">
+<a href="quickstart-runs/case93-inverse-source-recovery"><b>Case 93</b>: Inverse Source Recovery</a><br/>
+<sub>Adjoint L-BFGS Optimization</sub>
 </td>
 <td colspan="2"></td>
 </tr>

@@ -1,8 +1,8 @@
-# MOOSE Quick-Start Guide: 83 Working Examples
+# MOOSE Quick-Start Guide: 93 Working Examples
 
-This guide walks a complete beginner through 83 self-contained MOOSE input files,
+This guide walks a complete beginner through 93 self-contained MOOSE input files,
 from the simplest possible diffusion problem to genuine multi-physics simulations
-using MOOSE's physics modules. Cases 01-13 use only the framework. Cases 14-83
+using MOOSE's physics modules. Cases 01-13 use only the framework. Cases 14-93
 use physics modules (heat_transfer, solid_mechanics, navier_stokes, phase_field,
 porous_flow, electromagnetics, chemical_reactions, geochemistry, contact, xfem,
 thermal_hydraulics, level_set) and require `combined-opt`. Read them in order.
@@ -5931,6 +5931,451 @@ to two-phase flow interface tracking when combined with the `navier_stokes` modu
 
 ---
 
+## Batch G: Receivers, Antennas & Sensing (Cases 84-93)
+
+**Course:** MIT 6.661 — Electromagnetics and Applications (Prof. D. H. Staelin)
+
+These 10 cases explore electromagnetic receivers, antenna radiation, wave sensing,
+and inverse estimation — the applied side of electromagnetism that connects
+Maxwell's equations to real-world systems.
+
+| Case | Title | Physics | Key MOOSE Feature |
+|------|-------|---------|-------------------|
+| 84 | Lossy TEM Cavity | Complex eigenvalue, Q factor | Eigenvalue + loss coupling |
+| 85 | Hertzian Dipole | Point-source radiation in RZ | coord_type=RZ + DiracKernel |
+| 86 | Half-Wave Dipole | Distributed antenna current | RZ + BodyForce profile |
+| 87 | Phased Array | Beam steering, grating lobes | Multiple phased sources |
+| 88 | Single-Slit Diffraction | Huygens-Fresnel diffraction | Mixed BCs on screen/slit |
+| 89 | Dielectric Waveguide | Guided TE modes by TIR | Eigenvalue + discontinuous ε |
+| 90 | Parabolic Reflector | Focal spot, directivity | Lossy curved reflector |
+| 91 | Radar Cross Section | Flat plate scattering | Scattered-field + RCS |
+| 92 | Interferometer | Aperture synthesis fringes | Multi-source coherent |
+| 93 | Inverse Source Recovery | PDE-constrained estimation | Optimization module + adjoint |
+
+---
+
+## Case 84 — Lossy TEM Cavity Resonator: Q Factor
+
+### Physics
+
+A 1D TEM (transverse electromagnetic) resonator with a lossy dielectric (complex
+permittivity ε = ε' − jε'') supports modes at complex frequencies ω = ω_r − jω_i.
+The quality factor Q = ω_r / (2ω_i) quantifies the energy stored relative to the
+power dissipated per cycle. This case uses MOOSE's eigenvalue solver (KRYLOVSCHUR
+with shift-invert targeting) to find the lowest-Q resonant mode.
+
+The real and imaginary parts of the eigenfrequency are extracted from the
+eigenvector postprocessors and the Q factor is computed as a derived quantity.
+
+```bash
+cd quickstart-runs/case84-lossy-tem-cavity
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case84-lossy-tem-cavity \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case84_lossy_tem_cavity.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `Eigenvalue` executioner | Finds complex eigenvalues via KRYLOVSCHUR |
+| `MatReaction` | Forms the lossy (imaginary) part of the mass matrix |
+| `CoefReaction` | Forms the reactive (real) part with `extra_vector_tags = 'eigen'` |
+| `EigenDirichletBC` | Enforces Dirichlet BCs in the generalized eigenproblem |
+
+### What You Learn
+
+How to formulate a lossy resonator as a generalized eigenvalue problem. How to
+extract the quality factor Q from the complex eigenfrequency. The role of
+`extra_vector_tags = 'eigen'` in forming the B matrix. How shift-invert
+targeting locates a specific eigenmode rather than the dominant one.
+
+---
+
+## Case 85 — Hertzian Dipole Radiation Pattern
+
+### Physics
+
+The Hertzian (infinitesimal) dipole is the canonical antenna element. An
+oscillating current element I·dl at the origin radiates a frequency-domain
+Helmholtz field in 2D axisymmetric (RZ) coordinates:
+
+```
+∇²E_φ + k² E_φ = −jωμ₀ J_φ(r, z)
+```
+
+where the source J_φ is modeled as a narrow Gaussian DiracKernel at the origin.
+Robin (absorbing) boundary conditions on the outer boundary prevent reflections.
+The far-field radiation pattern follows the expected sin²θ directivity of a
+Hertzian dipole.
+
+```bash
+cd quickstart-runs/case85-hertzian-dipole
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case85-hertzian-dipole \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case85_hertzian_dipole.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `coord_type = RZ` | Axisymmetric formulation (x = r, y = z) |
+| `DiracKernel` | Point source representing the oscillating current element |
+| `EMRobinBC` | Absorbing boundary condition to truncate the computational domain |
+| `PotentialToFieldAux` | Extracts radial and axial field components from the solution |
+
+### What You Learn
+
+How axisymmetric (RZ) coordinates reduce a 3D antenna problem to 2D. How to
+place a point source with `DiracKernel`. How Robin absorbing BCs eliminate
+artificial reflections at a finite computational boundary. How to post-process
+the near-field solution to extract the far-field radiation pattern.
+
+---
+
+## Case 86 — Half-Wave Dipole Antenna: Gain Pattern
+
+### Physics
+
+A half-wave dipole carries the distributed current profile J(z) = I₀·cos(πz/L)
+along a wire of half-length L = λ/4, giving a total wire length of λ/2. The
+radiation pattern differs from the Hertzian dipole: the gain is
+
+```
+G(θ) ∝ [cos((π/2)cosθ) / sinθ]²
+```
+
+with maximum directivity D = 1.64 (2.15 dBi). The distributed source is applied
+as a `BodyForce` with a ParsedFunction profile in 2D axisymmetric coordinates,
+extending case 85's point-source approach to a spatially extended source.
+
+```bash
+cd quickstart-runs/case86-half-wave-dipole
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case86-half-wave-dipole \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case86_half_wave_dipole.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `BodyForce` | Distributed source with `function = 'J_z'` ParsedFunction profile |
+| `ParsedFunction` | Encodes J(z) = I₀·cos(πz/L) for the wire current distribution |
+| `coord_type = RZ` | 2D axisymmetric domain reduces the 3D problem |
+| `EMRobinBC` | Absorbing outer boundary |
+
+### What You Learn
+
+How to extend from a point source to a spatially distributed antenna current.
+How to verify numerical antenna patterns against analytical formulae. How the
+half-wave dipole achieves higher directivity than the Hertzian dipole. The
+relationship between current distribution shape and radiation pattern.
+
+---
+
+## Case 87 — Phased Array Beamforming
+
+### Physics
+
+Two coherent point sources separated by distance d = λ/2 with a relative phase
+offset δ produce an interference pattern called the array factor:
+
+```
+AF(θ) = 1 + exp(j(k·d·cosθ + δ))
+```
+
+The beam maximum steers to angle θ₀ where k·d·cosθ₀ + δ = 0, i.e.,
+θ₀ = arccos(−δ/(k·d)). When element spacing exceeds λ/2, grating lobes appear
+at additional angles. This case models the two sources as separate DiracKernel
+objects with different phase offsets and sums their fields coherently.
+
+```bash
+cd quickstart-runs/case87-phased-array
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case87-phased-array \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case87_phased_array.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `DiracKernel` (×2) | Two phased point sources at different spatial positions |
+| `ParsedFunction` | Phase-shifted source amplitude for the second element |
+| `EMRobinBC` | Absorbing boundaries on all outer edges |
+| `NodalValueSampler` | Samples the field along a far-field arc for pattern extraction |
+
+### What You Learn
+
+How to superpose multiple coherent sources in a single MOOSE solve. How the
+array factor controls beam direction and width. Why grating lobes appear when
+element spacing exceeds half a wavelength. How phase offsets implement electronic
+beam steering without physical antenna movement.
+
+---
+
+## Case 88 — Single-Slit Diffraction: Resolution Limit
+
+### Physics
+
+A plane wave incident on a conducting screen with a slit of width a produces
+a Fraunhofer diffraction pattern. The intensity null positions obey
+θ_null = arcsin(m·λ/a) for integer m ≠ 0. The central lobe half-width
+θ ≈ λ/a is the fundamental angular resolution limit.
+
+This case uses mixed boundary conditions: Dirichlet E = 0 on the conducting
+screen, and a BodyForce plane-wave source on the input side of the domain.
+The transmitted field forms the expected sinc² pattern at a far-field screen.
+
+```bash
+cd quickstart-runs/case88-single-slit
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case88-single-slit \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case88_single_slit.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `DirichletBC` | Enforces E = 0 on conducting screen surfaces |
+| `BodyForce` | Incident plane wave source injected at the input boundary |
+| `EMRobinBC` | Absorbing BCs on left, right, and output boundaries |
+| `NodalValueSampler` | Samples the field at the far-field observation plane |
+
+### What You Learn
+
+How to model a conducting screen with an aperture using Dirichlet BCs. How the
+sinc² diffraction pattern emerges from the Helmholtz equation with aperture BCs.
+How to verify the null angles against the analytical formula θ = mλ/a. Why the
+slit width directly sets the angular resolution of any aperture-based instrument.
+
+---
+
+## Case 89 — Dielectric Slab Waveguide: Guided Modes
+
+### Physics
+
+A symmetric dielectric slab waveguide (core refractive index n₁ = 1.5, cladding
+n₂ = 1.0, half-thickness d) guides TE modes by total internal reflection when
+the propagation constant β satisfies n₂·k₀ < β < n₁·k₀. The V-number
+V = k₀·d·√(n₁²−n₂²) determines how many guided modes exist: the slab supports
+m guided modes for V in ((m−1)π/2, mπ/2].
+
+This is a 1D eigenvalue problem in the transverse coordinate. The discontinuous
+permittivity profile is captured using subdomain-specific `GenericConstantMaterial`
+blocks, and the eigenvalue solver finds the guided mode propagation constants.
+
+```bash
+cd quickstart-runs/case89-dielectric-waveguide
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case89-dielectric-waveguide \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case89_dielectric_waveguide.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `SubdomainBoundingBoxGenerator` | Creates core and cladding subdomains |
+| `GenericConstantMaterial` (×2) | Assigns different permittivities to core and cladding |
+| `MatReaction` | Forms the k²ε(x) term with `extra_vector_tags = 'eigen'` |
+| `Eigenvalue` executioner | KRYLOVSCHUR solver targeting the guided-mode eigenvalues |
+
+### What You Learn
+
+How to set up a 1D eigenvalue problem for waveguide dispersion. How subdomain
+materials capture the permittivity discontinuity at the core-cladding interface.
+How to interpret eigenvalues as propagation constants β². How the V-number
+predicts the number of guided modes and why single-mode operation requires
+V < π/2.
+
+---
+
+## Case 90 — Parabolic Reflector Focusing
+
+### Physics
+
+A parabolic conducting reflector converts a plane wave into a focused beam at the
+focal point F = f, where f is the focal length. The aperture efficiency η and
+gain G = η·(4πA/λ²) relate the physical aperture area A to the directivity.
+The intensity at the focal spot grows as (aperture diameter / λ)².
+
+This 2D frequency-domain case models the reflector as a high-loss material
+(PEC approximation) with a parabolically curved boundary. The incident plane wave
+is introduced as a BodyForce, and the focal spot intensity is sampled by a
+`PointValue` postprocessor at the geometric focus.
+
+```bash
+cd quickstart-runs/case90-parabolic-reflector
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case90-parabolic-reflector \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case90_parabolic_reflector.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `ParsedFunction` | Describes the parabolic reflector boundary y = x²/(4f) |
+| `GenericConstantMaterial` | High-loss material inside reflector (PEC approximation) |
+| `BodyForce` | Incident plane wave with unit amplitude |
+| `PointValue` | Samples |E|² at the focal point to verify intensity gain |
+
+### What You Learn
+
+How to approximate a perfect electric conductor as a high-loss material.
+How to verify that the focal spot intensity scales with aperture area. The
+relationship between reflector geometry, focal length, and beam width. How
+to use postprocessors to extract scalar figures of merit from a field solve.
+
+---
+
+## Case 91 — Radar Cross Section: Flat Plate
+
+### Physics
+
+The radar cross section (RCS) σ of a conducting target measures the power
+scattered back toward the radar per unit incident intensity:
+σ = 4π·|E_scattered|²/|E_incident|². For a flat rectangular plate of length L
+at normal incidence the specular-peak RCS is σ ≈ 4πL²/λ² (2D version).
+
+The scattered-field formulation subtracts the known incident field from the
+total field, leaving only the scattered contribution as the unknown. This avoids
+the need to resolve the incident wave across the entire computational domain.
+
+```bash
+cd quickstart-runs/case91-radar-cross-section
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case91-radar-cross-section \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case91_radar_cross_section.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `FunctionDirichletBC` | Enforces E_scattered = −E_incident on the conducting plate |
+| `BodyForce` | Equivalent volume source from the scattered-field subtraction |
+| `EMRobinBC` | Absorbing boundary on the outer box |
+| `ReflectionCoefficient` | Postprocessor computing |R|² from the backscattered field |
+
+### What You Learn
+
+How the scattered-field formulation removes the incident wave from the unknown.
+How to impose equivalent surface currents as Dirichlet conditions on the scatterer.
+How to verify the normal-incidence RCS against the analytical σ = 4πL²/λ² formula.
+How edge diffraction produces sidelobes at oblique observation angles.
+
+---
+
+## Case 92 — Aperture Synthesis Interferometer
+
+### Physics
+
+Two coherent point-source antennas separated by a baseline B produce interference
+fringes with angular resolution δθ ≈ λ/B — much finer than a single dish of
+diameter B. This is the operating principle of radio interferometry (VLA, ALMA,
+Event Horizon Telescope). The fringe period in the far field is exactly λ/B.
+
+This case places two DiracKernel sources at ±B/2 and solves the 2D Helmholtz
+equation. A line postprocessor samples the field intensity at a far-field
+distance, producing the expected sinusoidal fringe pattern.
+
+```bash
+cd quickstart-runs/case92-interferometer
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case92-interferometer \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case92_interferometer.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `DiracKernel` (×2) | Two coherent point sources at ±B/2 along the baseline |
+| `EMRobinBC` | Absorbing boundaries on all four sides |
+| `NodalValueSampler` | Samples the interference pattern at a fixed far-field distance |
+| `VectorPostprocessor` | Collects the fringe pattern along a horizontal line |
+
+### What You Learn
+
+How coherent superposition of two sources creates fringes with resolution λ/B.
+Why longer baselines give finer angular resolution regardless of dish diameter.
+The Fourier relationship between baseline geometry and the angular power spectrum.
+How aperture synthesis interferometers reconstruct images from fringe visibility.
+
+---
+
+## Case 93 — Inverse Source Recovery: PDE-Constrained Estimation
+
+### Physics
+
+Given 9 interior measurements of a scalar field u satisfying a screened Poisson
+equation (−∇²u + c²u = p·f(x)) with known spatial profile f(x) and unknown
+amplitude p, the inverse problem is: find p that minimizes the misfit between
+the PDE solution and the observations. The gradient ∂J/∂p is computed by solving
+an adjoint PDE with the misfit as the source.
+
+The three-file architecture mirrors case 47 (optimization module):
+- **Main** app: TAO L-BFGS optimizer, holds the optimization parameter p
+- **Forward** app: solves the PDE for given p, outputs u at measurement points
+- **Adjoint** app: solves the adjoint PDE, outputs ∂J/∂p for the optimizer
+
+With a linear PDE and a single scalar parameter, L-BFGS converges in 2 iterations
+from the initial guess p = 1 to the true value p = 10.
+
+```bash
+cd quickstart-runs/case93-inverse-source
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case93-inverse-source \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case93_inverse_source_main.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `Optimize` executioner | Drives the TAO L-BFGS optimization loop |
+| `ParsedOptimizationFunction` | Links the optimizer parameter p to the BodyForce amplitude |
+| `OptimizationData` | Reporter computing misfit J = ½‖u_sim − u_obs‖² and objective |
+| `ReporterPointSource` | DiracKernel applying the misfit as the adjoint source |
+| `ElementOptimizationSourceFunctionInnerProduct` | Computes gradient ∂J/∂p = ∫f·λ dx |
+| `MultiAppReporterTransfer` | Passes p (forward) and ∂J/∂p (adjoint) between apps |
+
+### What You Learn
+
+How to formulate inverse source estimation as PDE-constrained optimization. How
+the adjoint method computes the gradient ∂J/∂p with only two PDE solves per
+iteration regardless of the number of parameters. How MOOSE's three-file
+optimization architecture separates the optimizer, forward model, and adjoint
+sensitivity. Why linear PDEs with scalar parameters converge in a single
+L-BFGS step.
+
+---
+
 ## Troubleshooting Common Errors
 
 **Error: `Object 'Diffusion' was not registered`**
@@ -5961,7 +6406,7 @@ variable name (e.g., `u` or `T`) using the dropdown in the toolbar.
 
 ## Next Steps
 
-After completing these 83 cases:
+After completing these 93 cases:
 
 1. **Read the MOOSE documentation** at https://mooseframework.inl.gov for
    complete reference documentation on every object type.
@@ -5973,12 +6418,14 @@ After completing these 83 cases:
 3. **Write your own application**: Use `moose/scripts/stork.py` to scaffold
    a new MOOSE application with custom kernels, materials, and BCs.
 
-4. **Explore more module features**: Cases 14-83 introduce the major physics
+4. **Explore more module features**: Cases 14-93 introduce the major physics
    modules — from solid mechanics and heat transfer through Navier-Stokes,
    electrodynamics, MHD, nonlinear solid mechanics, nuclear reactor physics,
    geomechanics / porous flow, reactive-transport geochemistry, MultiApp
    coupling, mortar contact, XFEM crack modeling, 1D thermal-hydraulics,
-   level-set interface tracking, and advanced electromagnetism (left-handed
-   materials, photonic crystals, Bragg mirrors, Veselago lensing).
+   level-set interface tracking, advanced electromagnetism (left-handed
+   materials, photonic crystals, Bragg mirrors, Veselago lensing), and
+   antenna radiation / inverse source estimation (receivers, phased arrays,
+   radar cross section, aperture synthesis, PDE-constrained optimization).
    Each module has many more capabilities — consult the [Modules Reference](modules-reference.md)
    for full details.

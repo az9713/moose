@@ -1,13 +1,13 @@
 # MOOSE Quickstart Tutorial Cases: Complete Reference
 
-This directory contains 83 self-contained simulation cases for learning MOOSE from zero.
+This directory contains 93 self-contained simulation cases for learning MOOSE from zero.
 Each case has its own subdirectory with an input file (`.i`) and pre-run output files.
 You do not need to build or install anything to study the input files, understand the physics,
 and read the results. If you want to run the simulations yourself, see Section 5.
 
 This document is designed so that someone who has never used MOOSE, never written a finite
 element simulation, and is not familiar with scientific computing file formats can read it
-from top to bottom and understand everything in these 83 cases.
+from top to bottom and understand everything in these 93 cases.
 
 Read every section. Do not skip ahead. The later cases build directly on concepts introduced
 in the earlier ones.
@@ -21,7 +21,7 @@ in the earlier ones.
 3. [Understanding Output Files](#3-understanding-output-files)
 4. [How MOOSE Solves Problems](#4-how-moose-solves-problems-conceptual)
 5. [Running Simulations](#5-running-simulations)
-6. [The 83 Cases at a Glance](#6-the-83-cases-at-a-glance)
+6. [The 93 Cases at a Glance](#6-the-93-cases-at-a-glance)
 7. [Creating Your Own Simulations](#7-creating-your-own-simulations)
 8. [Glossary](#8-glossary)
 
@@ -105,7 +105,7 @@ MOOSE also handles:
 - **Nonlinear problems**: handles problems where material properties depend on the solution
   itself (like a material that gets stiffer as it heats up)
 
-### What are the 83 cases in this directory?
+### What are the 93 cases in this directory?
 
 These cases form a progressive tutorial starting from the simplest possible problem
 (1D steady-state diffusion with an exact solution of u = x) and building up to
@@ -246,7 +246,7 @@ L = 1.0
 
 ### All Standard Block Types Explained
 
-The following sections explain every block type you will encounter in the 83 cases.
+The following sections explain every block type you will encounter in the 93 cases.
 Each explanation defines what the block does, what parameters mean, and gives a
 realistic example.
 
@@ -1347,7 +1347,7 @@ To override: add `file_base = my_custom_name` to the `[Outputs]` block.
 
 ---
 
-## 6. The 83 Cases at a Glance
+## 6. The 93 Cases at a Glance
 
 The cases are ordered from simplest to most complex. Cases 01-13 use only the MOOSE
 framework (Diffusion, BodyForce, MatDiffusion, etc.). Cases 14-21 use physics **modules**
@@ -1401,6 +1401,17 @@ models a 5-period Bragg mirror achieving |R|^2 = 1 at the design frequency. Case
 photonic crystal eigenfrequencies at the Gamma point of a square lattice of alumina rods.
 Case 82 extends the 2D waveguide eigenvalue problem to a 3D PEC rectangular cavity. Case 83
 demonstrates Veselago flat-lens focusing of a point source through a negative-index slab.
+
+**Cases 84-93 (Batch G — Receivers, Antennas & Sensing)** are based on MIT 6.661
+*Electromagnetics and Applications* (Prof. D. H. Staelin). Case 84 solves a lossy
+TEM cavity eigenvalue problem to extract the quality factor Q. Cases 85-86 model
+Hertzian and half-wave dipole radiation patterns in 2D axisymmetric (RZ) coordinates.
+Case 87 demonstrates phased array beam steering. Case 88 computes single-slit
+Fraunhofer diffraction. Case 89 finds guided TE modes in a dielectric slab waveguide.
+Case 90 models parabolic reflector focusing. Case 91 computes the radar cross section
+of a flat conducting plate. Case 92 creates interference fringes from two coherent
+sources (aperture synthesis). Case 93 uses MOOSE's optimization module to recover an
+unknown source amplitude from sparse measurements using the adjoint method.
 
 Study them in order.
 
@@ -1489,6 +1500,16 @@ Study them in order.
 | 81 | `case81-photonic-crystal/` | 2D Photonic Crystal Band Gap — Gamma Point Eigenvalue | TM eigenfrequencies of square lattice alumina rods; eps_r-weighted mass matrix | `MatReaction` (non-AD) with `extra_vector_tags = 'eigen'`, `GenericFunctionMaterial`, Neumann (PMC) BCs | Expert |
 | 82 | `case82-3d-cavity-resonance/` | 3D Rectangular Cavity Resonance — TM Eigenvalues | PEC cavity eigenvalue problem on HEX8 mesh; analytical k^2(m,n,p) verification | 3D `GeneratedMesh` (dim=3), `EigenDirichletBC` + `DirichletBC`, `PotentialToFieldAux` (Ex, Ey, Ez), KRYLOVSCHUR | Expert |
 | 83 | `case83-veselago-lens/` | Veselago Flat Lens — Point Source Focusing | 2D point source through n = -1 LHM slab; three-peak focusing pattern at source, slab centre, image | `ADMatDiffusion` (negative diffusivity in slab), `BodyForce` (Gaussian source), loss regularisation, MUMPS LU | Expert |
+| 84 | `case84-lossy-tem-cavity/` | Lossy TEM Cavity — Q Factor | 1D coupled eigenvalue for complex ε_r: coupled E_real/E_imag; resonant modes and quality factor Q = Re(ω)/2·Im(ω) | Eigenvalue solver (KRYLOVSCHUR), `ADMatReaction`, `ADMatCoupledForce`, shift-invert targeting | Expert |
+| 85 | `case85-hertzian-dipole/` | Hertzian Dipole — Radiation Pattern | 2D RZ Helmholtz with Gaussian point source at origin; Robin absorbing BC; far-field sin²θ directivity | `coord_type = RZ`, `DiracKernel`-like BodyForce, `EMRobinBC` (absorbing), axisymmetric radiation | Advanced |
+| 86 | `case86-half-wave-dipole/` | Half-Wave Dipole — Gain Pattern | 2D RZ Helmholtz with distributed current J(z) = I₀·cos(πz/L); gain = 1.64 (2.15 dBi) | `coord_type = RZ`, `BodyForce` with cosine profile, far-field gain extraction | Advanced |
+| 87 | `case87-phased-array/` | Phased Array — Beam Steering | 2D Cartesian Helmholtz with two phased Gaussian sources; beam steering by phase offset δ | Multiple `BodyForce` sources with complex phase, `EMRobinBC`, interference pattern | Advanced |
+| 88 | `case88-single-slit-diffraction/` | Single-Slit Diffraction — Resolution Limit | 2D Helmholtz: plane wave through slit in conducting screen; Fraunhofer sinc² pattern | `FunctionDirichletBC` (screen/slit), `EMRobinBC`, first null at θ = λ/a | Advanced |
+| 89 | `case89-dielectric-waveguide/` | Dielectric Waveguide — Guided TE Modes | 1D eigenvalue for TE modes in symmetric slab: core n₁=1.5, cladding n₂=1.0; V-number mode cutoff | Eigenvalue solver, piecewise `GenericFunctionMaterial`, total internal reflection | Advanced |
+| 90 | `case90-parabolic-reflector/` | Parabolic Reflector — Focal Spot | 2D Helmholtz: plane wave reflects off parabolic PEC surface; focal intensity gain ~6× | Lossy material inside reflector (PEC approximation), `EMRobinBC`, curved boundary | Advanced |
+| 91 | `case91-radar-cross-section/` | Radar Cross Section — Flat Plate | 2D scattered-field: plane wave incident on conducting plate; σ ≈ 4πL²/λ² at normal incidence | Scattered-field formulation, `EMRobinBC` (port + absorbing), RCS postprocessor | Advanced |
+| 92 | `case92-interferometer/` | Aperture Synthesis Interferometer | 2D Helmholtz with two coherent point sources; fringe pattern shows angular resolution ≈ λ/B | Multiple `BodyForce` sources, correlation extraction, interferometric fringes | Advanced |
+| 93 | `case93-inverse-source-recovery/` | Inverse Source Recovery — PDE-Constrained Estimation | 3-file optimization: recover source amplitude p₁ in screened Poisson from 9 sensors; TAO L-BFGS converges in 2 iterations | `Optimize` executioner, `GeneralOptimization`, `OptimizationData`, `ParsedOptimizationFunction`, `ElementOptimizationSourceFunctionInnerProduct`, adjoint method | Expert |
 
 ### What each case produces
 
@@ -1577,16 +1598,26 @@ Study them in order.
 | 81 | `case81_photonic_crystal_out.e`, `case81_photonic_crystal_out.csv`, `case81_photonic_crystal_out_eigenvalues_0002.csv` |
 | 82 | `case82_3d_cavity_resonance_out.e`, `case82_3d_cavity_resonance_out_eigenvalues_0002.csv` |
 | 83 | `case83_veselago_lens_out.e`, `case83_veselago_lens_out.csv` |
+| 84 | `case84_lossy_tem_cavity_out.e`, `case84_lossy_tem_cavity_out.csv`, `case84_lossy_tem_cavity_out_eigenvalues_0002.csv` |
+| 85 | `case85_hertzian_dipole_out.e`, `case85_hertzian_dipole_out.csv` |
+| 86 | `case86_half_wave_dipole_out.e`, `case86_half_wave_dipole_out.csv` |
+| 87 | `case87_phased_array_out.e`, `case87_phased_array_out.csv` |
+| 88 | `case88_single_slit_diffraction_out.e`, `case88_single_slit_diffraction_out.csv` |
+| 89 | `case89_dielectric_waveguide_out.e`, `case89_dielectric_waveguide_out.csv`, `case89_dielectric_waveguide_out_eigenvalues_0002.csv` |
+| 90 | `case90_parabolic_reflector_out.e`, `case90_parabolic_reflector_out.csv` |
+| 91 | `case91_radar_cross_section_out.e`, `case91_radar_cross_section_out.csv` |
+| 92 | `case92_interferometer_out.e`, `case92_interferometer_out.csv` |
+| 93 | `case93_inverse_source_recovery_out.csv`, `case93_inverse_source_recovery_out_OptimizationReporter_0001.csv`, `case93_inverse_source_recovery_out_forward0.e` |
 
 All pre-run output files for cases 01-13 are included in this directory so you can
-examine them without running anything. Cases 14-83 require `combined-opt` (all modules)
+examine them without running anything. Cases 14-93 require `combined-opt` (all modules)
 to run — see each case's README for Docker instructions.
 
 ---
 
 ## 7. Creating Your Own Simulations
 
-Once you understand the 83 cases, you will want to adapt them or build new simulations
+Once you understand the 93 cases, you will want to adapt them or build new simulations
 from scratch. This section walks through the process systematically.
 
 ### Step 1: Define Your Physics
