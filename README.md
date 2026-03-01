@@ -16,8 +16,9 @@
 > The **`docker-windows`** skill handles the notoriously tricky details of running Docker from
 > Git Bash / MINGW on Windows — preventing silent path mangling, volume-mount failures, and flag
 > conversion issues that would otherwise break every `docker run` command. Together, these two
-> skills enabled [Claude Code](https://claude.ai/claude-code) to autonomously generate 25 of
-> 25 of the quickstart cases (Batches A-E, cases 49-73) from a single user prompt, with no manual
+> skills enabled [Claude Code](https://claude.ai/claude-code) to autonomously generate all 103
+> quickstart cases — from writing the input files and running simulations in Docker, through
+> debugging convergence failures, to generating plots and documentation — with no manual
 > intervention required.
 >
 > **Original repository:** https://github.com/idaholab/moose
@@ -90,7 +91,7 @@ This repository focuses on **learning materials** for the MOOSE framework:
 - **An 8-week study plan** for self-learners going from zero to productive MOOSE developer
 - **Docker instructions** for running MOOSE on Windows without compiling from source
 
-Many of the advanced quickstart cases are drawn from MIT course materials by four professors:
+Many of the advanced quickstart cases are drawn from MIT course materials by five professors:
 
 | Professor | Course / Textbook | Cases | Topics |
 |---|---|---|---|
