@@ -1,5 +1,5 @@
 """
-MOOSE Quick-Start: Visualization Script for All 93 Cases
+MOOSE Quick-Start: Visualization Script for All 103 Cases
 =========================================================
 Generates 2-3 plots per case and saves each PNG into that case's own directory.
 For example, Case 01's plot is written to case01-1d-steady-diffusion/case01_diffusion_1d.png.
@@ -162,6 +162,16 @@ CASE_DIRS = {
     "91": "case91-radar-cross-section",
     "92": "case92-interferometer",
     "93": "case93-inverse-source-recovery",
+    "94": "case94-periodic-potential-sheet",
+    "95": "case95-charge-relaxation",
+    "96": "case96-maxwells-capacitor",
+    "97": "case97-skin-effect",
+    "98": "case98-debye-shielding",
+    "99": "case99-cylinder-uniform-field",
+    "100": "case100-elastic-rod-waves",
+    "101": "case101-transmission-line",
+    "102": "case102-membrane-levitation",
+    "103": "case103-dielectric-fluid-rise",
 }
 
 
@@ -5246,6 +5256,615 @@ def plot_case93():
     save_fig(fig, "93", "case93_inverse_source_recovery.png")
 
 
+# ======================== Batch Zahn (Cases 94-103) ========================
+
+def plot_case94():
+    """Case 94: Spatially Periodic Potential Sheet"""
+    print("Case 94: Spatially Periodic Potential Sheet")
+    efile = case_path("94", "case94_periodic_potential_sheet_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case94")
+        return
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    names = get_nod_var_names(ds)
+    phi_idx = names.index("phi") + 1
+    phi = get_nod_var(ds, phi_idx)
+    phi_exact_idx = names.index("phi_exact") + 1
+    phi_exact = get_nod_var(ds, phi_exact_idx)
+    ds.close()
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.5))
+    fig.suptitle("Case 94: Spatially Periodic Potential Sheet (Laplace BVP)", fontsize=13)
+
+    # Left: numerical solution
+    tc0 = axes[0].tricontourf(x, y, phi, levels=30, cmap="RdBu_r")
+    plt.colorbar(tc0, ax=axes[0], label=r"$\Phi$ (V)")
+    axes[0].set_xlabel("x")
+    axes[0].set_ylabel("y")
+    axes[0].set_title("MOOSE Solution")
+    axes[0].set_aspect("equal")
+
+    # Middle: analytic solution
+    tc1 = axes[1].tricontourf(x, y, phi_exact, levels=30, cmap="RdBu_r")
+    plt.colorbar(tc1, ax=axes[1], label=r"$\Phi_{exact}$ (V)")
+    axes[1].set_xlabel("x")
+    axes[1].set_ylabel("y")
+    axes[1].set_title(r"Analytic: $V_0\sin(ax)e^{-ay}$")
+    axes[1].set_aspect("equal")
+
+    # Right: decay profile at x = 0.25
+    mask = np.abs(x - 0.25) < 0.015
+    y_slice = y[mask]
+    phi_slice = phi[mask]
+    order = np.argsort(y_slice)
+    a = 2 * np.pi
+    y_ana = np.linspace(0, 2, 100)
+    phi_ana = np.sin(a * 0.25) * np.exp(-a * y_ana)
+    axes[2].plot(y_slice[order], phi_slice[order], "bo", ms=3, label="MOOSE")
+    axes[2].plot(y_ana, phi_ana, "r-", lw=2, label=r"$e^{-2\pi y}$")
+    axes[2].set_xlabel("y (distance from sheet)")
+    axes[2].set_ylabel(r"$\Phi(0.25, y)$")
+    axes[2].set_title("Exponential Decay at x = 0.25")
+    axes[2].legend()
+    axes[2].grid(True, alpha=0.3)
+
+    fig.tight_layout()
+    save_fig(fig, "94", "case94_periodic_potential_sheet.png")
+
+
+def plot_case95():
+    """Case 95: Dielectric Relaxation Time"""
+    print("Case 95: Dielectric Relaxation Time")
+    csv_file = case_path("95", "case95_charge_relaxation_out.csv")
+    efile = case_path("95", "case95_charge_relaxation_out.e")
+    if not file_exists(csv_file):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case95")
+        return
+    data = read_csv(csv_file)
+    t = np.array(data["time"])
+    avg_rho = np.array(data["avg_rho"])
+    max_rho = np.array(data["max_rho"])
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.5))
+    fig.suptitle(r"Case 95: Dielectric Relaxation — $\tau_e = \varepsilon/\sigma$", fontsize=13)
+
+    # Left: exponential decay on semilogy
+    tau_e = 0.2
+    t_ana = np.linspace(0, 1, 200)
+    axes[0].semilogy(t, avg_rho, "bo", ms=3, label="avg ρ (MOOSE)")
+    axes[0].semilogy(t, max_rho, "rs", ms=3, label="max ρ (MOOSE)")
+    axes[0].semilogy(t_ana, avg_rho[0] * np.exp(-t_ana / tau_e), "b-", lw=2, label=r"$\propto e^{-t/\tau_e}$")
+    axes[0].semilogy(t_ana, max_rho[0] * np.exp(-t_ana / tau_e), "r--", lw=2)
+    axes[0].set_xlabel("Time (s)")
+    axes[0].set_ylabel("Charge Density")
+    axes[0].set_title(r"Exponential Decay ($\tau_e$ = 0.2 s)")
+    axes[0].legend(fontsize=8)
+    axes[0].grid(True, alpha=0.3)
+
+    # Middle: charge distribution at t=0
+    if file_exists(efile):
+        ds = open_exodus(efile)
+        x, y = get_coords_2d(ds)
+        names = get_nod_var_names(ds)
+        rho_idx = names.index("rho") + 1
+        rho_0 = get_nod_var(ds, rho_idx, timestep=0)
+        tc = axes[1].tricontourf(x, y, rho_0, levels=30, cmap="hot")
+        plt.colorbar(tc, ax=axes[1], label=r"$\rho$ (C/m³)")
+        axes[1].set_xlabel("x")
+        axes[1].set_ylabel("y")
+        axes[1].set_title("Initial Charge Distribution (t = 0)")
+        axes[1].set_aspect("equal")
+
+    # Right: charge distribution at t_final
+    if file_exists(efile):
+        rho_f = get_nod_var(ds, rho_idx, timestep=-1)
+        tc2 = axes[2].tricontourf(x, y, rho_f, levels=30, cmap="hot")
+        plt.colorbar(tc2, ax=axes[2], label=r"$\rho$ (C/m³)")
+        axes[2].set_xlabel("x")
+        axes[2].set_ylabel("y")
+        axes[2].set_title(f"Final Charge (t = {t[-1]:.1f} s)")
+        axes[2].set_aspect("equal")
+        ds.close()
+
+    fig.tight_layout()
+    save_fig(fig, "95", "case95_charge_relaxation.png")
+
+
+def plot_case96():
+    """Case 96: Maxwell's Capacitor — Two-Layer Dielectric"""
+    print("Case 96: Maxwell's Capacitor — Two-Layer Dielectric")
+    csv_file = case_path("96", "case96_maxwells_capacitor_out.csv")
+    if not file_exists(csv_file):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case96")
+        return
+    data = read_csv(csv_file)
+    t = np.array(data["time"])
+    phi_if = np.array(data["phi_interface"])
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.5))
+    fig.suptitle("Case 96: Maxwell's Capacitor — Interfacial Polarization", fontsize=13)
+
+    # Left: interface potential transient
+    axes[0].plot(t, phi_if, "b-", lw=2, label="MOOSE")
+    axes[0].axhline(y=0.2, color="r", ls="--", label="Steady state")
+    axes[0].set_xlabel("Time (s)")
+    axes[0].set_ylabel(r"$\Phi$ at interface (V)")
+    axes[0].set_title("Interface Potential Transient")
+    axes[0].legend()
+    axes[0].grid(True, alpha=0.3)
+
+    # Right: average potentials in each layer
+    avg_a = np.array(data["avg_phi_a"])
+    avg_b = np.array(data["avg_phi_b"])
+    axes[1].plot(t, avg_a, "b-", lw=2, label="Layer a (low σ)")
+    axes[1].plot(t, avg_b, "r-", lw=2, label="Layer b (high σ)")
+    axes[1].set_xlabel("Time (s)")
+    axes[1].set_ylabel("Average Potential (V)")
+    axes[1].set_title("Voltage Redistribution")
+    axes[1].legend()
+    axes[1].grid(True, alpha=0.3)
+
+    fig.tight_layout()
+    save_fig(fig, "96", "case96_maxwells_capacitor.png")
+
+
+def plot_case97():
+    """Case 97: Skin Effect — Magnetic Diffusion"""
+    print("Case 97: Skin Effect — Magnetic Diffusion")
+    csv_file = case_path("97", "case97_skin_effect_out.csv")
+    efile = case_path("97", "case97_skin_effect_out.e")
+    if not file_exists(csv_file):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case97")
+        return
+    data = read_csv(csv_file)
+    t = np.array(data["time"])
+    H_surf = np.array(data["H_surface"])
+    H_1d = np.array(data["H_at_skin_depth"])
+    H_2d = np.array(data["H_at_2delta"])
+    H_3d = np.array(data["H_at_3delta"])
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.5))
+    fig.suptitle(r"Case 97: Skin Effect — $\delta = \sqrt{2/\mu\sigma\omega}$", fontsize=13)
+
+    # Left: time histories
+    axes[0].plot(t, H_surf, "k-", lw=1.5, label="x = 0 (surface)")
+    axes[0].plot(t, H_1d, "b-", lw=1.5, label=r"x = $\delta$")
+    axes[0].plot(t, H_2d, "r-", lw=1.5, label=r"x = $2\delta$")
+    axes[0].plot(t, H_3d, "g-", lw=1.5, label=r"x = $3\delta$")
+    axes[0].set_xlabel("Time (s)")
+    axes[0].set_ylabel("H (A/m)")
+    axes[0].set_title("Field Attenuation with Depth")
+    axes[0].legend(fontsize=8)
+    axes[0].grid(True, alpha=0.3)
+
+    # Middle: field profile at peak time (snapshot)
+    if file_exists(efile):
+        ds = open_exodus(efile)
+        x, y_c = get_coords_2d(ds)
+        names = get_nod_var_names(ds)
+        H_idx = names.index("H") + 1
+        times = get_times(ds)
+        # Find time near t = 4.25 (near peak of sin at period 4-5)
+        t_snap = find_closest_timestep(times, 4.25)
+        H_snap = get_nod_var(ds, H_idx, timestep=t_snap)
+        ds.close()
+
+        mid_mask = np.abs(y_c - 0.02) < 0.015
+        x_line = x[mid_mask]
+        H_line = H_snap[mid_mask]
+        order = np.argsort(x_line)
+        axes[1].plot(x_line[order], H_line[order], "b-", lw=2, label="MOOSE")
+        delta = 0.0564
+        x_env = np.linspace(0, 0.5, 100)
+        axes[1].plot(x_env, np.exp(-x_env / delta), "r--", lw=2, label=r"$e^{-x/\delta}$")
+        axes[1].plot(x_env, -np.exp(-x_env / delta), "r--", lw=2)
+        axes[1].set_xlabel("x (depth into slab)")
+        axes[1].set_ylabel("H")
+        axes[1].set_title(f"Field Profile at t = {times[t_snap]:.2f} s")
+        axes[1].legend(fontsize=8)
+        axes[1].grid(True, alpha=0.3)
+
+    # Right: amplitude vs depth (envelope)
+    delta = 0.0564
+    depths = [0, delta, 2 * delta, 3 * delta]
+    # Get peak amplitudes from last 2 periods
+    late_mask = t > 3.0
+    amps = []
+    for H_series in [H_surf, H_1d, H_2d, H_3d]:
+        amps.append(np.max(np.abs(H_series[late_mask])))
+    axes[2].semilogy(depths, amps, "bo-", ms=8, lw=2, label="MOOSE amplitude")
+    x_ana = np.linspace(0, 3 * delta, 100)
+    axes[2].semilogy(x_ana, np.exp(-x_ana / delta), "r--", lw=2, label=r"$e^{-x/\delta}$")
+    axes[2].set_xlabel(r"Depth x / $\delta$")
+    axes[2].set_ylabel("Peak |H|")
+    axes[2].set_title("Amplitude Decay vs Skin Depth")
+    axes[2].legend()
+    axes[2].grid(True, alpha=0.3)
+
+    fig.tight_layout()
+    save_fig(fig, "97", "case97_skin_effect.png")
+
+
+def plot_case98():
+    """Case 98: Debye Shielding"""
+    print("Case 98: Debye Shielding — Linearized Poisson-Boltzmann")
+    efile = case_path("98", "case98_debye_shielding_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case98")
+        return
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    names = get_nod_var_names(ds)
+    phi_idx = names.index("phi") + 1
+    phi = get_nod_var(ds, phi_idx)
+    ds.close()
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.5))
+    fig.suptitle(r"Case 98: Debye Shielding — $\nabla^2\Phi - \Phi/\lambda_D^2 = 0$", fontsize=13)
+
+    # Left: 2D contour
+    tc = axes[0].tricontourf(x, y, phi, levels=30, cmap="plasma")
+    plt.colorbar(tc, ax=axes[0], label=r"$\Phi$ (V)")
+    axes[0].set_xlabel("x")
+    axes[0].set_ylabel("y")
+    axes[0].set_title("Screened Potential")
+    axes[0].set_aspect("equal")
+
+    # Middle: radial profile
+    r = np.sqrt(x ** 2 + y ** 2)
+    # Bin by radius
+    r_bins = np.linspace(0, 2, 50)
+    r_centers = 0.5 * (r_bins[:-1] + r_bins[1:])
+    phi_avg = np.zeros(len(r_centers))
+    for i in range(len(r_centers)):
+        mask = (r >= r_bins[i]) & (r < r_bins[i + 1])
+        if np.any(mask):
+            phi_avg[i] = np.mean(phi[mask])
+    lambda_D = 0.2
+    r_ana = np.linspace(0.05, 2, 100)
+    # Normalize: K_0(r/λ_D) shape
+    phi_fit = phi_avg[1] * np.exp(-(r_ana - r_centers[1]) / lambda_D) * np.sqrt(r_centers[1] / (r_ana + 0.01))
+    axes[1].plot(r_centers, phi_avg, "bo", ms=4, label="MOOSE (radial avg)")
+    axes[1].plot(r_ana, phi_fit, "r--", lw=2, label=r"$\sim e^{-r/\lambda_D}/\sqrt{r}$")
+    axes[1].set_xlabel(r"$r / \lambda_D$")
+    axes[1].set_ylabel(r"$\Phi$")
+    axes[1].set_title("Radial Decay Profile")
+    axes[1].legend(fontsize=8)
+    axes[1].grid(True, alpha=0.3)
+
+    # Right: semilogy of radial profile
+    valid = phi_avg > 0
+    axes[2].semilogy(r_centers[valid], phi_avg[valid], "bo", ms=4, label="MOOSE")
+    axes[2].axvline(x=lambda_D, color="r", ls="--", alpha=0.7, label=r"$\lambda_D$ = 0.2")
+    axes[2].axvline(x=2 * lambda_D, color="orange", ls="--", alpha=0.7, label=r"$2\lambda_D$")
+    axes[2].set_xlabel("r (distance from source)")
+    axes[2].set_ylabel(r"$\Phi$ (log scale)")
+    axes[2].set_title("Exponential Screening")
+    axes[2].legend(fontsize=8)
+    axes[2].grid(True, alpha=0.3)
+
+    fig.tight_layout()
+    save_fig(fig, "98", "case98_debye_shielding.png")
+
+
+def plot_case99():
+    """Case 99: Conducting Cylinder in Uniform E-Field"""
+    print("Case 99: Conducting Cylinder in Uniform E-Field")
+    efile = case_path("99", "case99_cylinder_uniform_field_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case99")
+        return
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    names = get_nod_var_names(ds)
+    phi_idx = names.index("phi") + 1
+    phi = get_nod_var(ds, phi_idx)
+    phi_exact_idx = names.index("phi_exact") + 1
+    phi_exact = get_nod_var(ds, phi_exact_idx)
+    ds.close()
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.5))
+    fig.suptitle("Case 99: Conducting Cylinder in Uniform E-Field", fontsize=13)
+
+    # Left: MOOSE solution
+    tc0 = axes[0].tricontourf(x, y, phi, levels=30, cmap="RdBu_r")
+    plt.colorbar(tc0, ax=axes[0], label=r"$\Phi$ (V)")
+    R = 0.5
+    theta = np.linspace(0, 2 * np.pi, 100)
+    axes[0].plot(R * np.cos(theta), R * np.sin(theta), "k-", lw=2)
+    axes[0].set_xlabel("x")
+    axes[0].set_ylabel("y")
+    axes[0].set_title("MOOSE Solution")
+    axes[0].set_aspect("equal")
+
+    # Middle: analytic solution
+    tc1 = axes[1].tricontourf(x, y, phi_exact, levels=30, cmap="RdBu_r")
+    plt.colorbar(tc1, ax=axes[1], label=r"$\Phi_{exact}$ (V)")
+    axes[1].plot(R * np.cos(theta), R * np.sin(theta), "k-", lw=2)
+    axes[1].set_xlabel("x")
+    axes[1].set_ylabel("y")
+    axes[1].set_title(r"Analytic: $-E_0(r - R^2/r)\sin\theta$")
+    axes[1].set_aspect("equal")
+
+    # Right: error
+    error = phi - phi_exact
+    tc2 = axes[2].tricontourf(x, y, error, levels=30, cmap="coolwarm")
+    plt.colorbar(tc2, ax=axes[2], label="Error")
+    axes[2].plot(R * np.cos(theta), R * np.sin(theta), "k-", lw=2)
+    axes[2].set_xlabel("x")
+    axes[2].set_ylabel("y")
+    axes[2].set_title(f"Error (L2 norm shown in title)")
+    axes[2].set_aspect("equal")
+
+    fig.tight_layout()
+    save_fig(fig, "99", "case99_cylinder_uniform_field.png")
+
+
+def plot_case100():
+    """Case 100: Elastic Wave Propagation on Thin Rod"""
+    print("Case 100: Elastic Wave Propagation on Thin Rod")
+    csv_file = case_path("100", "case100_elastic_rod_waves_out.csv")
+    if not file_exists(csv_file):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case100")
+        return
+    data = read_csv(csv_file)
+    t = np.array(data["time"])
+    dx_right = np.array(data["disp_x_right"])
+    dx_left = np.array(data["disp_x_left"])
+    dx_mid = np.array(data["disp_x_mid"])
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.5))
+    fig.suptitle("Case 100: Elastic Wave Propagation on Thin Rod", fontsize=13)
+
+    t_ms = t * 1000  # convert to ms
+
+    # Left: displacement at all three points
+    axes[0].plot(t_ms, dx_left * 1e6, "b-", lw=1.5, label="Left (driven)")
+    axes[0].plot(t_ms, dx_mid * 1e6, "g-", lw=1.5, label="Mid")
+    axes[0].plot(t_ms, dx_right * 1e6, "r-", lw=1.5, label="Right (free)")
+    axes[0].set_xlabel("Time (ms)")
+    axes[0].set_ylabel("Displacement (μm)")
+    axes[0].set_title("Axial Displacement vs Time")
+    axes[0].legend(fontsize=8)
+    axes[0].grid(True, alpha=0.3)
+
+    # Middle: right-end displacement (free end, shows reflection)
+    axes[1].plot(t_ms, dx_right * 1e6, "r-", lw=2)
+    axes[1].set_xlabel("Time (ms)")
+    axes[1].set_ylabel("Displacement at free end (μm)")
+    axes[1].set_title("Free-End Response (Standing Wave)")
+    axes[1].grid(True, alpha=0.3)
+
+    # Right: stress history
+    stress = np.array(data["avg_stress_xx"])
+    axes[2].plot(t_ms, stress / 1e6, "k-", lw=1.5)
+    axes[2].set_xlabel("Time (ms)")
+    axes[2].set_ylabel("Avg σ_xx (MPa)")
+    axes[2].set_title("Average Axial Stress")
+    axes[2].grid(True, alpha=0.3)
+
+    fig.tight_layout()
+    save_fig(fig, "100", "case100_elastic_rod_waves.png")
+
+
+def plot_case101():
+    """Case 101: Transmission Line — RC Cable"""
+    print("Case 101: Transmission Line — RC Cable Transient")
+    csv_file = case_path("101", "case101_transmission_line_out.csv")
+    efile = case_path("101", "case101_transmission_line_out.e")
+    if not file_exists(csv_file):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case101")
+        return
+    data = read_csv(csv_file)
+    t = np.array(data["time"])
+    v_q = np.array(data["v_quarter"])
+    v_m = np.array(data["v_mid"])
+    v_3q = np.array(data["v_three_quarter"])
+    v_l = np.array(data["v_load"])
+    avg_v = np.array(data["avg_v"])
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.5))
+    fig.suptitle("Case 101: RC Transmission Line — Voltage Diffusion", fontsize=13)
+
+    # Left: voltage at different positions vs time
+    axes[0].plot(t, v_q, "b-", lw=1.5, label="x = 0.25")
+    axes[0].plot(t, v_m, "g-", lw=1.5, label="x = 0.50")
+    axes[0].plot(t, v_3q, "orange", lw=1.5, label="x = 0.75")
+    axes[0].plot(t, v_l, "r-", lw=1.5, label="x = 1.00 (load)")
+    axes[0].axhline(y=1.0, color="k", ls=":", alpha=0.5, label="V₀ = 1")
+    axes[0].set_xlabel("Time (s)")
+    axes[0].set_ylabel("Voltage (V)")
+    axes[0].set_title("Voltage Propagation Along Cable")
+    axes[0].legend(fontsize=8)
+    axes[0].grid(True, alpha=0.3)
+
+    # Middle: voltage profile snapshots from Exodus
+    if file_exists(efile):
+        ds = open_exodus(efile)
+        x_c, y_c = get_coords_2d(ds)
+        names = get_nod_var_names(ds)
+        v_idx = names.index("v") + 1
+        times = get_times(ds)
+        mid_mask = np.abs(y_c - 0.02) < 0.015
+        x_line = x_c[mid_mask]
+        order = np.argsort(x_line)
+        for t_snap in [0.1, 0.5, 1.0, 2.0, 5.0]:
+            ts_idx = find_closest_timestep(times, t_snap)
+            v_snap = get_nod_var(ds, v_idx, timestep=ts_idx)
+            axes[1].plot(x_line[order], v_snap[mid_mask][order], lw=1.5,
+                         label=f"t = {t_snap:.1f}")
+        ds.close()
+    D_rc = 0.1
+    x_ana = np.linspace(0, 1, 200)
+    from scipy.special import erfc as sp_erfc
+    try:
+        axes[1].plot(x_ana, sp_erfc(x_ana / (2 * np.sqrt(D_rc * 0.5))),
+                     "k--", lw=1, alpha=0.5)
+    except Exception:
+        pass
+    axes[1].set_xlabel("Position x (m)")
+    axes[1].set_ylabel("Voltage (V)")
+    axes[1].set_title("Voltage Profile Snapshots")
+    axes[1].legend(fontsize=7)
+    axes[1].grid(True, alpha=0.3)
+
+    # Right: average voltage approach to steady state
+    axes[2].plot(t, avg_v, "b-", lw=2)
+    axes[2].axhline(y=1.0, color="r", ls="--", label="Steady state V₀")
+    axes[2].set_xlabel("Time (s)")
+    axes[2].set_ylabel("Average Voltage (V)")
+    axes[2].set_title("Approach to DC Steady State")
+    axes[2].legend()
+    axes[2].grid(True, alpha=0.3)
+
+    fig.tight_layout()
+    save_fig(fig, "101", "case101_transmission_line.png")
+
+
+def plot_case102():
+    """Case 102: Membrane Levitation — Eigenvalue Analysis"""
+    print("Case 102: Membrane Levitation — Stability Analysis")
+    efile = case_path("102", "case102_membrane_levitation_out.e")
+    eig_file = case_path("102", "case102_membrane_levitation_out_eigenvalues_0002.csv")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case102")
+        return
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.5))
+    fig.suptitle(r"Case 102: Membrane Levitation — Pull-In Stability ($V < V_{crit}$)", fontsize=13)
+
+    # Read eigenvalues
+    eig_real = []
+    if file_exists(eig_file):
+        eig_data = read_csv(eig_file)
+        eig_real = eig_data.get("eigen_values_real", [])
+
+    # Left: eigenvalue spectrum
+    if eig_real:
+        modes = list(range(1, len(eig_real) + 1))
+        # Analytic predictions
+        F_e = 4.0
+        ana_eigs = [(n * np.pi) ** 2 - F_e for n in modes]
+        axes[0].bar([m - 0.15 for m in modes], eig_real, width=0.3,
+                    color="steelblue", label="MOOSE")
+        axes[0].bar([m + 0.15 for m in modes], ana_eigs, width=0.3,
+                    color="coral", label=r"$(n\pi)^2 - F_e$")
+        axes[0].axhline(y=0, color="k", ls="-", lw=0.5)
+        axes[0].set_xlabel("Mode Number n")
+        axes[0].set_ylabel(r"Eigenvalue $\omega_n^2$")
+        axes[0].set_title("Natural Frequency Spectrum")
+        axes[0].legend()
+        axes[0].grid(True, alpha=0.3, axis="y")
+
+    # Middle: eigenvector (mode 1)
+    ds = open_exodus(efile)
+    x_c = np.array(ds.variables["coordx"][:], dtype=float)
+    names = get_nod_var_names(ds)
+    xi_idx = names.index("xi") + 1
+    xi_1 = get_nod_var(ds, xi_idx, timestep=0)
+    order = np.argsort(x_c)
+    # Normalize
+    xi_1_norm = xi_1 / (np.max(np.abs(xi_1)) + 1e-20)
+    axes[1].plot(x_c[order], xi_1_norm[order], "b-", lw=2, label="Mode 1 (MOOSE)")
+    x_ana = np.linspace(0, 1, 200)
+    axes[1].plot(x_ana, np.sin(np.pi * x_ana), "r--", lw=2, label=r"$\sin(\pi x)$")
+    axes[1].set_xlabel("x")
+    axes[1].set_ylabel(r"$\xi$ (normalised)")
+    axes[1].set_title("First Eigenmode Shape")
+    axes[1].legend()
+    axes[1].grid(True, alpha=0.3)
+
+    # Right: stability diagram
+    V_range = np.linspace(0, 4, 100)
+    F_e_range = V_range ** 2
+    omega1_sq = np.pi ** 2 - F_e_range
+    axes[2].plot(V_range, omega1_sq, "b-", lw=2)
+    axes[2].fill_between(V_range, omega1_sq, 0, where=(omega1_sq > 0),
+                         alpha=0.2, color="green", label="Stable")
+    axes[2].fill_between(V_range, omega1_sq, 0, where=(omega1_sq < 0),
+                         alpha=0.2, color="red", label="Unstable (pull-in)")
+    axes[2].axhline(y=0, color="k", ls="-", lw=0.5)
+    axes[2].axvline(x=np.pi, color="k", ls="--", alpha=0.5, label=r"$V_{crit} = \pi$")
+    if eig_real:
+        axes[2].plot(2, eig_real[0], "ko", ms=10, zorder=5, label=f"V=2: ω²={eig_real[0]:.2f}")
+    axes[2].set_xlabel("Applied Voltage V")
+    axes[2].set_ylabel(r"$\omega_1^2$")
+    axes[2].set_title("Stability Diagram")
+    axes[2].legend(fontsize=7)
+    axes[2].grid(True, alpha=0.3)
+    ds.close()
+
+    fig.tight_layout()
+    save_fig(fig, "102", "case102_membrane_levitation.png")
+
+
+def plot_case103():
+    """Case 103: Dielectric Fluid Rise in Capacitor"""
+    print("Case 103: Kelvin Force — Dielectric Fluid Rise")
+    efile = case_path("103", "case103_dielectric_fluid_rise_out.e")
+    if not file_exists(efile):
+        print("    SKIP: output file not found")
+        skipped_cases.append("case103")
+        return
+    ds = open_exodus(efile)
+    x, y = get_coords_2d(ds)
+    names = get_nod_var_names(ds)
+    phi_idx = names.index("phi") + 1
+    phi = get_nod_var(ds, phi_idx)
+    ds.close()
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.5))
+    fig.suptitle("Case 103: Kelvin Polarization Force — Dielectric Fluid Rise", fontsize=13)
+
+    # Left: full 2D potential
+    tc0 = axes[0].tricontourf(x, y, phi, levels=30, cmap="RdBu_r")
+    plt.colorbar(tc0, ax=axes[0], label=r"$\Phi$ (V)")
+    axes[0].axhline(y=1.0, color="k", ls="--", lw=1, alpha=0.7, label="Interface")
+    axes[0].set_xlabel("x (between plates)")
+    axes[0].set_ylabel("y (vertical)")
+    axes[0].set_title("Electric Potential Distribution")
+    axes[0].legend(fontsize=8)
+    axes[0].set_aspect("equal")
+
+    # Middle: potential profile at x = 0.5 (midplane)
+    mid_mask = np.abs(x - 0.5) < 0.02
+    y_line = y[mid_mask]
+    phi_line = phi[mid_mask]
+    order = np.argsort(y_line)
+    axes[1].plot(y_line[order], phi_line[order], "b-", lw=2)
+    axes[1].axhline(y=0.5, color="r", ls="--", label="Φ = V/2 (expected)")
+    axes[1].axvline(x=1.0, color="k", ls=":", alpha=0.7, label="Interface y=1")
+    axes[1].set_xlabel("y")
+    axes[1].set_ylabel(r"$\Phi$ at x = 0.5")
+    axes[1].set_title("Potential Along Midplane")
+    axes[1].legend(fontsize=8)
+    axes[1].grid(True, alpha=0.3)
+
+    # Right: E² proxy (φ²) distribution
+    E_sq = phi ** 2
+    tc2 = axes[2].tricontourf(x, y, E_sq, levels=30, cmap="hot")
+    plt.colorbar(tc2, ax=axes[2], label=r"$\Phi^2$ (proxy for $|E|^2$)")
+    axes[2].axhline(y=1.0, color="cyan", ls="--", lw=1.5, label="Interface")
+    axes[2].set_xlabel("x")
+    axes[2].set_ylabel("y")
+    axes[2].set_title(r"Electric Energy Density $\propto |E|^2$")
+    axes[2].legend(fontsize=8)
+    axes[2].set_aspect("equal")
+
+    fig.tight_layout()
+    save_fig(fig, "103", "case103_dielectric_fluid_rise.png")
+
+
 # ---------------------------------------------------------------------------
 # Main driver
 # ---------------------------------------------------------------------------
@@ -5344,12 +5963,22 @@ CASE_FUNCTIONS = [
     ("91", plot_case91),
     ("92", plot_case92),
     ("93", plot_case93),
+    ("94", plot_case94),
+    ("95", plot_case95),
+    ("96", plot_case96),
+    ("97", plot_case97),
+    ("98", plot_case98),
+    ("99", plot_case99),
+    ("100", plot_case100),
+    ("101", plot_case101),
+    ("102", plot_case102),
+    ("103", plot_case103),
 ]
 
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("MOOSE Quick-Start Visualization — All 93 Cases")
+    print("MOOSE Quick-Start Visualization — All 103 Cases")
     print("=" * 60)
     print(f"Script directory: {SCRIPT_DIR}")
     print("Plots will be saved into each case subdirectory.\n")

@@ -4,7 +4,7 @@
 >
 > This repo **does not include the MOOSE source codes**. Instead, it supplements the original
 > repository with **comprehensive documentation and worked examples** designed to help new users
-> learn the framework from scratch. The 93 progressive quickstart cases are fully explained — from
+> learn the framework from scratch. The 103 progressive quickstart cases are fully explained — from
 > the physics and governing equations, through the input file structure, to interpreting the
 > simulation results — so that users can learn how to set up their own simulations and understand
 > the output without any external help.
@@ -86,7 +86,7 @@ immediately available to every application that enables that module.
 This repository focuses on **learning materials** for the MOOSE framework:
 
 - **Comprehensive documentation** covering architecture, developer workflows, input-file syntax, and all 29 physics modules
-- **93 progressive quickstart examples** (`quickstart-runs/`) — each with a complete input file, detailed README explaining the physics, and matplotlib visualization of the results
+- **103 progressive quickstart examples** (`quickstart-runs/`) — each with a complete input file, detailed README explaining the physics, and matplotlib visualization of the results
 - **An 8-week study plan** for self-learners going from zero to productive MOOSE developer
 - **Docker instructions** for running MOOSE on Windows without compiling from source
 
@@ -98,6 +98,7 @@ Many of the advanced quickstart cases are drawn from MIT course materials by fou
 | **Herman A. Haus** | [*Electromagnetic Noise and Quantum Optical Measurements*](https://engineering.purdue.edu/wcchew/ece604f19/Supplementary%20Texts/Haus_Electromagnetic%20Noise%20and%20Quantum%20Optical%20Measurements1.pdf) (Springer, 2000) — classical chapters | 30–36 | Waveguide eigenvalues, driven cavities, dielectric slabs, coupled resonators, thermal noise, dispersive pulses, solitons |
 | **Jin Au Kong** | [MIT 6.635 *Advanced Electromagnetism*](https://ocw.mit.edu/courses/6-635-advanced-electromagnetism-spring-2003/pages/lecture-notes/) (Spring 2003) | 74–83 | Left-handed materials, Drude skin depth, 3D waveguides, cylinder scattering, Bragg mirrors, photonic crystals, cavity resonance, Veselago lens |
 | **David H. Staelin** | [MIT 6.661 *Receivers, Antennas, and Signals*](https://ocw.mit.edu/courses/6-661-receivers-antennas-and-signals-spring-2003/pages/lecture-notes/) | 84–93 | Lossy TEM cavity Q factor, Hertzian and half-wave dipoles, phased array beamforming, single-slit diffraction, dielectric waveguide modes, parabolic reflector, radar cross section, aperture synthesis, inverse source recovery |
+| **Markus Zahn** | [MIT 6.641 *Electromagnetic Fields, Forces, and Motion*](https://ocw.mit.edu/courses/6-641-electromagnetic-fields-forces-and-motion-spring-2005/pages/lecture-notes/) | 94–103 | Periodic potential sheet, dielectric relaxation, Maxwell's capacitor, skin effect, Debye shielding, cylinder scattering, elastic rod waves, RC transmission line, membrane pull-in instability, Kelvin force dielectrophoresis |
 
 Additional cases are based on textbooks by these authors:
 
@@ -117,7 +118,7 @@ To actually build and run MOOSE simulations, you need the framework itself from 
 | [docs/architecture.md](docs/architecture.md) | System architecture with subsystem diagrams covering the Framework → Modules → Applications hierarchy |
 | [docs/developer-guide.md](docs/developer-guide.md) | Step-by-step C++ developer tutorial: writing Kernels, BCs, Materials, and custom objects |
 | [docs/user-guide.md](docs/user-guide.md) | Simulation user reference covering input-file syntax, all major blocks, and solver options |
-| [docs/quick-start.md](docs/quick-start.md) | 93 worked examples progressing from simple diffusion through chemical reactions, mortar contact, XFEM, THM pipe flow, level-set interface tracking, and advanced electromagnetism |
+| [docs/quick-start.md](docs/quick-start.md) | 103 worked examples progressing from simple diffusion through chemical reactions, mortar contact, XFEM, THM pipe flow, level-set interface tracking, advanced electromagnetism, and continuum electromechanics |
 | [docs/zero-to-hero.md](docs/zero-to-hero.md) | 8-week structured study plan for new MOOSE developers |
 | [docs/modules-reference.md](docs/modules-reference.md) | Physics module reference with API summaries and example input files |
 | [docs/docker-guide.md](docs/docker-guide.md) | Running MOOSE on Windows with Docker — installation, volume mounts, MPI |
@@ -128,7 +129,7 @@ The official online documentation lives at **https://mooseframework.inl.gov**.
 
 ## Quickstart Examples
 
-The `quickstart-runs/` directory contains **93 fully worked examples**, each in its own subdirectory with:
+The `quickstart-runs/` directory contains **103 fully worked examples**, each in its own subdirectory with:
 
 - **Input file** (`.i`) — ready to run with `moose_test-opt` or `combined-opt`
 - **Detailed README** — explains the physics, walks through every input-file block, describes the output files, and shows how to interpret the results
@@ -703,6 +704,75 @@ These cases use the MOOSE `electromagnetics` and `optimization` modules to model
 <a href="quickstart-runs/case93-inverse-source-recovery"><img src="quickstart-runs/case93-inverse-source-recovery/case93_inverse_source_recovery.png" width="100%"/></a><br/>
 <b>Case 93</b>: Inverse Source Recovery<br/>
 <sub>Adjoint L-BFGS Optimization</sub>
+</td>
+<td colspan="2"></td>
+</tr>
+</table>
+
+### Cases 94-103: Electromagnetic Fields, Forces & Motion
+
+> Based on **MIT 6.641 *Electromagnetic Fields, Forces, and Motion*** (Prof. Markus Zahn, Spring 2005) —
+> covering separation-of-variables electrostatics, dielectric relaxation, interfacial polarization,
+> skin effect, Debye shielding, electrostatic scattering, elastic wave resonance, transmission line
+> transients, electrostatic membrane instability, and Kelvin polarization force.
+
+These cases span 10 distinct sub-areas of classical electrodynamics and continuum electromechanics, from theoretical boundary-value problems (Laplace equation, Poisson-Boltzmann) to industrially relevant phenomena (ESD protection, induction heating, signal integrity, MEMS pull-in) and numerically challenging eigenvalue problems (membrane stability thresholds).
+
+<table>
+<tr>
+<td align="center" width="25%">
+<a href="quickstart-runs/case94-periodic-potential-sheet"><img src="quickstart-runs/case94-periodic-potential-sheet/case94_periodic_potential_sheet.png" width="100%"/></a><br/>
+<b>Case 94</b>: Periodic Potential Sheet<br/>
+<sub>Laplace BVP, Exponential Field Decay</sub>
+</td>
+<td align="center" width="25%">
+<a href="quickstart-runs/case95-charge-relaxation"><img src="quickstart-runs/case95-charge-relaxation/case95_charge_relaxation.png" width="100%"/></a><br/>
+<b>Case 95</b>: Charge Relaxation<br/>
+<sub>Dielectric Relaxation Time τ = ε/σ</sub>
+</td>
+<td align="center" width="25%">
+<a href="quickstart-runs/case96-maxwells-capacitor"><img src="quickstart-runs/case96-maxwells-capacitor/case96_maxwells_capacitor.png" width="100%"/></a><br/>
+<b>Case 96</b>: Maxwell's Capacitor<br/>
+<sub>Two-Layer Interfacial Polarization</sub>
+</td>
+<td align="center" width="25%">
+<a href="quickstart-runs/case97-skin-effect"><img src="quickstart-runs/case97-skin-effect/case97_skin_effect.png" width="100%"/></a><br/>
+<b>Case 97</b>: Skin Effect<br/>
+<sub>Magnetic Diffusion, δ = √(2/μσω)</sub>
+</td>
+</tr>
+<tr>
+<td align="center">
+<a href="quickstart-runs/case98-debye-shielding"><img src="quickstart-runs/case98-debye-shielding/case98_debye_shielding.png" width="100%"/></a><br/>
+<b>Case 98</b>: Debye Shielding<br/>
+<sub>Screened Poisson, λ_D = 0.2</sub>
+</td>
+<td align="center">
+<a href="quickstart-runs/case99-cylinder-uniform-field"><img src="quickstart-runs/case99-cylinder-uniform-field/case99_cylinder_uniform_field.png" width="100%"/></a><br/>
+<b>Case 99</b>: Cylinder in Uniform Field<br/>
+<sub>Electrostatic Scattering, σ = 2ε₀E₀sinθ</sub>
+</td>
+<td align="center">
+<a href="quickstart-runs/case100-elastic-rod-waves"><img src="quickstart-runs/case100-elastic-rod-waves/case100_elastic_rod_waves.png" width="100%"/></a><br/>
+<b>Case 100</b>: Elastic Rod Waves<br/>
+<sub>Resonance at f_n = nv_p/(2L)</sub>
+</td>
+<td align="center">
+<a href="quickstart-runs/case101-transmission-line"><img src="quickstart-runs/case101-transmission-line/case101_transmission_line.png" width="100%"/></a><br/>
+<b>Case 101</b>: RC Transmission Line<br/>
+<sub>Voltage Diffusion, erfc Profile</sub>
+</td>
+</tr>
+<tr>
+<td align="center">
+<a href="quickstart-runs/case102-membrane-levitation"><img src="quickstart-runs/case102-membrane-levitation/case102_membrane_levitation.png" width="100%"/></a><br/>
+<b>Case 102</b>: Membrane Levitation<br/>
+<sub>Pull-In Instability, V_crit = π</sub>
+</td>
+<td align="center">
+<a href="quickstart-runs/case103-dielectric-fluid-rise"><img src="quickstart-runs/case103-dielectric-fluid-rise/case103_dielectric_fluid_rise.png" width="100%"/></a><br/>
+<b>Case 103</b>: Dielectric Fluid Rise<br/>
+<sub>Kelvin Force, ε-Gradient Actuation</sub>
 </td>
 <td colspan="2"></td>
 </tr>

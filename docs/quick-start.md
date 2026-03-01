@@ -1,8 +1,8 @@
-# MOOSE Quick-Start Guide: 93 Working Examples
+# MOOSE Quick-Start Guide: 103 Working Examples
 
-This guide walks a complete beginner through 93 self-contained MOOSE input files,
+This guide walks a complete beginner through 103 self-contained MOOSE input files,
 from the simplest possible diffusion problem to genuine multi-physics simulations
-using MOOSE's physics modules. Cases 01-13 use only the framework. Cases 14-93
+using MOOSE's physics modules. Cases 01-13 use only the framework. Cases 14-103
 use physics modules (heat_transfer, solid_mechanics, navier_stokes, phase_field,
 porous_flow, electromagnetics, chemical_reactions, geochemistry, contact, xfem,
 thermal_hydraulics, level_set) and require `combined-opt`. Read them in order.
@@ -6376,6 +6376,368 @@ L-BFGS step.
 
 ---
 
+## Cases 94-103 — Electromagnetic Fields, Forces & Motion (MIT 6.641, Prof. Zahn)
+
+These ten cases are based on MIT 6.641 *Electromagnetic Fields, Forces, and Motion*
+(Prof. Markus Zahn, Spring 2005). They cover electrostatics, charge relaxation,
+magnetic diffusion, Debye shielding, elastic waves, transmission lines, eigenvalue
+stability, and polarization forces.
+
+---
+
+## Case 94 — Spatially Periodic Potential Sheet
+
+### Physics
+
+A grounded conducting sheet at y = 0 has a sinusoidal surface potential
+Phi(x, 0) = sin(2*pi*x). The governing equation is Laplace's equation nabla^2 Phi = 0.
+By separation of variables, the solution above the sheet decays exponentially:
+Phi(x, y) = sin(2*pi*x) * exp(-2*pi*y). The decay constant equals the spatial
+wavenumber, so higher spatial frequencies are screened more rapidly.
+
+```bash
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case94-periodic-potential-sheet \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case94_periodic_potential_sheet.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `Diffusion` | Laplace equation nabla^2 Phi = 0 |
+| `FunctionDirichletBC` | Sinusoidal potential at y = 0 |
+| `FunctionAux` | Computes analytic solution for comparison |
+| `ElementL2Error` | Quantifies numerical vs analytic error |
+
+### What You Learn
+
+How separation of variables in Laplace's equation produces exponential field
+decay from periodic surface charge. How FunctionAux and ElementL2Error enable
+quantitative verification against analytic solutions.
+
+---
+
+## Case 95 — Dielectric Charge Relaxation
+
+### Physics
+
+Free charge in a lossy dielectric decays exponentially: drho/dt = -(sigma/epsilon)*rho,
+giving rho(t) = rho_0 * exp(-t/tau_e) where tau_e = epsilon/sigma is the charge
+relaxation time. For epsilon_r = 2 and sigma = 10 S/m, tau_e = 0.2 s. A Gaussian
+initial charge distribution decays uniformly at this rate regardless of spatial shape.
+
+```bash
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case95-charge-relaxation \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case95_charge_relaxation.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `TimeDerivative` | drho/dt term |
+| `CoefReaction` | -(sigma/epsilon)*rho decay term, coefficient = 5.0 |
+| `FunctionIC` | Gaussian initial charge distribution |
+| `ElementAverageValue` | Tracks spatially averaged charge vs time |
+
+### What You Learn
+
+How ohmic conduction dissipates free charge on the relaxation timescale tau_e = epsilon/sigma.
+Why this matters for ESD protection in insulating materials.
+
+---
+
+## Case 96 — Maxwell's Capacitor: Two-Layer Dielectric
+
+### Physics
+
+A step voltage is applied across two dielectric layers with different permittivities
+and conductivities (epsilon_a, sigma_a) and (epsilon_b, sigma_b). Initially the
+voltage divides capacitively; at steady state it divides resistively. The interfacial
+charge sigma_s(t) builds up as the system transitions between these two states with
+time constant tau = (epsilon_a*d_b + epsilon_b*d_a) / (sigma_a*d_b + sigma_b*d_a).
+
+```bash
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case96-maxwells-capacitor \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case96_maxwells_capacitor.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `ADTimeDerivative` | dPhi/dt for transient response |
+| `ADMatDiffusion` | Block-restricted diffusion with different sigma values |
+| `SubdomainIDGenerator` | Assigns block IDs to mesh regions |
+| `StitchMeshGenerator` | Joins two mesh blocks at the interface |
+
+### What You Learn
+
+How mismatched epsilon/sigma ratios drive interfacial charge accumulation. Why
+high-voltage insulation design must account for transient redistribution between
+capacitive and resistive voltage division.
+
+---
+
+## Case 97 — Skin Effect: Magnetic Diffusion
+
+### Physics
+
+An oscillating magnetic field H = H_0*sin(omega*t) is applied to one face of a
+conducting slab. The field diffuses inward according to dH/dt = D_m * d^2H/dx^2
+where D_m = 1/(mu_0*sigma). The skin depth delta = sqrt(2*D_m/omega) = sqrt(2/(mu_0*sigma*omega))
+determines how deeply the field penetrates. Beyond a few skin depths, the field
+amplitude is negligible — this is the basis of electromagnetic shielding.
+
+```bash
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case97-skin-effect \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case97_skin_effect.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `ADTimeDerivative` | dH/dt term |
+| `ADMatDiffusion` | D_m * d^2H/dx^2 magnetic diffusion |
+| `FunctionDirichletBC` | Oscillating H_0*sin(omega*t) boundary field |
+| `ParsedFunction` | Defines the sinusoidal time-dependent BC |
+
+### What You Learn
+
+How oscillating fields penetrate conductors only to the skin depth. Why higher
+frequency or higher conductivity means thinner skin depth. The physical basis
+of electromagnetic shielding and induction heating.
+
+---
+
+## Case 98 — Debye Shielding: Linearized Poisson-Boltzmann
+
+### Physics
+
+In a plasma or electrolyte, mobile charges screen any applied potential. The
+linearized Poisson-Boltzmann equation nabla^2 Phi - Phi/lambda_D^2 = -rho_ext/epsilon
+describes this screening, where lambda_D = sqrt(epsilon*kT/(2*n_0*q^2)) is the Debye
+length. The potential decays as exp(-r/lambda_D) — charges rearrange to neutralize
+perturbations within a few Debye lengths.
+
+```bash
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case98-debye-shielding \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case98_debye_shielding.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `Diffusion` | nabla^2 Phi (Laplacian) |
+| `CoefReaction` | -Phi/lambda_D^2 screening term (coefficient = 25) |
+| `BodyForce` | Gaussian external charge source |
+| `DirichletBC` | Zero potential at domain boundary |
+
+### What You Learn
+
+How mobile charges screen electrostatic perturbations at the Debye length scale.
+The linearized Poisson-Boltzmann equation as a screened Poisson problem. Relevance
+to plasma physics, semiconductor device modeling, and electrochemistry.
+
+---
+
+## Case 99 — Conducting Cylinder in Uniform Electric Field
+
+### Physics
+
+A grounded conducting cylinder of radius R is placed in a uniform external field E_0.
+Outside the cylinder, nabla^2 Phi = 0 with Phi(R) = 0 and Phi -> -E_0*y at infinity.
+The analytic solution is Phi = -E_0*(r - R^2/r)*sin(theta), which shows field
+enhancement at the equator and zero field at the poles. The induced surface charge
+is sigma_s = 2*epsilon_0*E_0*sin(theta).
+
+```bash
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case99-cylinder-uniform-field \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case99_cylinder_uniform_field.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `Diffusion` | Laplace equation nabla^2 Phi = 0 |
+| `MatReaction` | Penalty method enforcing Phi ≈ 0 inside cylinder |
+| `GenericFunctionMaterial` | Spatially varying penalty coefficient via tanh profile |
+| `FunctionDirichletBC` | Analytic far-field BC from solution |
+
+### What You Learn
+
+How a conductor distorts an external field, producing field enhancement. The penalty
+method as an alternative to conformal meshing for imposing internal constraints. The
+canonical electrostatic scattering problem from potential theory.
+
+---
+
+## Case 100 — Elastic Wave Propagation on Thin Rod
+
+### Physics
+
+A longitudinal elastic wave propagates along a thin aluminum rod governed by
+d^2 xi/dt^2 = (E/rho) * d^2 xi/dx^2, where E = 70 GPa and rho = 2700 kg/m^3
+give a phase velocity v_p = sqrt(E/rho) = 5092 m/s. The rod is driven at one
+end at frequency f ≈ 250 Hz (near the fundamental resonance f_1 = v_p/(2L))
+with the other end free.
+
+```bash
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case100-elastic-rod-waves \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case100_elastic_rod_waves.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `Physics/SolidMechanics/Dynamic` | Dynamic solid mechanics action (stress divergence + inertia) |
+| `ComputeIsotropicElasticityTensor` | Young's modulus and Poisson's ratio |
+| `ComputeLinearElasticStress` | Linear elastic stress-strain relation |
+| `GenericConstantMaterial` | Mass density for inertial force |
+| `NewmarkBeta` | Implicit Newmark-beta time integration (beta=0.25, gamma=0.5) |
+
+### What You Learn
+
+How elastic waves propagate, reflect, and form standing wave patterns. Resonance
+frequencies of a rod with one fixed and one free end. The Newmark-beta time
+integrator for structural dynamics and its relationship to energy conservation.
+
+---
+
+## Case 101 — RC Transmission Line Transients
+
+### Physics
+
+An RC transmission line (resistance R per unit length, capacitance C per unit length)
+satisfies the diffusion equation dv/dt = D * d^2v/dx^2 where D = 1/(RC). A step
+voltage is applied at x = 0 and diffuses along the line. Unlike the lossless wave
+equation (which gives sharp wave fronts), the RC line produces a diffusive front
+that broadens with sqrt(t).
+
+```bash
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case101-transmission-line \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case101_transmission_line.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `ADTimeDerivative` | C * dv/dt capacitive charging |
+| `ADMatDiffusion` | (1/R) * d^2v/dx^2 conductive spreading |
+| `FunctionDirichletBC` | Step voltage source via PiecewiseLinear ramp |
+| `SideAverageValue` | Monitors voltage arrival at load end |
+
+### What You Learn
+
+How signals propagate on lossy transmission lines as diffusive fronts rather than
+sharp wavefronts. The RC time constant governs voltage redistribution along the
+line. Relevance to signal integrity in VLSI interconnects and submarine cables.
+
+---
+
+## Case 102 — Membrane Levitation: Eigenvalue Stability
+
+### Physics
+
+A membrane under tension S is levitated by an electrostatic force (epsilon_0*V^2)/(2*d^2).
+Small perturbations satisfy an eigenvalue problem:
+S * d^2 xi/dx^2 + (epsilon_0*V^2/d^3)*xi = omega^2 * m * xi.
+The membrane is stable when the lowest eigenvalue omega^2 > 0, requiring
+epsilon_0*V^2/(d^3*S) < (pi/l)^2. Above this critical voltage, the fundamental
+mode becomes unstable (pull-in instability).
+
+```bash
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case102-membrane-levitation \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case102_membrane_levitation.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `Diffusion` | S * d^2 xi/dx^2 tension stiffness (A matrix) |
+| `CoefReaction` | -(epsilon_0*V^2/d^3) destabilizing term (A matrix) |
+| `MatReaction` | Mass matrix m*xi (B matrix, eigen-tagged) |
+| `EigenDirichletBC` | Zero displacement at boundaries (eigen system) |
+| `Eigenvalue` executioner | SLEPc KRYLOVSCHUR with shift-invert |
+
+### What You Learn
+
+How to formulate electromechanical stability as an eigenvalue problem. The
+competition between mechanical stiffness and electrostatic destabilization.
+Why MEMS devices have a critical pull-in voltage beyond which stable levitation
+is impossible.
+
+---
+
+## Case 103 — Kelvin Polarization Force: Dielectric Fluid Rise
+
+### Physics
+
+A parallel-plate capacitor is half-filled with a dielectric fluid (epsilon_r > 1).
+The fringing field at the air-dielectric interface exerts a Kelvin polarization force
+F = P dot nabla(E) that pulls the fluid upward. At equilibrium, the electrostatic
+force balances gravity, giving a rise height h = (epsilon - epsilon_0)*V^2 / (2*rho*g*a^2)
+where a is the plate gap.
+
+```bash
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "C:/Users/simon/Downloads/moose-next/quickstart-runs:/work" \
+  -w /work/case103-dielectric-fluid-rise \
+  --entrypoint /bin/bash idaholab/moose:latest \
+  -c '/opt/moose/bin/combined-opt -i case103_dielectric_fluid_rise.i 2>&1 | tail -20'
+```
+
+### Key MOOSE Objects
+
+| Object | Role |
+|--------|------|
+| `ADMatDiffusion` | nabla dot (epsilon * nabla Phi) = 0 electrostatics |
+| `SubdomainIDGenerator` | Assigns block IDs for air and dielectric regions |
+| `StitchMeshGenerator` | Joins the two material regions |
+| `ADGenericConstantMaterial` | Block-restricted permittivity (epsilon_r = 1 and 3) |
+| `ElementExtremeValue` | Extracts field extremes for force calculation |
+
+### What You Learn
+
+How non-uniform electric fields exert forces on dielectric materials through the
+Kelvin polarization force mechanism. The interplay between electrostatics and
+fluid mechanics in dielectrophoresis and electrowetting applications.
+
+---
+
 ## Troubleshooting Common Errors
 
 **Error: `Object 'Diffusion' was not registered`**
@@ -6406,7 +6768,7 @@ variable name (e.g., `u` or `T`) using the dropdown in the toolbar.
 
 ## Next Steps
 
-After completing these 93 cases:
+After completing these 103 cases:
 
 1. **Read the MOOSE documentation** at https://mooseframework.inl.gov for
    complete reference documentation on every object type.
@@ -6418,7 +6780,7 @@ After completing these 93 cases:
 3. **Write your own application**: Use `moose/scripts/stork.py` to scaffold
    a new MOOSE application with custom kernels, materials, and BCs.
 
-4. **Explore more module features**: Cases 14-93 introduce the major physics
+4. **Explore more module features**: Cases 14-103 introduce the major physics
    modules — from solid mechanics and heat transfer through Navier-Stokes,
    electrodynamics, MHD, nonlinear solid mechanics, nuclear reactor physics,
    geomechanics / porous flow, reactive-transport geochemistry, MultiApp

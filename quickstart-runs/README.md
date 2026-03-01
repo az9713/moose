@@ -1,13 +1,13 @@
 # MOOSE Quickstart Tutorial Cases: Complete Reference
 
-This directory contains 93 self-contained simulation cases for learning MOOSE from zero.
+This directory contains 103 self-contained simulation cases for learning MOOSE from zero.
 Each case has its own subdirectory with an input file (`.i`) and pre-run output files.
 You do not need to build or install anything to study the input files, understand the physics,
 and read the results. If you want to run the simulations yourself, see Section 5.
 
 This document is designed so that someone who has never used MOOSE, never written a finite
 element simulation, and is not familiar with scientific computing file formats can read it
-from top to bottom and understand everything in these 93 cases.
+from top to bottom and understand everything in these 103 cases.
 
 Read every section. Do not skip ahead. The later cases build directly on concepts introduced
 in the earlier ones.
@@ -21,7 +21,7 @@ in the earlier ones.
 3. [Understanding Output Files](#3-understanding-output-files)
 4. [How MOOSE Solves Problems](#4-how-moose-solves-problems-conceptual)
 5. [Running Simulations](#5-running-simulations)
-6. [The 93 Cases at a Glance](#6-the-93-cases-at-a-glance)
+6. [The 103 Cases at a Glance](#6-the-93-cases-at-a-glance)
 7. [Creating Your Own Simulations](#7-creating-your-own-simulations)
 8. [Glossary](#8-glossary)
 
@@ -105,7 +105,7 @@ MOOSE also handles:
 - **Nonlinear problems**: handles problems where material properties depend on the solution
   itself (like a material that gets stiffer as it heats up)
 
-### What are the 93 cases in this directory?
+### What are the 103 cases in this directory?
 
 These cases form a progressive tutorial starting from the simplest possible problem
 (1D steady-state diffusion with an exact solution of u = x) and building up to
@@ -246,7 +246,7 @@ L = 1.0
 
 ### All Standard Block Types Explained
 
-The following sections explain every block type you will encounter in the 93 cases.
+The following sections explain every block type you will encounter in the 103 cases.
 Each explanation defines what the block does, what parameters mean, and gives a
 realistic example.
 
@@ -1347,7 +1347,7 @@ To override: add `file_base = my_custom_name` to the `[Outputs]` block.
 
 ---
 
-## 6. The 93 Cases at a Glance
+## 6. The 103 Cases at a Glance
 
 The cases are ordered from simplest to most complex. Cases 01-13 use only the MOOSE
 framework (Diffusion, BodyForce, MatDiffusion, etc.). Cases 14-21 use physics **modules**
@@ -1412,6 +1412,21 @@ Case 90 models parabolic reflector focusing. Case 91 computes the radar cross se
 of a flat conducting plate. Case 92 creates interference fringes from two coherent
 sources (aperture synthesis). Case 93 uses MOOSE's optimization module to recover an
 unknown source amplitude from sparse measurements using the adjoint method.
+
+**Cases 94-103 (Batch Zahn — Electromagnetic Fields, Forces & Motion)** are based on MIT 6.641
+*Electromagnetic Fields, Forces, and Motion* (Prof. Markus Zahn, Spring 2005). Case 94
+solves Laplace's equation for a spatially periodic potential sheet with analytic exponential
+decay verification. Case 95 demonstrates dielectric charge relaxation with time constant
+tau = epsilon/sigma. Case 96 models Maxwell's two-layer capacitor with interfacial charge
+buildup between mismatched dielectric layers. Case 97 simulates magnetic diffusion (skin
+effect) into a conducting slab with oscillating boundary field. Case 98 solves the linearized
+Poisson-Boltzmann equation for Debye shielding around a charge distribution. Case 99
+computes the electrostatic potential around a conducting cylinder in a uniform external field.
+Case 100 propagates elastic waves on a thin aluminum rod using Newmark-beta time integration.
+Case 101 models RC transmission line transient voltage diffusion. Case 102 solves the
+eigenvalue problem for membrane levitation stability under opposing tension and electric
+forces. Case 103 computes the electrostatic field in a parallel-plate capacitor half-filled
+with dielectric fluid to predict Kelvin polarization force-driven fluid rise.
 
 Study them in order.
 
@@ -1510,6 +1525,16 @@ Study them in order.
 | 91 | `case91-radar-cross-section/` | Radar Cross Section — Flat Plate | 2D scattered-field: plane wave incident on conducting plate; σ ≈ 4πL²/λ² at normal incidence | Scattered-field formulation, `EMRobinBC` (port + absorbing), RCS postprocessor | Advanced |
 | 92 | `case92-interferometer/` | Aperture Synthesis Interferometer | 2D Helmholtz with two coherent point sources; fringe pattern shows angular resolution ≈ λ/B | Multiple `BodyForce` sources, correlation extraction, interferometric fringes | Advanced |
 | 93 | `case93-inverse-source-recovery/` | Inverse Source Recovery — PDE-Constrained Estimation | 3-file optimization: recover source amplitude p₁ in screened Poisson from 9 sensors; TAO L-BFGS converges in 2 iterations | `Optimize` executioner, `GeneralOptimization`, `OptimizationData`, `ParsedOptimizationFunction`, `ElementOptimizationSourceFunctionInnerProduct`, adjoint method | Expert |
+| 94 | `case94-periodic-potential-sheet/` | Spatially Periodic Potential Sheet | 2D Laplace ∇²Φ = 0 with sinusoidal BC Φ(x,0) = sin(2πx); analytic solution Φ = sin(2πx)e^{-2π|y|} | Separation of variables, `FunctionDirichletBC`, `FunctionAux` for analytic comparison, `ElementL2Error` | Intermediate |
+| 95 | `case95-charge-relaxation/` | Dielectric Charge Relaxation | ∂ρ/∂t + (σ/ε)ρ = 0 → exponential decay with τ_e = ε/σ; Gaussian initial charge profile | `CoefReaction` (linear decay), relaxation time constant, ESD protection physics | Beginner |
+| 96 | `case96-maxwells-capacitor/` | Maxwell's Capacitor — Two-Layer Dielectric | Step voltage across two dielectric layers (ε_a,σ_a) and (ε_b,σ_b); interfacial charge buildup σ_s(t) | `SubdomainIDGenerator` + `StitchMeshGenerator`, block-restricted `ADMatDiffusion`, multi-material interface | Intermediate |
+| 97 | `case97-skin-effect/` | Skin Effect — Magnetic Diffusion | ∂H/∂t = D_m ∂²H/∂x², oscillating BC; field amplitude decays as e^{-x/δ}, δ = √(2/μσω) | Oscillating `FunctionDirichletBC`, sinusoidal steady state, skin depth verification | Intermediate |
+| 98 | `case98-debye-shielding/` | Debye Shielding — Linearized Poisson-Boltzmann | ∇²Φ − Φ/λ_D² = 0 with Gaussian source; exponential screening at Debye length λ_D = 0.2 | `CoefReaction` (screening term), `BodyForce` (charge source), plasma/electrolyte physics | Intermediate |
+| 99 | `case99-cylinder-uniform-field/` | Conducting Cylinder in Uniform E-Field | ∇²Φ = 0 outside grounded cylinder; Φ → −E₀y at infinity; penalty method for conductor interior | `GenericFunctionMaterial` + `MatReaction` (penalty), `ParsedFunction` for analytic BCs | Intermediate |
+| 100 | `case100-elastic-rod-waves/` | Elastic Wave Propagation on Thin Rod | ∂²ξ/∂t² = (E/ρ)∂²ξ/∂x²; aluminium rod driven at ~250 Hz near fundamental resonance | `Physics/SolidMechanics/Dynamic`, `NewmarkBeta`, `InertialForce`, standing wave patterns | Advanced |
+| 101 | `case101-transmission-line/` | RC Transmission Line Transients | ∂v/∂t = D·∂²v/∂x²; step voltage propagates as diffusive front, RC time constant τ = RCl² | `ADTimeDerivative` + `ADMatDiffusion`, `PiecewiseLinear` ramp source, signal integrity | Intermediate |
+| 102 | `case102-membrane-levitation/` | Membrane Levitation — Eigenvalue Stability | Eigenvalue problem: S∂²ξ/∂x² + (ε₀V²/d³)ξ = ω²mξ; stability threshold at (π/l)² | `Eigenvalue` executioner, SLEPc `KRYLOVSCHUR`, shift-invert, `EigenDirichletBC`, stability analysis | Expert |
+| 103 | `case103-dielectric-fluid-rise/` | Kelvin Force — Dielectric Fluid Rise | 2D Laplace with ε_r jump (air/dielectric); Kelvin force h = (ε−ε₀)V²/(2ρga²) | Two-block `StitchMeshGenerator`, block-restricted permittivity, polarization force density | Intermediate |
 
 ### What each case produces
 
@@ -1608,16 +1633,26 @@ Study them in order.
 | 91 | `case91_radar_cross_section_out.e`, `case91_radar_cross_section_out.csv` |
 | 92 | `case92_interferometer_out.e`, `case92_interferometer_out.csv` |
 | 93 | `case93_inverse_source_recovery_out.csv`, `case93_inverse_source_recovery_out_OptimizationReporter_0001.csv`, `case93_inverse_source_recovery_out_forward0.e` |
+| 94 | `case94_periodic_potential_sheet_out.e`, `case94_periodic_potential_sheet_out.csv` |
+| 95 | `case95_charge_relaxation_out.e`, `case95_charge_relaxation_out.csv` |
+| 96 | `case96_maxwells_capacitor_out.e`, `case96_maxwells_capacitor_out.csv` |
+| 97 | `case97_skin_effect_out.e`, `case97_skin_effect_out.csv` |
+| 98 | `case98_debye_shielding_out.e`, `case98_debye_shielding_out.csv` |
+| 99 | `case99_cylinder_uniform_field_out.e`, `case99_cylinder_uniform_field_out.csv` |
+| 100 | `case100_elastic_rod_waves_out.e`, `case100_elastic_rod_waves_out.csv` |
+| 101 | `case101_transmission_line_out.e`, `case101_transmission_line_out.csv` |
+| 102 | `case102_membrane_levitation_out.e`, `case102_membrane_levitation_out.csv`, `case102_membrane_levitation_out_eigenvalues_0002.csv` |
+| 103 | `case103_dielectric_fluid_rise_out.e`, `case103_dielectric_fluid_rise_out.csv` |
 
 All pre-run output files for cases 01-13 are included in this directory so you can
-examine them without running anything. Cases 14-93 require `combined-opt` (all modules)
+examine them without running anything. Cases 14-103 require `combined-opt` (all modules)
 to run — see each case's README for Docker instructions.
 
 ---
 
 ## 7. Creating Your Own Simulations
 
-Once you understand the 93 cases, you will want to adapt them or build new simulations
+Once you understand the 103 cases, you will want to adapt them or build new simulations
 from scratch. This section walks through the process systematically.
 
 ### Step 1: Define Your Physics
